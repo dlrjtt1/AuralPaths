@@ -1,0 +1,290 @@
+"""
+First-order edge diffraction for AuralPaths drawn halls (Python twin of GEOM.edges / GEOM.diffract in engine_geom.js).
+
+Method: Uniform Theory of Diffraction (UTD), Kouyoumjian & Pathak (1974), "A uniform geometrical theory of diffraction for an edge in a perfectly
+conducting surface", Proc. IEEE 62, 1448-1461 (DOI not verified here; Google Scholar:
+https://scholar.google.com/scholar?q=A+uniform+geometrical+theory+of+diffraction+for+an+edge+in+a+perfectly+conducting+surface), in the form used for room acoustics by Tsingos, Funkhouser, Ngan & Carlbom
+(2001), SIGGRAPH, https://doi.org/10.1145/383259.383323: spherical-wave incidence, hard faces whose reflection
+terms are weighted by the face reflection factors R = sqrt(1 - alpha) (a heuristic, as in Tsingos et al.).
+
+    p_d(f) = D(f) * exp(-j k (s + s')) / sqrt(s s' (s + s'))
+    D = -exp(-j pi/4) / (2 n sqrt(2 pi k) sin b0) *
+        [ cot((pi + (phi - phi'))/2n) F(k L a+(phi - phi')) + cot((pi - (phi - phi'))/2n) F(k L a-(phi - phi'))
+          + Rn cot((pi + (phi + phi'))/2n) F(k L a+(phi + phi')) + R0 cot((pi - (phi + phi'))/2n) F(k L a-(phi + phi')) ]
+    L = s s' sin^2 b0 / (s + s'),  a+-(x) = 2 cos^2((2 n pi N+- - x) / 2),  N+- the integers closest to (x +- pi) / (2 n pi)
+    F(X) = 2 j sqrt(X) exp(jX) int_sqrt(X)^inf exp(-j t^2) dt  (transition function)
+
+Wedge: exterior (air) angle n*pi between face 0 (phi = 0) and face n (phi = n pi). Only convex edges (n > 1) are used.
+F is evaluated by its power series for X <= 16 and its asymptotic series above (|error| < 1e-4 at the switch).
+At a shadow or reflection boundary, a cot term is singular while F -> 0; the product has the finite limit used below,
+so the diffracted field is continuous and, added to the geometrical field, removes its jump.
+
+Scope (limitations, stated in the README): first order only (source -> edge -> receiver; no reflection-diffraction
+combinations), straight edges between two planar faces, diffraction from edge end points ignored, hard-face UTD with a
+reflection-factor heuristic. The diffracted arrival is rendered with the HRIR of the apex direction; its energy enters
+the image-source histogram with its interference with the geometrical arrivals of the same boundary.
+"""
+from __future__ import annotations
+
+import math
+
+import numpy as np
+
+DF = np.geomspace(16.0, 24000.0, 32)        # frequency grid of the complex coefficient (shared with the browser)
+MIN_ANGLE_DEG = 2.0                        # skip edges whose faces are within 2 deg of coplanar
+SQPI2 = math.sqrt(math.pi) / 2
+
+
+def _fresnel_tail(a):
+    """int_a^inf exp(-j t^2) dt for a >= 0 (power series of int_0^a, valid for a <= 4)."""
+    s, term, n = 0j, complex(a), 0
+    a2 = a * a
+    while True:
+        add = term / (2 * n + 1)
+        s += add
+        if abs(add) < 1e-16 * max(1.0, abs(s)) and n > 2:
+            break
+        n += 1
+        term *= -1j * a2 / n
+        if n > 400:
+            break
+    return SQPI2 * complex(math.cos(math.pi / 4), -math.sin(math.pi / 4)) - s
+
+
+def transition(X):
+    """UTD transition function F(X), X >= 0."""
+    if X <= 0:
+        return 0j
+    if X > 16:
+        x = 1 / X
+        return 1 + 0.5j * x - 0.75 * x * x - 1.875j * x ** 3 + 6.5625 * x ** 4
+    r = math.sqrt(X)
+    return 2j * r * complex(math.cos(X), math.sin(X)) * _fresnel_tail(r)
+
+
+def _npm(x, n, sign):
+    return round((x + sign * math.pi) / (2 * n * math.pi))
+
+
+def _term(beta, n, kL, sign):
+    """cot((pi + sign*beta) / 2n) * F(kL a_sign(beta)) with its finite limit at the boundary."""
+    N = _npm(beta, n, sign)
+    a = 2 * math.cos((2 * n * math.pi * N - beta) / 2) ** 2
+    arg = (math.pi + sign * beta) / (2 * n)
+    if abs(math.sin(arg)) < 1e-9:   # on the boundary: limit n sqrt(2 pi kL) sgn(eps) exp(j pi/4), eps = pi + sign (beta - 2 pi n N)
+        eps = math.pi + sign * (beta - 2 * math.pi * n * N)
+        return n * math.sqrt(2 * math.pi * kL) * (1 if eps >= 0 else -1) * complex(math.cos(math.pi / 4), math.sin(math.pi / 4))
+    return F_cached(kL * a) / math.tan(arg)
+
+
+F_cached = transition
+
+
+def utd(n, phi, phi0, s, s0, sinb, f, c, R0, Rn):
+    """Complex diffracted pressure p_d (unit point source, e^{j w t} convention) at the frequencies f, without the
+    propagation delay exp(-j k (s + s0)) (the renderer applies it as a time shift)."""
+    out = np.zeros(len(f), complex)
+    L = s * s0 * sinb * sinb / (s + s0)
+    A = 1 / math.sqrt(s * s0 * (s + s0))
+    for i, fi in enumerate(f):
+        k = 2 * math.pi * fi / c
+        kL = k * L
+        t = (_term(phi - phi0, n, kL, +1) + _term(phi - phi0, n, kL, -1)
+             + Rn[i] * _term(phi + phi0, n, kL, +1) + R0[i] * _term(phi + phi0, n, kL, -1))
+        D = -complex(math.cos(math.pi / 4), -math.sin(math.pi / 4)) / (2 * n * math.sqrt(2 * math.pi * k) * sinb) * t
+        out[i] = A * D
+    return out
+
+
+# ---------------------------------------------------------------- geometry helpers (surfaces from geometry.build)
+def prepare(G):
+    """Add plane offsets, 2D projections and bounding boxes to the surfaces (same as engine_geom.js makeSurface)."""
+    for s in G["S"]:
+        if "d" in s:
+            continue
+        n = np.asarray(s["n"], float)
+        v = np.asarray(s["verts"], float)
+        s["d"] = float(n @ v[0])
+        ax = int(np.argmax(np.abs(n)))
+        s["uv"] = [i for i in range(3) if i != ax]
+        s["p2"] = v[:, s["uv"]]
+        s["bb"] = (s["p2"].min(0) - 1e-7, s["p2"].max(0) + 1e-7)
+    if "N" not in G:
+        G["N"] = np.array([s["n"] for s in G["S"]], float)
+        G["Dp"] = np.array([s["d"] for s in G["S"]], float)
+    return G
+
+
+def _in_poly2(p2, a, b):
+    c = False
+    j = len(p2) - 1
+    for i in range(len(p2)):
+        xi, yi = p2[i]
+        xj, yj = p2[j]
+        if (yi > b) != (yj > b) and a < (xj - xi) * (b - yi) / (yj - yi) + xi:
+            c = not c
+        j = i
+    return c
+
+
+def in_surface(s, p):
+    a, b = p[s["uv"][0]], p[s["uv"][1]]
+    lo, hi = s["bb"]
+    if a < lo[0] or a > hi[0] or b < lo[1] or b > hi[1]:
+        return False
+    return _in_poly2(s["p2"], a, b)
+
+
+def occluded(G, a, b, skip=()):
+    a = np.asarray(a, float)
+    d = np.asarray(b, float) - a
+    den = G["N"] @ d
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t = (G["Dp"] - G["N"] @ a) / den
+    cand = np.flatnonzero((np.abs(den) > 1e-9) & (t > 1e-6) & (t < 1 - 1e-6))
+    for i in cand:
+        if i in skip:
+            continue
+        if in_surface(G["S"][i], a + t[i] * d):
+            return True
+    return False
+
+
+def _into(s, n, t, mid, delta=1e-3):
+    """Unit vector in face s, perpendicular to the edge t at mid, pointing into the face (local test: the face
+    polygon may lie on both sides of the edge line elsewhere), or None if not a boundary edge of s."""
+    u = np.cross(n, t)
+    a, b = in_surface(s, mid + delta * u), in_surface(s, mid - delta * u)
+    return u if a and not b else -u if b and not a else None
+
+
+def edges(G):
+    """Convex edges shared by two surfaces: list of dicts {a, b (end points), t (unit), i0, i1 (faces), n (wedge index),
+    t0 (unit vector in face 0, perpendicular to the edge, pointing into the face)}."""
+    prepare(G)
+    sides, owner = [], []
+    for k, s in enumerate(G["S"]):
+        v = np.asarray(s["verts"], float)
+        for i in range(len(v)):
+            p, q = v[i], v[(i + 1) % len(v)]
+            if np.linalg.norm(q - p) > 1e-6:
+                sides.append((p, q)); owner.append(k)
+    P = np.array([s[0] for s in sides]); Q = np.array([s[1] for s in sides]); own = np.array(owner)
+    T = (Q - P) / np.linalg.norm(Q - P, axis=1)[:, None]
+    out = []
+    cos_min = math.cos(math.radians(MIN_ANGLE_DEG))
+    for i in range(len(sides)):
+        j = np.arange(i + 1, len(sides))
+        j = j[own[j] != own[i]]
+        if not j.size:
+            continue
+        par = np.abs(T[j] @ T[i]) > 1 - 1e-7
+        w = P[j] - P[i]
+        off = np.linalg.norm(w - (w @ T[i])[:, None] * T[i], axis=1)
+        j = j[par & (off < 1e-6)]
+        for jj in j:
+            A, B = own[i], own[jj]
+            nA, nB = np.asarray(G["S"][A]["n"], float), np.asarray(G["S"][B]["n"], float)
+            if abs(nA @ nB) > cos_min and nA @ nB > 0:
+                continue                                   # (nearly) coplanar
+            t = T[i]
+            u0, u1 = sorted([0.0, (Q[i] - P[i]) @ t]); w0, w1 = sorted([(P[jj] - P[i]) @ t, (Q[jj] - P[i]) @ t])
+            lo, hi = max(u0, w0), min(u1, w1)
+            if hi - lo < 1e-3:
+                continue
+            mid = P[i] + 0.5 * (lo + hi) * t
+            tA, tB = _into(G["S"][A], nA, t, mid), _into(G["S"][B], nB, t, mid)
+            if tA is None or tB is None:
+                continue
+            if tB @ nA >= -1e-9:
+                continue                                   # concave: no first-order diffraction term
+            n = (math.pi + math.acos(max(-1.0, min(1.0, float(nA @ nB))))) / math.pi
+            out.append(dict(a=P[i] + lo * t, b=P[i] + hi * t, t=t, i0=int(A), i1=int(B), n=n, t0=tA, n0=nA))
+    return out
+
+
+def _angle(w, t0, n0):
+    return math.atan2(float(w @ n0), float(w @ t0)) % (2 * math.pi)
+
+
+def _band_freqs(bands):
+    return [np.geomspace(fc / math.sqrt(2), fc * math.sqrt(2), 8) for fc in bands]
+
+
+def _refl(G, S, R, k, Rb):
+    """Specular reflection of S in face k reaching R: (path length, band amplitude without air) or None."""
+    s = G["S"][k]
+    n = np.asarray(s["n"], float)
+    side = n @ S - s["d"]
+    if side <= 1e-9:
+        return None
+    I = S - 2 * side * n
+    dv = R - I
+    den = n @ dv
+    if abs(den) < 1e-12:
+        return None
+    t = (s["d"] - n @ I) / den
+    if not 0 < t < 1:
+        return None
+    P = I + t * dv
+    if not in_surface(s, P) or occluded(G, S, P, (k,)) or occluded(G, P, R, (k,)):
+        return None
+    return float(np.linalg.norm(dv)), Rb
+
+
+def diffract(G, E, S, R, c, Rmat, air, bands, t_max=None):
+    """Diffracted arrivals at receiver R from source S.
+    Rmat(face) -> amplitude reflection factors per band (len(bands)); air: energy attenuation per metre per band.
+    Returns list of dicts {d, t, h (unit vector R -> apex, world), e (unit vector S -> apex), ga (band amplitude factor:
+    air), D (complex p_d on DF, without delay), eb (band energy incl. interference with the boundary partners)}."""
+    S = np.asarray(S, float); R = np.asarray(R, float)
+    bands = np.asarray(bands, float)
+    BF = _band_freqs(bands)
+    out = []
+    for e in E:
+        t, a = e["t"], e["a"]
+        zs, zr = (S - a) @ t, (R - a) @ t
+        ws, wr = (S - a) - zs * t, (R - a) - zr * t
+        rs, rr = np.linalg.norm(ws), np.linalg.norm(wr)
+        if rs < 1e-6 or rr < 1e-6:
+            continue
+        z = zs + (zr - zs) * rs / (rs + rr)
+        if z < -1e-9 or z > (e["b"] - a) @ t + 1e-9:
+            continue
+        Qp = a + z * t
+        s0, s1 = float(np.linalg.norm(S - Qp)), float(np.linalg.norm(R - Qp))
+        L = s0 + s1
+        if t_max is not None and L / c > t_max:
+            continue
+        n, t0, n0 = e["n"], e["t0"], e["n0"]
+        ph0, ph = _angle(ws, t0, n0), _angle(wr, t0, n0)
+        if ph0 > n * math.pi + 1e-9 or ph > n * math.pi + 1e-9:
+            continue
+        skip = (e["i0"], e["i1"])
+        if occluded(G, S, Qp, skip) or occluded(G, Qp, R, skip):
+            continue
+        sinb = rs / s0
+        R0b, Rnb = np.asarray(Rmat(e["i0"]), float), np.asarray(Rmat(e["i1"]), float)
+        lb = np.log(bands)
+        R0f = np.interp(np.log(DF), lb, R0b); Rnf = np.interp(np.log(DF), lb, Rnb)
+        D = utd(n, ph, ph0, s1, s0, sinb, DF, c, R0f, Rnf)
+        ga = np.exp(-0.5 * np.asarray(air, float) * L)
+        # band energy with the interference with the geometrical arrivals of the same boundaries
+        partners = []
+        if not occluded(G, S, R):
+            partners.append((float(np.linalg.norm(R - S)), np.ones(len(bands))))
+        for k in skip:
+            r = _refl(G, S, R, k, np.asarray(Rmat(k), float))
+            if r:
+                partners.append(r)
+        eb, ed = np.zeros(len(bands)), np.zeros(len(bands))
+        for b, fb in enumerate(BF):
+            Db = utd(n, ph, ph0, s1, s0, sinb, fb, c, np.interp(np.log(fb), lb, R0b), np.interp(np.log(fb), lb, Rnb))
+            acc = np.abs(Db) ** 2
+            ed[b] = float(np.mean(acc)) * ga[b] ** 2
+            for Lp, Gp in partners:
+                acc = acc + 2 * np.real(Gp[b] / Lp * np.exp(-2j * np.pi * fb * (Lp - L) / c) * np.conj(Db))
+            eb[b] = float(np.mean(acc)) * ga[b] ** 2
+        out.append(dict(d=L, t=L / c, h=(Qp - R) / s1, e=(Qp - S) / s0, ga=ga, D=D, eb=eb, g=np.sqrt(ed),
+                        edge=(e["i0"], e["i1"])))
+    return out

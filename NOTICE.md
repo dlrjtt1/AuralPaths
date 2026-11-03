@@ -1,0 +1,44 @@
+# Third-party data and software
+
+AuralPaths source code is MIT-licensed (see `LICENSE`). The following third-party material is included or
+loaded and keeps its own licence.
+
+## Included data
+
+### Neumann KU100 HRIRs (embedded in `index.html`)
+- Source: B. Bernschütz, *Spherical Far-Field HRIR Compilation of the Neumann KU100*, TH Köln / TU Berlin,
+  Zenodo record 3928297 (file `HRIR_FULL2DEG.sofa`), https://zenodo.org/records/3928297
+- Paper: B. Bernschütz (2013), "A Spherical Far Field HRIR/HRTF Compilation of the Neumann KU 100",
+  Proc. AIA-DAGA 2013, Merano, pp. 592–595.
+- Licence: Creative Commons Attribution 3.0 Unported (CC BY 3.0), https://creativecommons.org/licenses/by/3.0/
+- **Changes made:** resampled to 48 kHz; every other elevation and azimuth kept (about 4° spacing); quantised to
+  16-bit integers and base64-encoded inside the page. Diffuse-field band gains, interaural coherence and
+  direction-bin tables computed from the full set are also embedded.
+
+### Headphone compensation filter (`hrir/HPCF_Sennheiser-HD600.mat`, also embedded in `index.html`)
+- Source: same Zenodo record 3928297 (`HPCF.zip`), B. Bernschütz.
+- Licence: CC BY 3.0. Measured on the KU100 dummy head; changes: resampled to 48 kHz, stored as float32 in the page.
+
+### BRAS-derived validation results (`validation/`)
+- Derived from: L. Aspöck, F. Brinkmann, D. Ackermann, S. Weinzierl, M. Vorländer (2020), *BRAS – Benchmark for
+  Room Acoustical Simulation*, version 3, TU Berlin DepositOnce, https://doi.org/10.14279/depositonce-6726.3
+  (scene RS5). The measured data themselves are not included.
+- Licence of the derived files: Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0), as required by the
+  source licence, https://creativecommons.org/licenses/by-sa/4.0/
+
+### Loudspeaker directivity files (`directivity/`)
+- `dodeca_HBK_4292L.csv`, `dodeca_NTi_DS3.csv`: values read from the polar plots in the manufacturers' public
+  data sheets (Brüel & Kjær BP 1689; NTi Audio DS3). **Not official manufacturer data**; reading method and
+  uncertainty are given in each file's header.
+- `meyer_CQ-1_nominal.csv`, `meyer_UPM-1P_nominal.csv`: a generic pattern applied to the nominal coverage angles
+  stated in Meyer Sound data sheets. **Not measured and not manufacturer data.**
+- Product names are trademarks of their owners; their use here only identifies the products.
+
+## Loaded at run time (not included)
+- pdf.js 3.11.174 (Mozilla, Apache License 2.0), from cdnjs, only when a PDF drawing is opened.
+- h5wasm 0.10.3 (NIST software licence; includes HDF5), from jsDelivr, only when a SOFA directivity file is opened.
+- IBM Plex Sans (SIL Open Font License 1.1), from Google Fonts.
+
+## Not included (download separately)
+- `hrir/KU100.sofa` for the Python tools: `HRIR_FULL2DEG.sofa` from Zenodo record 3928297 (CC BY 3.0).
+- BRAS data for `validate_bras.py`: see above.

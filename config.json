@@ -1,0 +1,114 @@
+{
+ "name": "Default hall",
+ "_note": "모든 치수·흡음값은 第7ホール 도면/실측이 없어 둔 임시값(PLACEHOLDER)이다. 실측 후 교체할 것.",
+ "fs": 48000,
+ "c": 343.0,
+ "room": {
+  "_axes": "x=폭(청취자 기준 오른쪽+), y=깊이(무대가 y 큰 쪽), z=높이",
+  "dims_m": [
+   20.0,
+   24.0,
+   8.0
+  ],
+  "absorption_octave": {
+   "_bands_hz": [
+    125,
+    250,
+    500,
+    1000,
+    2000,
+    4000
+   ],
+   "values": [
+    0.25,
+    0.28,
+    0.3,
+    0.3,
+    0.3,
+    0.3
+   ]
+  },
+  "scattering": 0.1,
+  "air_absorption": true,
+  "stage_depth_m": 5.0
+ },
+ "sources": {
+  "_note": "S_amp=확성 음원(직접음 + PA로 나감), S_unamp=비확성 음원(직접음만). 위치는 임시값.",
+  "S_amp": {
+   "pos": [
+    10.0,
+    21.0,
+    1.5
+   ],
+   "role": "확성 음원"
+  },
+  "S_unamp": {
+   "pos": [
+    13.0,
+    21.8,
+    1.2
+   ],
+   "role": "비확성 음원"
+  },
+  "B_L": {
+   "pos": [
+    4.0,
+    21.5,
+    1.5
+   ],
+   "role": "PA 좌"
+  },
+  "B_R": {
+   "pos": [
+    16.0,
+    21.5,
+    1.5
+   ],
+   "role": "PA 우"
+  }
+ },
+ "receivers": {
+  "_facing": "모든 좌석은 +y(무대 쪽)를 정면으로 본다",
+  "L": [
+   6.0,
+   11.0,
+   1.2
+  ],
+  "C": [
+   10.0,
+   11.0,
+   1.2
+  ],
+  "R": [
+   14.0,
+   11.0,
+   1.2
+  ]
+ },
+ "conditions": {
+  "itdg_ms": [
+   0,
+   20,
+   40,
+   60
+  ],
+  "level_ratio_db": [
+   -9,
+   -6,
+   -3,
+   0,
+   3,
+   6
+  ],
+  "reference_receiver": "C"
+ },
+ "binaural": {
+  "sofa_path": "hrir/KU100.sofa",
+  "early_window_ms": 100.0,
+  "crossfade_ms": 10.0,
+  "ism_order_early": 12,
+  "ism_order_omni": 60,
+  "headphone_filter": "hrir/HPCF_Sennheiser-HD600.mat"
+ },
+ "output_dir": "out"
+}
