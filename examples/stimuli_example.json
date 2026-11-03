@@ -1,7 +1,7 @@
 {
  "_note": "Example for make_stimuli.py. Paths are relative to this file. Replace dry files with the real recordings (mono, same sample rate as the BRIRs). For stage 2, point brir_dir to the measured KU100 BRIRs named {seat}_{path}.wav.",
- "brir_dir": "../halls/pungnyu/out/brir",
- "brir_manifest": "../halls/pungnyu/out/manifest.json",
+ "brir_dir": "../out/brir",
+ "brir_manifest": "../out/manifest.json",
  "paths": {
   "A": "S_amp",
   "B_L": "B_L",
@@ -42,5 +42,5 @@
  "headroom_dbfs": -1.0,
  "headphone_filter": "../hrir/HPCF_Sennheiser-HD600.mat",
  "subtype": "FLOAT",
- "output_dir": "../stimuli/pungnyu_example"
+ "output_dir": "../stimuli/example"
 }

@@ -1,6 +1,6 @@
 {
  "name": "Default hall",
- "_note": "모든 치수·흡음값은 第7ホール 도면/실측이 없어 둔 임시값(PLACEHOLDER)이다. 실측 후 교체할 것.",
+ "_note": "All dimensions and absorption values are placeholders, not those of a real hall. Replace them with your own hall's data.",
  "fs": 48000,
  "c": 343.0,
  "room": {

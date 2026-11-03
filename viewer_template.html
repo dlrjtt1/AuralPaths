@@ -34,7 +34,7 @@
 html, body { background: var(--frame); color: var(--text); }
 body { font: 14px/1.5 var(--f-ui); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--frame); }
-.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1500px; margin: 0 auto; }
+.wrap { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); max-width: 1920px; margin: 0 auto; }
 .toolbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--frame); }
 .toolbar .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; padding-block: 12px; }
 .brand { display: flex; align-items: center; gap: 10px; }
@@ -79,6 +79,7 @@ main.wrap { display: grid; gap: 12px; padding-block: 4px 12px; grid-template-col
 .ph.open .qbtn { color: var(--bg); background: var(--ink); border-color: var(--ink); }
 .col { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .rowA { grid-column: 1 / -1; display: grid; gap: 12px; grid-template-columns: minmax(0, 4fr) minmax(0, 5fr) minmax(0, 4fr); }
+#paTable select { max-width: 13em; text-overflow: ellipsis; }
 .rowB { grid-column: 1 / -1; display: grid; gap: 12px; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
 canvas { display: block; width: 100%; max-width: 100%; background: var(--bg); touch-action: none; }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: var(--text-dim); align-items: center; }
@@ -118,7 +119,7 @@ table.layout .num { font-size: 12px; width: 5.4em; -moz-appearance: textfield; p
 #matTable td, #matTable th { padding-left: 2px; padding-right: 2px; }
 table.layout .num::-webkit-outer-spin-button, table.layout .num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 table.layout tr.sel td { background: var(--panel); }
-.iconbtn { font: 12px var(--f-ui); background: none; border: 0; color: var(--grid-text); cursor: pointer; padding: 2px 5px; border-radius: 6px; }
+.iconbtn { font: 12px var(--f-ui); background: none; border: 0; color: var(--grid-text); cursor: pointer; padding: 2px 5px; border-radius: 6px; white-space: nowrap; }
 .iconbtn:hover { color: var(--text); background: var(--panel); }
 .lock { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-dim); cursor: pointer; }
 .lock input { accent-color: var(--ink); }
@@ -374,6 +375,7 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
     <div><span class="k">Studio</span><span class="v">LABO 1557</span></div>
   </div></div>
 </footer>
+<div class="wrap"><p class="note" id="credits">HRIRs and headphone filter: B. Bernschütz, <i>Spherical Far-Field HRIR Compilation of the Neumann KU100</i> (TH Köln), Zenodo 3928297, licensed CC BY 3.0 (creativecommons.org/licenses/by/3.0) — resampled to 48 kHz, about 4° direction spacing, 16-bit. AuralPaths code: MIT licence, LABO 1557. Simulation results are model estimates, not a reproduction of any real hall; see README and NOTICE in the repository.</p></div>
 <div class="overlay" id="alignOverlay" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="alignTitle">
     <h2 id="alignTitle">Align drawing</h2>
@@ -2713,4 +2715,8 @@ $("atUndo").onclick = () => {
 addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("autoOverlay").hidden && !AT.ctl) $("autoOverlay").hidden = true; });
 
 setTimeout(async () => { ENG.buildBank(); clampAll(); await rebuildAll(); buildFiles(); buildTable(); fillHall(); refresh(); $("busy").hidden = true; }, 20);
+
+// Auto-trace needs Claude (the artifact's sample capability); outside Claude the button stays hidden
+$("bAuto").hidden = true;
+atSample().then((s) => { if (s) $("bAuto").hidden = false; }).catch(() => {});
 </script>

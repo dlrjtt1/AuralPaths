@@ -1,4 +1,4 @@
-# TEST DATA (synthetic): T30 / EDT simulated for halls/pungnyu with altered materials, to try calibrate.py.
+# TEST DATA (synthetic): T30 / EDT simulated for a drawn test hall with altered materials, to try calibrate.py.
 # Replace with measured values (ISO 3382-1), one row per position and octave band. Lines starting with # are ignored.
 label,src_x,src_y,src_z,rec_x,rec_y,rec_z,band_hz,T30_s,EDT_s
 P1,9.53,14.5,1.9,7.0,4.0,2.5,125,1.313,1.014

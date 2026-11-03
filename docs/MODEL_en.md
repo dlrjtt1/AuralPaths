@@ -7,8 +7,8 @@ A hall (shoebox, or a drawn plan outline with floor and ceiling lines) with an *
 binaural room impulse response (BRIR) per path, applies the nominal ITDG and level-ratio conditions,
 and reports timing, level and room-acoustic parameters.
 
-> Hall size and absorption in `config.json` are placeholders (no drawings or measurements of
-> 第7ホール yet). Do not read the numbers as properties of a real hall.
+> Hall size and absorption in `config.json` are placeholders. Do not read the numbers as properties of
+> a real hall.
 
 ## Run (macOS)
 
@@ -24,9 +24,8 @@ A drawn hall goes into `config.json` as a `geometry` block (plan, floor, ceiling
 rays); **Copy config** in the viewer writes it. `examples/fan_hall_config.json` is a fictional fan hall
 with raked seating: `python run.py examples/fan_hall_config.json` (about 1.5 min, writes `out_fan/`).
 
-`halls/` holds the National Gugak Center halls traced from their drawings (Umyeondang, Pungnyu
-Sarangbang; Yeakdang waits for audience drawings), each with its drawings, `config.json`, tracing notes
-and `out/`: `python run.py halls/pungnyu/config.json`. See `halls/README.md`.
+Keep each of your own halls in its own folder with its `config.json` and `out/`
+(e.g. `python run.py my_hall/config.json`). Hall drawings and traced hall configs are not part of this repository.
 
 Open `out/viewer.html` in a browser. Without the SOFA file, `run.py` only writes omni RIRs and the
 plan figure.
@@ -56,7 +55,7 @@ The page rebuilds every BRIR itself, so these work without rerunning Python:
      PDF's own lines within 10 screen pixels, else onto the nearest line, else to the 5 cm grid. The cursor shows which
      (square = corner, ring = line, cross = grid). Hold **Alt** to place a point freely. **Edit corners** snaps too.
   3. Vector lines exist only in PDFs exported from CAD; PNG / JPG / scanned PDFs keep the 5 cm grid.
-  Check: Umyeondang plan PDF, 22 908 drawing lines read; 40 random hovers near lines all snapped to a corner;
+  Check: a CAD plan PDF with 22 908 drawing lines; 40 random hovers near lines all snapped to a corner;
   Alt disables the snap.
 - **Auto-trace from PDFs…** (web version inside Claude only; it asks Claude to read the drawings, using
   the viewer's Claude usage): choose the plan and / or the section, about 1–3 minutes.
@@ -91,8 +90,7 @@ The page rebuilds every BRIR itself, so these work without rerunning Python:
   `"coverage": 90, "aim": {"az": 29.7, "el": -1.4}` on `B_L` / `B_R`.
 - **Layout**: drag sources, PAs and seats on the plan or type x/y/z. Lock items one by one or all
   at once; **Reset layout** returns to `config.json`.
-- **Seat map** (halls with a `"seats"` list in the config: `halls/umyeondang` 232 seats, `halls/pungnyu`
-  130 seats, traced one by one from the plan drawings): every seat drawn on the plan, coloured by the
+- **Seat map** (halls with a `"seats"` list in the config, e.g. seats traced one by one from the plan drawing): every seat drawn on the plan, coloured by the
   effective ITDG (nearest PA minus amplified direct sound) or by a level-ratio estimate; PA-first seats get
   an orange ring. Hover shows the seat's x/y/z, ITDG via B_L and B_R and the estimate. **Clicking a seat
   moves L / C / R there** (choose which in the menu). **Copy seat CSV** copies the current condition.
@@ -108,7 +106,7 @@ The page rebuilds every BRIR itself, so these work without rerunning Python:
 - **Save config…** (next to Load config): downloads the complete current config (`<hall>_config_edited.json`):
   the config the page was built from (or the one loaded) with the current hall, sources, aims, directivity data
   and seats. Put it in the AuralPaths folder and run `python run.py <file>`. **Copy config** copies the same JSON.
-- **Load config…**: opens a config JSON (e.g. `halls/pungnyu/config.json`; dropping it on the plan works too)
+- **Load config…**: opens a config JSON (e.g. `my_hall/config.json`; dropping it on the plan works too)
   and switches the page to that hall, its materials, sources and seats. **Reset to config** goes back to
   the config the page was built from.
 
@@ -152,7 +150,7 @@ Browser vs Python on the fan test hall (3 seats, 50 000 rays, different random r
 0.7 dB, D50 0.04, Ts 7 ms, EDT 0.10 s, T30 0.05 s, IACC E3 0.10. EDT and C80 differences are near the
 usual JND, so read single-seat differences below about 1 dB C80 as ray-tracing noise; raise the rays
 for final numbers. (Measured before the air-absorption fix below, which changes the Python values at
-500 Hz–1 kHz by less than 0.5 dB.) BRIR energies browser vs Python after the fixes (Pungnyu and Umyeondang, 24 paths): first
+500 Hz–1 kHz by less than 0.5 dB.) BRIR energies browser vs Python after the fixes (two drawn test halls, 24 paths): first
 100 ms within 1.0 dB, 120–300 ms within 0.9 dB, 0.3–1.6 s within 1.8 dB (independent noise and rays).
 
 ### Edge diffraction (first order, UTD)
@@ -219,9 +217,9 @@ omnidirectional for the directions. Shoebox: still the diffuse field. Switch: `"
 pyroomacoustics 0.10 leaves air absorption out of its ray-tracing histograms (checked: the histograms with and
 without `air_absorption` are identical); it applies it only when synthesising an RIR. `energy_hist` now applies
 exp(−m c t) per bin. Before the fix the Python late energy of drawn halls was too high at high frequencies
-(Pungnyu, 0.1–1 s after the direct sound: +2 to +3 dB at 4 kHz, +6 to +11 dB at 8 kHz, up to +0.5 dB at 500 Hz–1 kHz), so the
+(drawn test hall, 0.1–1 s after the direct sound: +2 to +3 dB at 4 kHz, +6 to +11 dB at 8 kHz, up to +0.5 dB at 500 Hz–1 kHz), so the
 Python T30 / EDT of drawn halls at 2 kHz and above were too long and the late part too bright. Browser and
-Python histograms now agree within 0.5 dB in every band (Pungnyu, C, B_L). The shoebox model was not affected.
+Python histograms now agree within 0.5 dB in every band (drawn test hall, one path). The shoebox model was not affected.
 
 ### Late interaural coherence
 
@@ -273,7 +271,7 @@ Playback level calibration, presentation, randomisation and responses belong to 
 
 ## Calibration from measurements (`calibrate.py`)
 
-`python calibrate.py halls/pungnyu/config.json measurements.csv --source-directivity directivity/dodeca_NTi_DS3.csv`
+`python calibrate.py my_hall/config.json measurements.csv --source-directivity directivity/dodeca_NTi_DS3.csv`
 
 - `measurements.csv`: `label, src_x, src_y, src_z, rec_x, rec_y, rec_z, band_hz, T30_s, EDT_s` (one row per position
   and octave band 125 Hz–4 kHz; EDT optional). Template with synthetic values: `examples/calibration_measurements_example.csv`.
@@ -284,7 +282,7 @@ Playback level calibration, presentation, randomisation and responses belong to 
   and `_report.csv` / `_report.md` (per band and position, EDT as an unfitted check).
 - One factor per band cannot tell which surface is wrong. Calibrate and validate at different positions.
 
-Check with synthetic "measurements" (Pungnyu with altered materials, 2 calibration positions, ~30 s):
+Check with synthetic "measurements" (a drawn test hall with altered materials, 2 calibration positions, ~30 s):
 T30 error at the calibration positions −13 % → −1.3 % (worst band); at a held-out position T30 −16 % → −4 % and
 EDT −11 % → +3 %.
 
@@ -359,7 +357,7 @@ horizontal plane only; the vertical plane is assumed equal):
   (±0.5 dB); assumed: first band in each caption = solid curve. Ripple 0.7 / 3.3 / 4.6 / 4.0 dB; below 1 kHz
   and above 5 kHz the nearest measured band is used.
 - `directivity/checks/`: the traced curves drawn over the original figures.
-- `meyer_CQ-1_nominal.csv` (Umyeondang PA, 80° H × 40° V) and `meyer_UPM-1P_nominal.csv` (Pungnyu PA, 100° × 100°):
+- `meyer_CQ-1_nominal.csv` (80° H × 40° V) and `meyer_UPM-1P_nominal.csv` (100° × 100°):
   NOT measured data. Meyer Sound publishes coverage figures only (detailed data only inside MAPP); these files apply
   the generic pattern to the nominal coverage, separately per plane.
 
@@ -375,7 +373,7 @@ the source as "Data: file" in the aiming table; aim stays editable.
 `examples/directivity_test_generic90.csv` is TEST DATA sampled from the generic 90° pattern (not a real
 loudspeaker): with it, C80 / D50 / EDT / T30 / IACC agree with the generic model within 0.04 dB / 0.005 /
 0.003 s / 0.001 s / 0.007, and the effective level ratio within 0.2 dB.
-Data for the dodecahedron and the 第7ホール PA still has to be obtained (manufacturer data or measurement).
+For other loudspeakers, use manufacturer data or your own measurements.
 
 ## Outputs (`out/`)
 
@@ -403,8 +401,7 @@ Data for the dodecahedron and the 第7ホール PA still has to be obtained (man
 - Seat map: seat positions are cushion centres from the plan drawings; ear height 1.2 m above the model
   floor 0.2 m in front of the cushion (chairs at the rear of their tier). The model's tiers are straight,
   so side seats on curved tiers use the model floor at their own depth (up to one step, about 0.3 m,
-  off). Umyeondang: 232 seats traced, the drawing states 231 (wheelchair places excluded); one seat is
-  unresolved. Pungnyu: 5 left-side seats under a dimension line were placed by mirroring the right side
+  off)
 - Late field: drawn halls use the ray-traced arrival directions (one distribution for the whole late part);
   the shoebox uses an ideal diffuse field. Compare late IACC with the phase-2 measurements before relying on it
 - Seat C on the centre line of a symmetric layout gives IACC ≈ 1; this is an artefact of the model

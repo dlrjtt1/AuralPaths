@@ -28,7 +28,7 @@ By LABO 1557 (Dong-Gyun You).
   effect; scattering as a random (Lambert) model; nearest-direction HRIRs; non-individual (dummy-head) HRTFs.
 - Diffraction check against BRAS scene RS5 (a 2.07 m partition on a hard floor, 16 positions): mean absolute
   difference 1.8 dB in third-octave bands 500 Hz–2 kHz (2.2 dB at the 11 shadow positions). This is one simple
-  scene, not a measure of whole-hall accuracy. Details: `validation/`, `docs/MODEL.md`.
+  scene, not a measure of whole-hall accuracy. Details: `validation/`, `docs/MODEL_en.md`.
 - Loudspeaker directivity files are approximations (see `NOTICE.md`).
 
 ## Python tools
@@ -38,7 +38,7 @@ pip install pyroomacoustics sofar soundfile scipy matplotlib
 python run.py config.json          # BRIRs, metrics, out/viewer.html
 python export_viewer.py config.json
 ```
-Full description of the model, the checks and the outputs: `docs/MODEL.md`. Literature and data used:
+Full description of the model, the checks and the outputs: `docs/MODEL_en.md` (Korean: `docs/MODEL_ko.md`, Japanese: `docs/MODEL_ja.md`). Literature and data used:
 `docs/REFERENCES_ko.md` (Korean).
 
 ## Licence
