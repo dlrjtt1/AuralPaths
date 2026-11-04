@@ -286,6 +286,100 @@ python validate_bras.py "RS5 diffraction (infinite wedge)/RIRs/RS5_RIRs.sofa" --
 − 0.3 ms까지. 2 / 창 길이 미만의 대역은 표시된다. BRAS RS5 v3로 실행(2026-11-03). 결과는 위 *모서리 회절* 항목에 있다.
 RS6(유한 물체)와 RS7(좌석 dip, 블록 15개)은 다중 회절이 필요하며 이 모델에는 없다.
 
+## 3D OBJ 홀과 그린 홀로의 변환 (`obj_to_hall.py`)
+
+Python 엔진은 Wavefront OBJ 메시로 주어진 홀도 계산할 수 있다(`"geometry": {"mesh": {...}}`, 설명은 `geometry.py`의
+메시 부분 첫머리). 브라우저 페이지는 2.5D 그대로이며, `obj_to_hall.py`가 메시 홀을 페이지의 **Load config…**로 열 수
+있는 그린 홀로 바꾼다.
+
+- 메시: 면의 감김 방향을 믿을 수 없으므로 음원 위치에서 시작하는 복셀 채우기(5 cm)로 실내를 찾는다. 각 면의 안쪽
+  법선은 실내가 있는 쪽이며, 양쪽 모두 실내가 아닌 면은 버리고, 남은 면에는 2 mm 뒤에 반대 방향 쌍둥이 면을 하나
+  더 둔다(면 뒤로 빠져나간 광선이 사라지지 않고 반사되도록). 재료는 OBJ 그룹 이름으로 정한다(대소문자 무시 부분
+  일치. Blender가 그룹 이름에 넣는 SketchUp 태그가 그대로 쓰인다). 큰 메시는 간략화한다(`max_faces`,
+  fast-simplification, MIT). 허상은 1차까지만(pyroomacoustics는 허상을 N^차수개 나열한다), 회절은 끈다(곡면을
+  잘게 나눈 메시에는 쐐기가 아닌 얕은 모서리가 수천 개 있다), 면이 3000개를 넘으면 후기 음장은 등방성이다.
+- 2.5D로 변환: 평면 외곽선 = 실내 복셀의 외곽선. 깊이 방향 0.25 m 구간마다 바닥 = 열마다 가장 낮은 실내 복셀의
+  평면 면적 평균(객석 블록은 높아진 바닥으로 셈), 천장 = 바닥 + 구간 체적 / 구간 면적으로 두어 체적을 보존한다
+  (ULH 742 → 719 m³, STC 816 → 805 m³). 돔은 폭 방향으로 뻗은 볼트가 되고, 발코니와 돌출부는 없어지며, 폭의 일부만
+  덮는 물체(교탁)는 폭 전체에 걸친 높은 띠가 된다.
+- 재료: 면을 안쪽 법선에 따라 2.5D의 네 그룹(바닥/무대, 천장, 벽)으로 나눈다. 2.5D 홀은 메시보다 표면적이 작으므로
+  (ULH 942 → 622 m²: 객석 단의 수직면, 작은 면이 없다) 그룹별 흡음 면적 A_g를 보존하면(`--preserve sabine`) 평균 α가
+  커지고 2.5D 홀이 메시보다 빨리 감쇠한다. 기본값(`--preserve eyring`)은 α_g = 1 − exp(−A_g / S_g,2.5D)로 둔다. 즉 2.5D
+  그룹의 Eyring 지수를 메시 그룹의 Sabine 흡음 면적과 같게 한다. 이유: 두 3D 메시의 광선추적 T30은 Sabine에 가까웠고
+  (STC 1.47 s 대 1.43 s, ULH 1 kHz 1.94 대 1.95 s), 단순한 2.5D 홀은 Eyring처럼 감쇠한다(아래 확인). ULH에서 이때 2.5D의
+  T30은 125 Hz–4 kHz에서 메시보다 0.07–0.14 s 낮다. A 보존은 0.17–0.28 s, 대역마다 하나의 계수로 방 전체 Eyring 지수를
+  보존하는 방식(`room-eyring`)은 0.14–0.25 s 낮았다(`validation/fratoni_ULH_preserve.md`). 재료별 Eyring 합(Millington
+  형식)도 시험했으나 흡음이 강한 객석 면에 가중이 걸려 더 나빴다.
+- 광선추적 자체의 확인(`validation/check_rt_eyring.py`, 12 × 9 × 7 m 슈박스, 균일 α): 산란 0.7에서 광선추적 T30은
+  α = 0.05–0.3에서 Eyring과 1–3% 이내, 산란 0.1에서는 Eyring과 Sabine 사이(α = 0.3에서 Eyring보다 최대 +12%).
+
+```bash
+python obj_to_hall.py mesh_config.json --depth-axis y --stage-end min --stage-depth 2.4   # -> mesh_config_2p5d.json
+```
+
+## 실측 홀과의 실내음향 지표 대조 (`validate_fratoni.py`)
+
+데이터: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic simulations*,
+Mendeley Data, [doi:10.17632/y7xnv6xg5s.1](https://doi.org/10.17632/y7xnv6xg5s.1), CC BY 4.0(SketchUp 모델, 음원별
+수음점 평균 ISO 3382-1 지표, 경계 조건, FDTD IR). 포함되지 않는다. 네 공간 중 두 곳이 이 모델에 맞는다: **ULH**(계단식
+대학 강의실)와 **STC**(돔 천장의 타원형 콘서트홀), 각각 약 900 m³와 950 m³, 200석(Fratoni 2022, AIA 48° Convegno
+Nazionale, ISBN 978-88-88942-62-9). 두 오페라 극장(TCB, DUS)은 박스석과 발코니가 있어 2.5D 모델 밖이다.
+
+방법:
+- 모델은 SketchUp에서 Blender를 거쳐 "Object Groups"와 "Material Groups"를 켠 OBJ로 내보냈다(SketchUp 태그가 그룹
+  이름으로 남도록). ULH: 태그 4개가 데이터셋 표의 재료 4개와 같다. STC: 태그가 표의 재료 5개와 일대일로 맞지 않아
+  다음과 같이 정했다(AuralPaths 쪽 판단): `shell_sidewalls`는 방향에 따라 "Plasterboard (walls)"와 "Ceiling"으로 나눔,
+  `crown` → Ceiling, `seat-cushion` → Seats, `seats-wood_stage` → Wood, `floor` → Wood(표에 바닥 재료가 없음),
+  `doors_organ` → Furniture. `doors_organ`을 Wood로 바꾸면 T30이 0.03–0.05 s 달라진다(`validation/fratoni_STC_doors_*.md`).
+- 흡음·산란: 데이터셋의 기하음향(GA) 보정값을 그대로 썼다. 이 값은 데이터셋 저자들이 Odeon에서 맞춘 것이다(Fratoni,
+  D'Orazio & Garai 2023, Forum Acusticum, Turin, [doi:10.61782/fa.2023.1114](https://doi.org/10.61782/fa.2023.1114)이
+  오페라 극장에 대해 이 보정 절차를 설명한다). Odeon은 주어진 계수에 면 크기와 경로 길이에 따른 산란을 더한다
+  (Christensen & Rindel 2005, Forum Acusticum, Budapest,
+  [DTU Orbit](https://orbit.dtu.dk/en/publications/a-new-scattering-method-that-combines-roughness-and-diffraction-e/)).
+  이 엔진에는 그 기능이 없다. 따라서 이 대조는 다른 프로그램의 보정 입력으로 이 엔진을 시험한 것이며, 이 엔진의
+  보정이 아니다.
+- 위치: 데이터셋에 숫자로 없다. Room_Criteria 시트의 위치 그림(평면에서 x / y, 단면에서 높이)에서 읽었으며 약 ±0.3 m
+  불확실하다.
+- 엔진: 허상 1차 + 광선추적(ULH 20 000개, STC 6 000개, 메시는 3 000면으로 간략화), 공기흡음 포함. 수음점마다 옥타브
+  대역별 EDT, T30, C80 / C50, Ts를 구해 실측 시트처럼 수음점 평균을 내고 JND 단위로 비교했다(ISO 3382-1 부속서 A:
+  EDT / T30 5%, C80 / C50 1 dB, Ts 10 ms).
+
+결과(계산 − 실측, JND 단위. 전체 표와 그림은 `validation/fratoni_ULH.*`, `fratoni_STC.*`):
+
+| 홀, 음원 | 모델 | T30 125 / 250 / 500 / 1k / 2k / 4k Hz | EDT 500–4k | C50 / C80 500–4k | Ts 500–4k |
+|---|---|---|---|---|---|
+| ULH, S1 (수음점 26) | 3D 메시 | −2.3 / −1.2 / +0.9 / +1.0 / +0.1 / −0.9 | −0.1 … +0.7 | −0.2 … +0.2 | −0.2 … +0.4 |
+| | 2.5D | −3.9 / −2.1 / −0.7 / +0.1 / −1.2 / −2.5 | −1.0 … +0.9 | −0.6 … +0.3 | −0.6 … +0.6 |
+| STC, S1 (10) | 3D 메시 | +6.8 / +4.1 / +4.0 / +2.3 / +3.6 / +3.5 | +3.8 … +5.2 | −1.6 … −1.0 | +2.1 … +3.1 |
+| | 2.5D | +7.4 / +4.5 / +4.1 / +2.1 / +3.3 / +3.3 | +5.1 … +6.9 | −2.1 … −1.6 | +2.4 … +3.4 |
+| STC, S2 (4) | 3D 메시 | +8.8 / +2.8 / +2.5 / +2.6 / +4.1 / +4.0 | +2.8 … +5.4 | −2.1 … −1.0 | +1.7 … +2.8 |
+| | 2.5D | +8.6 / +2.6 / +2.0 / +1.6 / +3.2 / +3.1 | +2.1 … +4.4 | −1.6 … −0.4 | +1.2 … +2.4 |
+
+해석:
+- ULH: 500 Hz–4 kHz에서 3D 메시의 모든 지표가 실측과 약 1 JND 이내다. 125–250 Hz에서는 T30과 EDT가 1–2 JND 짧고
+  C50이 약 1.3 dB 높다. 같은 입력으로 낸 Sabine 추정도 이 대역에서 짧다(125 Hz에서 1.15 s, 실측 1.56 s, 메시 체적
+  742 m³). 따라서 저역의 차이는 광선추적이 아니라 입력(여기서 쓴 체적과 계수)에 있다. 2.5D 홀은 250 Hz–2 kHz에서
+  메시와 0.15 s 이내다.
+- STC: 두 모델 모두 약 15% 길고(1 kHz에서 1.47 s, 실측 1.32 s), 3D 메시와 2.5D 홀은 T30이 서로 0.06 s 이내로 맞으며,
+  같은 입력의 Sabine 추정도 길다(1.43 s). 같은 입력의 Eyring은 실측값인 1.32 s를 주지만, 여기서는 광선추적이 거기까지
+  내려가지 않는다. 흡음이 객석에 몰려 있고 외피와 돔은 거의 모두 반사하므로(α ≈ 0.1, 산란 0.02–0.05) 후기 음장이
+  확산적이지 않다. 모든 산란을 0.2 또는 0.5 이상으로 올려도(`--min-scatter`) T30은 0.05 s 미만으로만 변했다. 가장
+  그럴듯한 원인은 Odeon의 산란 모델에 맞춘 입력이며, 엔진 오류는 보이지 않는다(위 슈박스 확인). 2.5D 변환(돔 →
+  볼트)도 원인이 아니다.
+- 비교: 같은 저자들이 Odeon으로 보정한 오페라 극장 4곳도 500–1000 Hz에서 T30 −0.06 … +0.12 s, C80 −0.4 … +0.6 dB의
+  차이가 남는다(Fratoni, D'Orazio & Garai 2023, 표 1). 보정된 상용 GA도 정확히 맞지는 않는다.
+- 사용상 의미: ULH 같은 홀에서 GA 보정 입력을 쓰면 엔진은 중·고역의 실측 지표를 재현한다. STC처럼 비확산성이 강한
+  형상의 홀에서는 자체 보정(`calibrate.py`에 실측 T30) 없이는 재현하지 못한다. 두 대조 모두 실측값이 수음점 평균이므로
+  초기 도달, ITDG, PA 경로를 좌석별로 시험하지는 않는다.
+
+```bash
+python validate_fratoni.py "<dataset folder>" ULH --obj ULH_model.obj --rays 20000 --out validation/fratoni_ULH
+python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --rays 6000 --out validation/fratoni_STC
+python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --no-3d --stc-doors Wood --out validation/fratoni_STC_doors_Wood
+```
+변환된 홀(`validation/fratoni_*_2p5d_config.json`, 데이터셋 출처 표기와 함께 CC BY 4.0)은 페이지에서
+**Load config…**로 연다. 2026-11-05 실행(CPU 2코어에서 ULH 3D 메시 64분, STC 46분).
+
 ## 좌석 dip
 
 모델링하지 않았다. 문헌 확인 결과, 주어진 홀의 좌석 dip 필터를 예측하는 닫힌형 또는 매개변수 모델을 찾지 못했다:
@@ -361,6 +455,10 @@ C80 / D50 / EDT / T30 / IACC가 일반 모델과 0.04 dB / 0.005 / 0.003 s / 0.0
 
 - 그린 홀은 2.5D다: 깊이 방향 단면이 모든 x에서 같다(측면 발코니, 박스석, 폭 방향으로 달라지는 천장 반사판 없음).
   재료 그룹은 4개뿐
+- OBJ 메시 홀: Python 엔진 전용. 허상 1차, 회절 없음. 그린 홀로 변환할 때 체적을 보존하고 T30이 메시와 가깝도록 흡음을
+  옮기지만, 흡음이 놓인 위치는 보존하지 않는다(*3D OBJ 홀* 참조)
+- 실측 홀과의 지표 대조: 계단식 강의실(ULH)에서는 500 Hz–4 kHz에서 약 1 JND 이내, 돔 천장의 타원형 홀(STC)에서는
+  데이터셋의 Odeon 보정 입력으로 약 15% 길다(*실측 홀과의 실내음향 지표 대조* 참조)
 - 그린 홀의 값은 광선추적에서 나오므로 무작위 잡음을 포함한다(위 참조). 슈박스 값은 그렇지 않다
 - 슈박스: 균일 흡음, 회절 없음, 확산 후기 음장. 둘 다: 허상에서는 산란을 모델링하지 않음
 - 회절: 1차만, 그린 면의 직선 모서리만. 좌석 없음, 모서리 끝점 없음(위 참조)
@@ -381,6 +479,9 @@ C80 / D50 / EDT / T30 / IACC가 일반 모델과 0.04 dB / 0.005 / 0.003 s / 0.0
 
 - BRAS 데이터베이스(`validate_bras.py` 전용, 포함되지 않음): 저장소 페이지 기준 CC BY-SA 4.0,
   doi:10.14279/depositonce-6726.3.
+- Fratoni 데이터셋(`validate_fratoni.py`용, 포함되지 않음): CC BY 4.0, doi:10.17632/y7xnv6xg5s.1. `validation/fratoni_*`의
+  파생 파일에 출처를 표기했다.
+- fast-simplification(Python, MIT 라이선스, 선택): 큰 OBJ 홀의 메시 간략화.
 - h5wasm 0.10.3(NIST 소프트웨어 라이선스, HDF5 라이브러리 포함): SOFA 지향성 파일을 열 때만 jsDelivr에서 불러오며
   포함되지 않는다. 뷰어를 배포하기 전에 라이선스 문구를 확인할 것.
 - 지향성 데이터베이스(포함되지 않음, 각 라이선스 확인): TU Berlin 악기와 소프라노(Ackermann, Brinkmann & Weinzierl;

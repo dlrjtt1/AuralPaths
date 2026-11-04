@@ -17,10 +17,18 @@ What the conversion keeps (and what it cannot keep):
     kept to within the voxel and slicing error, but a dome becomes a vault extruded across the width (the 2.5D
     model cannot hold a ceiling that varies across x) and balconies / overhangs are lost;
   - materials: mesh faces are sorted by their inward normal into the four 2.5D groups (n_z > 0.3 floor: "stage"
-    on the stage side of --stage-depth, else "aud"; n_z < -0.3 "ceil"; others "wall"). Each group gets the
-    absorption that keeps its equivalent absorption area: alpha_g(f) = sum(alpha_i(f) S_i) / S_g(2.5D), capped at
-    0.95, and the area-weighted mean scattering. Sabine-type reverberation estimates of the two models therefore
-    agree; where the energy lands in the room does not have to.
+    on the stage side of --stage-depth, else "aud"; n_z < -0.3 "ceil"; others "wall"); each group gets the
+    area-weighted mean scattering and, from its absorption area in the mesh A_g(f) = sum(alpha_i(f) S_i):
+      --preserve eyring (default): alpha_g = 1 - exp(-A_g / S_g,2.5D), i.e. the 2.5D group's Eyring exponent
+        -S_g ln(1 - alpha_g) equals the mesh group's Sabine absorption area. Reason: in the Fratoni ULH and STC
+        checks the ray-traced T30 of the 3D meshes was close to Sabine (STC 1.47 s vs 1.43 s, ULH 1 kHz 1.94 vs
+        1.95 s), while a simple 2.5D hall decays like Eyring (validation/check_rt_eyring.py);
+      --preserve sabine: alpha_g = A_g / S_g,2.5D (absorption area kept; Sabine estimates agree);
+      --preserve room-eyring: alpha_g = k A_g / S_g,2.5D with one k per band keeping the room's Eyring exponent.
+    The 2.5D hall has less surface than the mesh (ULH 942 -> 622 m2), so with the same A its mean alpha is higher.
+    ULH, T30 of the 2.5D hall vs the 3D mesh at 125 Hz - 4 kHz: eyring -0.14 ... -0.07 s, room-eyring -0.25 ...
+    -0.14 s, sabine -0.28 ... -0.17 s (validation/fratoni_ULH_preserve.md). All alpha capped at 0.95. Where the
+    absorption sits in the room is not kept.
 Axes of the output follow the drawn-hall convention: x = width, y = depth with the stage at large y, z = up.
 """
 import argparse
@@ -67,7 +75,7 @@ def _outline(mask, x0, y0, h, tol):
     return Q
 
 
-def convert(cfg, depth_axis="y", stage_end="min", stage_depth=0.0, slice_m=0.25, tol=0.08):
+def convert(cfg, depth_axis="y", stage_end="min", stage_depth=0.0, slice_m=0.25, tol=0.08, preserve="eyring"):
     """Return (2.5D config dict, report dict)."""
     import brir_proto as bp
     G = bp._geom(cfg)
@@ -148,15 +156,25 @@ def convert(cfg, depth_axis="y", stage_end="min", stage_depth=0.0, slice_m=0.25,
     for s in G25["S"]:
         n = geometry._newell(s["verts"])
         S25[s["mat"]] += float(np.linalg.norm(n) / 2)
-    out_m, report = {}, {"groups": {}}
-    for g in geometry.GROUPS:
+    out_m, report = {}, {"preserve": preserve, "groups": {}}
+    used = [g for g in geometry.GROUPS if S25[g] > 0 and acc[g][1] > 0]
+    if preserve == "room-eyring":
+        # one factor per band so that the whole room keeps its Eyring exponent (tested, not the default; see docstring)
+        A_t, Sm, S2 = sum(acc[g][0] for g in used), sum(acc[g][1] for g in used), sum(S25[g] for g in used)
+        k = (1 - np.exp(Sm * np.log(1 - A_t / Sm) / S2)) * S2 / A_t
+        report["scale_k"] = [round(float(x), 4) for x in k]
+    for g in used:
         A, S, sS = acc[g]
-        if S25[g] <= 0 or S == 0:
-            continue
-        alpha = np.minimum(0.95, A / S25[g])
+        if preserve == "eyring":
+            alpha = 1 - np.exp(-A / S25[g])
+        elif preserve == "room-eyring":
+            alpha = k * A / S25[g]
+        else:
+            alpha = A / S25[g]
+        alpha = np.minimum(0.95, alpha)
         out_m[g] = {"alpha": [round(float(x), 4) for x in alpha], "s": round(sS / S, 3)}
         report["groups"][g] = {"mesh_area_m2": round(S, 1), "hall_area_m2": round(S25[g], 1),
-                               "absorption_area_m2": [round(float(x), 2) for x in A]}
+                               "mesh_absorption_area_m2": [round(float(x), 2) for x in A]}
     if "stage" not in out_m and "aud" in out_m:
         out_m["stage"] = dict(out_m["aud"])
     geom25["materials"] = out_m
@@ -216,10 +234,12 @@ def main():
     ap.add_argument("--stage-depth", type=float, default=0.0)
     ap.add_argument("--slice", type=float, default=0.25)
     ap.add_argument("--tol", type=float, default=0.08)
+    ap.add_argument("--preserve", default="eyring", choices=["eyring", "sabine", "room-eyring"],
+                    help="how mesh absorption maps to the 2.5D groups (see the docstring)")
     a = ap.parse_args()
     import brir_proto as bp
     cfg = bp.load_config(a.config)
-    new, rep = convert(cfg, a.depth_axis, a.stage_end, a.stage_depth, a.slice, a.tol)
+    new, rep = convert(cfg, a.depth_axis, a.stage_end, a.stage_depth, a.slice, a.tol, a.preserve)
     rep["volume_2p5d_m3"] = round(volume_2p5d(new["geometry"], 50000), 1)
     out = a.out or os.path.splitext(a.config)[0] + "_2p5d.json"
     with open(out, "w", encoding="utf-8") as f:

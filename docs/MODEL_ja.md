@@ -292,6 +292,104 @@ python validate_bras.py "RS5 diffraction (infinite wedge)/RIRs/RS5_RIRs.sofa" --
 − 0.3 ms まで。2 / 窓長 未満の帯域は印が付く。BRAS RS5 v3 で実行(2026-11-03)。結果は上記の *エッジ回折* の項にある。
 RS6(有限物体)と RS7(座席ディップ、ブロック 15 個)は多重回折を必要とし、本モデルでは扱えない。
 
+## 3D OBJ ホールと描画ホールへの変換(`obj_to_hall.py`)
+
+Python エンジンは Wavefront OBJ メッシュで与えたホールも計算できる(`"geometry": {"mesh": {...}}`、説明は `geometry.py`
+のメッシュ部分の冒頭)。ブラウザのページは 2.5D のままであり、`obj_to_hall.py` がメッシュホールをページの
+**Load config…** で開ける描画ホールに変換する。
+
+- メッシュ: 面の巻き方向は信頼できないため、音源位置から始めるボクセル塗りつぶし(5 cm)で室内を求める。各面の内向き
+  法線は室内側とし、両側とも室内でない面は除き、残した面には 2 mm 後方に逆向きの面を一枚加える(面の裏へ抜けた光線を
+  失わずに反射させるため)。材料は OBJ のグループ名で決める(大文字小文字を区別しない部分一致。Blender がグループ名に
+  書き込む SketchUp のタグがそのまま使える)。大きなメッシュは簡略化する(`max_faces`、fast-simplification、MIT)。
+  虚像は 1 次まで(pyroomacoustics は虚像を N^次数 個列挙する)、回折は用いない(曲面を細分したメッシュには楔では
+  ない浅いエッジが数千ある)、面が 3000 を超える場合の後期音場は等方とする。
+- 2.5D への変換: 平面外形 = 室内ボクセルの外形。奥行き方向 0.25 m の区間ごとに、床 = 各列で最も低い室内ボクセルの
+  平面面積平均(客席ブロックは高い床として数える)、天井 = 床 + 区間体積 / 区間面積 とし、体積を保存する
+  (ULH 742 → 719 m³、STC 816 → 805 m³)。ドームは幅方向に伸びたヴォールトとなり、バルコニーと張り出しは失われ、
+  幅の一部のみを覆う物体(教卓)は幅全体にわたる高い帯となる。
+- 材料: 面を内向き法線により 2.5D の 4 グループ(床 / 舞台、天井、壁)に分ける。2.5D ホールはメッシュより表面積が
+  小さいため(ULH 942 → 622 m²: 客席段の垂直面や小さな面がない)、グループごとの吸音面積 A_g を保存すると
+  (`--preserve sabine`)平均 α が大きくなり、2.5D ホールはメッシュより速く減衰する。既定(`--preserve eyring`)では
+  α_g = 1 − exp(−A_g / S_g,2.5D) とする。すなわち 2.5D グループの Eyring 指数をメッシュグループの Sabine 吸音面積に等しく
+  する。理由: 両 3D メッシュの光線追跡 T30 は Sabine に近く(STC 1.47 s 対 1.43 s、ULH 1 kHz 1.94 対 1.95 s)、単純な
+  2.5D ホールは Eyring に従って減衰する(下記の確認)。ULH ではこのとき 2.5D の T30 は 125 Hz–4 kHz でメッシュより
+  0.07–0.14 s 低い。A の保存では 0.17–0.28 s、帯域ごとに一つの係数で室全体の Eyring 指数を保存する方式(`room-eyring`)
+  では 0.14–0.25 s 低かった(`validation/fratoni_ULH_preserve.md`)。材料ごとの Eyring 和(Millington 型)も試したが、
+  吸音の強い客席面に重みがかかり、より悪かった。
+- 光線追跡そのものの確認(`validation/check_rt_eyring.py`、12 × 9 × 7 m のシューボックス、一様な α): 散乱 0.7 では
+  光線追跡の T30 は α = 0.05–0.3 で Eyring と 1–3% 以内、散乱 0.1 では Eyring と Sabine の間(α = 0.3 で Eyring より
+  最大 +12%)である。
+
+```bash
+python obj_to_hall.py mesh_config.json --depth-axis y --stage-end min --stage-depth 2.4   # -> mesh_config_2p5d.json
+```
+
+## 実測ホールとの室内音響指標の照合(`validate_fratoni.py`)
+
+データ: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic simulations*,
+Mendeley Data, [doi:10.17632/y7xnv6xg5s.1](https://doi.org/10.17632/y7xnv6xg5s.1)、CC BY 4.0(SketchUp モデル、音源
+ごとに受音点平均した ISO 3382-1 指標、境界条件、FDTD による IR)。同梱しない。4 空間のうち 2 つが本モデルに適合する:
+**ULH**(段床の大学講義室)と **STC**(ドーム天井をもつ楕円形コンサートホール)、それぞれ約 900 m³ と 950 m³、200 席
+(Fratoni 2022, AIA 48° Convegno Nazionale, ISBN 978-88-88942-62-9)。2 つのオペラハウス(TCB、DUS)はボックス席と
+バルコニーをもち、2.5D モデルの範囲外である。
+
+方法:
+- モデルは SketchUp から Blender を経て、"Object Groups" と "Material Groups" を有効にした OBJ として書き出した
+  (SketchUp のタグがグループ名として残るように)。ULH: 4 つのタグがデータセットの表の 4 材料と一致する。STC: タグが
+  表の 5 材料と一対一に対応しないため、次のように割り当てた(AuralPaths 側の判断): `shell_sidewalls` は向きにより
+  "Plasterboard (walls)" と "Ceiling" に分割、`crown` → Ceiling、`seat-cushion` → Seats、`seats-wood_stage` → Wood、
+  `floor` → Wood(表に床の材料がない)、`doors_organ` → Furniture。`doors_organ` を Wood に替えると T30 は 0.03–0.05 s
+  変わる(`validation/fratoni_STC_doors_*.md`)。
+- 吸音・散乱: データセットの幾何音響(GA)校正値をそのまま用いた。これはデータセットの著者らが Odeon で合わせた値で
+  ある(Fratoni, D'Orazio & Garai 2023, Forum Acusticum, Turin,
+  [doi:10.61782/fa.2023.1114](https://doi.org/10.61782/fa.2023.1114) がオペラハウスについてこの校正手順を述べている)。
+  Odeon は与えられた係数に、面の大きさと経路長に応じた散乱を加える(Christensen & Rindel 2005, Forum Acusticum,
+  Budapest, [DTU Orbit](https://orbit.dtu.dk/en/publications/a-new-scattering-method-that-combines-roughness-and-diffraction-e/))。
+  本エンジンにはその機能がない。したがってこの照合は、他のプログラムの校正入力で本エンジンを試験したものであり、
+  本エンジンの校正ではない。
+- 位置: データセットに数値としてはない。Room_Criteria シートの位置図(平面から x / y、断面から高さ)から読み取り、
+  約 ±0.3 m の不確かさがある。
+- エンジン: 虚像 1 次 + 光線追跡(ULH 20 000 本、STC 6 000 本、メッシュは 3 000 面に簡略化)、空気吸収あり。受音点ごとに
+  オクターブ帯域別の EDT、T30、C80 / C50、Ts を求め、実測シートと同様に受音点平均を取り、JND 単位で比較した
+  (ISO 3382-1 附属書 A: EDT / T30 5%、C80 / C50 1 dB、Ts 10 ms)。
+
+結果(計算 − 実測、JND 単位。表と図の全体は `validation/fratoni_ULH.*`、`fratoni_STC.*`):
+
+| ホール、音源 | モデル | T30 125 / 250 / 500 / 1k / 2k / 4k Hz | EDT 500–4k | C50 / C80 500–4k | Ts 500–4k |
+|---|---|---|---|---|---|
+| ULH, S1(受音点 26) | 3D メッシュ | −2.3 / −1.2 / +0.9 / +1.0 / +0.1 / −0.9 | −0.1 … +0.7 | −0.2 … +0.2 | −0.2 … +0.4 |
+| | 2.5D | −3.9 / −2.1 / −0.7 / +0.1 / −1.2 / −2.5 | −1.0 … +0.9 | −0.6 … +0.3 | −0.6 … +0.6 |
+| STC, S1(10) | 3D メッシュ | +6.8 / +4.1 / +4.0 / +2.3 / +3.6 / +3.5 | +3.8 … +5.2 | −1.6 … −1.0 | +2.1 … +3.1 |
+| | 2.5D | +7.4 / +4.5 / +4.1 / +2.1 / +3.3 / +3.3 | +5.1 … +6.9 | −2.1 … −1.6 | +2.4 … +3.4 |
+| STC, S2(4) | 3D メッシュ | +8.8 / +2.8 / +2.5 / +2.6 / +4.1 / +4.0 | +2.8 … +5.4 | −2.1 … −1.0 | +1.7 … +2.8 |
+| | 2.5D | +8.6 / +2.6 / +2.0 / +1.6 / +3.2 / +3.1 | +2.1 … +4.4 | −1.6 … −0.4 | +1.2 … +2.4 |
+
+解釈:
+- ULH: 500 Hz–4 kHz では 3D メッシュのすべての指標が実測と約 1 JND 以内である。125–250 Hz では T30 と EDT が 1–2 JND
+  短く、C50 が約 1.3 dB 高い。同じ入力による Sabine の推定もこの帯域で短い(125 Hz で 1.15 s、実測 1.56 s、メッシュ体積
+  742 m³)。したがって低域の差は光線追跡ではなく入力(ここで用いた体積と係数)にある。2.5D ホールは 250 Hz–2 kHz で
+  メッシュと 0.15 s 以内である。
+- STC: 両モデルとも約 15% 長く(1 kHz で 1.47 s、実測 1.32 s)、3D メッシュと 2.5D ホールは T30 で互いに 0.06 s 以内で
+  一致し、同じ入力による Sabine の推定も長い(1.43 s)。同じ入力の Eyring は実測値の 1.32 s を与えるが、ここでは光線
+  追跡はそこまで下がらない。吸音が客席に集中し、外殻とドームはほぼすべてを反射するため(α ≈ 0.1、散乱 0.02–0.05)、
+  後期音場が拡散的でない。すべての散乱を 0.2 または 0.5 以上に上げても(`--min-scatter`)T30 の変化は 0.05 s 未満で
+  あった。最も考えられる原因は Odeon の散乱モデルに合わせた入力であり、エンジンの誤りは示されない(上記のシュー
+  ボックスの確認)。2.5D への変換(ドーム → ヴォールト)も原因ではない。
+- 比較: 同じ著者らが Odeon で校正したオペラハウス 4 館でも、500–1000 Hz で T30 −0.06 … +0.12 s、C80 −0.4 … +0.6 dB
+  の差が残る(Fratoni, D'Orazio & Garai 2023, 表 1)。校正済みの商用 GA も完全には一致しない。
+- 使用上の意味: ULH のようなホールで GA 校正入力を用いれば、エンジンは中・高域の実測指標を再現する。STC のように
+  非拡散性の強い形状のホールでは、独自の校正(`calibrate.py` に実測 T30)なしには再現しない。いずれの照合も実測値が
+  受音点平均であるため、初期到来、ITDG、PA 経路を座席ごとに試験するものではない。
+
+```bash
+python validate_fratoni.py "<dataset folder>" ULH --obj ULH_model.obj --rays 20000 --out validation/fratoni_ULH
+python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --rays 6000 --out validation/fratoni_STC
+python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --no-3d --stc-doors Wood --out validation/fratoni_STC_doors_Wood
+```
+変換したホール(`validation/fratoni_*_2p5d_config.json`、データセットの出典表示とともに CC BY 4.0)は、ページの
+**Load config…** で開く。2026-11-05 実行(CPU 2 コアで ULH 3D メッシュ 64 分、STC 46 分)。
+
 ## 座席ディップ
 
 モデル化していない。文献調査の結果、所与のホールの座席ディップ(seat-dip effect)のフィルタを予測する閉形式または
@@ -370,6 +468,10 @@ CSV の列 `band_hz, plane, angle_deg, level_db`: plane `h` = 水平極座標(+ 
 
 - 描画ホールは 2.5D である: 奥行き方向の断面がすべての x で同じ(側面バルコニー、ボックス席、幅方向に変化する天井
   反射板はない)。材料グループは 4 つのみ
+- OBJ メッシュホール: Python エンジン専用。虚像 1 次、回折なし。描画ホールへの変換では体積を保存し、T30 がメッシュに近くなるよう吸音を
+  写すが、吸音の位置は保存しない(*3D OBJ ホール* を参照)
+- 実測ホールとの指標の照合: 段床の講義室(ULH)では 500 Hz–4 kHz で約 1 JND 以内、ドーム天井の楕円形ホール(STC)では
+  データセットの Odeon 校正入力で約 15% 長い(*実測ホールとの室内音響指標の照合* を参照)
 - 描画ホールの値は光線追跡に由来するためランダムなノイズを含む(上記参照)。シューボックスの値は含まない
 - シューボックス: 一様吸音、回折なし、拡散後期音場。両者共通: 虚像では散乱をモデル化しない
 - 回折: 1 次のみ、描画した面の直線エッジのみ。座席なし、エッジ端点なし(上記参照)
@@ -390,6 +492,9 @@ CSV の列 `band_hz, plane, angle_deg, level_db`: plane `h` = 水平極座標(+ 
 
 - BRAS データベース(`validate_bras.py` 専用、同梱しない): リポジトリページによれば CC BY-SA 4.0、
   doi:10.14279/depositonce-6726.3。
+- Fratoni データセット(`validate_fratoni.py` 用、同梱しない): CC BY 4.0、doi:10.17632/y7xnv6xg5s.1。`validation/fratoni_*`
+  の派生ファイルに出典を表示している。
+- fast-simplification(Python、MIT ライセンス、任意): 大きな OBJ ホールのメッシュ簡略化。
 - h5wasm 0.10.3(NIST ソフトウェアライセンス、HDF5 ライブラリを含む): SOFA 指向性ファイルを開く際にのみ jsDelivr から
   読み込み、同梱しない。ビューアを配布する前にライセンス文を確認すること。
 - 指向性データベース(同梱しない、各ライセンスを確認すること): TU Berlin の楽器とソプラノ(Ackermann, Brinkmann &

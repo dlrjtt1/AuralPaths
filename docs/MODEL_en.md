@@ -306,6 +306,111 @@ first arrival − 0.5 ms to the first arrival via the side edges − 0.3 ms; ban
 on BRAS RS5 v3 (2026-11-03); results above under *Edge diffraction*.
 RS6 (finite body) and RS7 (seat dip, 15 blocks) need multiple diffraction, which this model does not have.
 
+## 3D OBJ halls and conversion to a drawn hall (`obj_to_hall.py`)
+
+The Python engine can also run a hall given as a Wavefront OBJ mesh (`"geometry": {"mesh": {...}}`, described at
+the top of the mesh part of `geometry.py`). The browser page stays 2.5D; `obj_to_hall.py` turns a mesh hall into a
+drawn hall that the page opens with **Load config…**.
+
+- Mesh: faces have no reliable winding, so the room is found by a voxel flood fill (5 cm) from a source position;
+  each face's inward normal is the side where the room is, faces with no room on either side are dropped, and
+  every kept face also gets a back-facing twin 2 mm behind it (a ray that slips behind a face is reflected instead
+  of lost). OBJ group names select the materials (case-insensitive substring match, so the SketchUp tags that
+  Blender writes into the group names work). Large meshes are decimated (`max_faces`, fast-simplification, MIT).
+  Image sources to order 1 only (pyroomacoustics enumerates N^order images), no diffraction (a tessellated curved
+  surface has thousands of shallow edges that are not wedges), isotropic late field above 3000 surfaces.
+- Conversion to 2.5D: plan outline = outline of the room's voxels; for each 0.25 m slice along the depth axis,
+  floor = plan-area mean of the lowest room voxel per column (seat blocks count as raised floor) and ceiling =
+  floor + slice volume / slice area, so the volume is kept (ULH 742 → 719 m³, STC 816 → 805 m³). A dome becomes a
+  vault extruded across the width; balconies and overhangs are lost; an object covering part of the width (a
+  lectern) becomes a raised strip across the whole width.
+- Materials: faces go to the four 2.5D groups by their inward normal (floor / stage, ceiling, wall). The 2.5D hall
+  has less surface than the mesh (ULH 942 → 622 m²: no seat risers, no small faces), so keeping each group's
+  absorption area A_g (`--preserve sabine`) raises the mean α, and the 2.5D hall then decays faster than the mesh.
+  The default (`--preserve eyring`) sets α_g = 1 − exp(−A_g / S_g,2.5D): the 2.5D group's Eyring exponent equals the
+  mesh group's Sabine absorption area. Reason: the ray-traced T30 of both 3D meshes was close to Sabine (STC 1.47 s
+  vs 1.43 s; ULH 1 kHz 1.94 vs 1.95 s), while a simple 2.5D hall decays like Eyring (check below). In ULH the 2.5D
+  T30 is then 0.07–0.14 s below the mesh at 125 Hz–4 kHz; keeping A gives 0.17–0.28 s, and one factor per band that
+  keeps the room's Eyring exponent (`room-eyring`) 0.14–0.25 s (`validation/fratoni_ULH_preserve.md`). A
+  per-material Eyring sum (Millington's form) was also tried and was worse (it weights the absorbing seat faces up).
+- Check of the ray tracer itself (`validation/check_rt_eyring.py`, shoebox 12 × 9 × 7 m, uniform α): with
+  scattering 0.7 the ray-traced T30 is within 1–3 % of Eyring at α = 0.05–0.3; with scattering 0.1 it lies between
+  Eyring and Sabine (up to +12 % over Eyring at α = 0.3).
+
+```bash
+python obj_to_hall.py mesh_config.json --depth-axis y --stage-end min --stage-depth 2.4   # -> mesh_config_2p5d.json
+```
+
+## Room criteria against measured halls (`validate_fratoni.py`)
+
+Data: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic simulations*,
+Mendeley Data, [doi:10.17632/y7xnv6xg5s.1](https://doi.org/10.17632/y7xnv6xg5s.1), CC BY 4.0 (SketchUp models,
+ISO 3382-1 criteria averaged over the receivers per source, boundary conditions, FDTD IRs). Not bundled. Two of
+its four rooms fit the model: **ULH**, a raked university lecture hall, and **STC**, an elliptical concert hall with
+domed ceilings (about 900 and 950 m³, 200 seats each: Fratoni 2022, AIA 48° Convegno Nazionale, ISBN
+978-88-88942-62-9). The two opera houses (TCB, DUS) have box tiers and balconies, outside a 2.5D model.
+
+Method:
+- Models exported from SketchUp via Blender as OBJ with "Object Groups" and "Material Groups" on, so that the
+  SketchUp tags survive as group names. ULH: the four tags are the four materials of the dataset sheet. STC: the
+  tags do not match the sheet's five materials one to one; assignment (AuralPaths' judgement): `shell_sidewalls`
+  split by orientation into "Plasterboard (walls)" and "Ceiling", `crown` → Ceiling, `seat-cushion` → Seats,
+  `seats-wood_stage` → Wood, `floor` → Wood (the sheet has no floor material), `doors_organ` → Furniture.
+  Swapping `doors_organ` to Wood changes T30 by 0.03–0.05 s (`validation/fratoni_STC_doors_*.md`).
+- Absorption and scattering: the dataset's values for its geometrical-acoustics (GA) calibration, unchanged. These
+  were tuned by the dataset's authors in Odeon (Fratoni, D'Orazio & Garai 2023, Forum Acusticum, Turin,
+  [doi:10.61782/fa.2023.1114](https://doi.org/10.61782/fa.2023.1114), describe this calibration procedure for
+  opera houses); Odeon adds scattering from surface size and path length to the given coefficient (Christensen &
+  Rindel 2005, Forum Acusticum, Budapest,
+  [DTU Orbit](https://orbit.dtu.dk/en/publications/a-new-scattering-method-that-combines-roughness-and-diffraction-e/)),
+  which this engine does not. The check therefore tests this engine with another program's calibrated inputs; it
+  is not a calibration of this engine.
+- Positions: not in the dataset as numbers; read from the position figures in the Room_Criteria sheets (plan for
+  x / y, section for heights), uncertain by about ±0.3 m.
+- Engine: image sources order 1 + ray tracing (ULH 20 000 rays; STC 6 000 rays, mesh decimated to 3 000 faces),
+  air absorption on; EDT, T30, C80 / C50 and Ts per octave band at each receiver, averaged over the receivers like
+  the measured sheets, and compared in JND (ISO 3382-1 Annex A: 5 % EDT / T30, 1 dB C80 / C50, 10 ms Ts).
+
+Results (simulated − measured, in JND; full tables and figures in `validation/fratoni_ULH.*`, `fratoni_STC.*`):
+
+| hall, source | model | T30 125 / 250 / 500 / 1k / 2k / 4k Hz | EDT 500–4k | C50 / C80 500–4k | Ts 500–4k |
+|---|---|---|---|---|---|
+| ULH, S1 (26 receivers) | 3D mesh | −2.3 / −1.2 / +0.9 / +1.0 / +0.1 / −0.9 | −0.1 … +0.7 | −0.2 … +0.2 | −0.2 … +0.4 |
+| | 2.5D | −3.9 / −2.1 / −0.7 / +0.1 / −1.2 / −2.5 | −1.0 … +0.9 | −0.6 … +0.3 | −0.6 … +0.6 |
+| STC, S1 (10) | 3D mesh | +6.8 / +4.1 / +4.0 / +2.3 / +3.6 / +3.5 | +3.8 … +5.2 | −1.6 … −1.0 | +2.1 … +3.1 |
+| | 2.5D | +7.4 / +4.5 / +4.1 / +2.1 / +3.3 / +3.3 | +5.1 … +6.9 | −2.1 … −1.6 | +2.4 … +3.4 |
+| STC, S2 (4) | 3D mesh | +8.8 / +2.8 / +2.5 / +2.6 / +4.1 / +4.0 | +2.8 … +5.4 | −2.1 … −1.0 | +1.7 … +2.8 |
+| | 2.5D | +8.6 / +2.6 / +2.0 / +1.6 / +3.2 / +3.1 | +2.1 … +4.4 | −1.6 … −0.4 | +1.2 … +2.4 |
+
+Reading:
+- ULH: from 500 Hz to 4 kHz all criteria of the 3D mesh are within about 1 JND of the measurement; at 125–250 Hz
+  T30 and EDT are 1–2 JND short and C50 about 1.3 dB high. A Sabine estimate from the same inputs is also short there
+  (1.15 s vs 1.56 s measured at 125 Hz, mesh volume 742 m³), so the low-frequency gap is in the inputs (volume and
+  coefficients as used here), not in the ray tracing. The 2.5D hall is within 0.15 s of the mesh from 250 Hz to
+  2 kHz.
+- STC: both models are about 15 % long (1 kHz: 1.47 s vs 1.32 s measured), the 3D mesh and the 2.5D hall agree
+  with each other within 0.06 s in T30, and a Sabine estimate from the same inputs is also long (1.43 s). Eyring
+  from the same inputs gives 1.32 s, the measured value, but the ray tracer does not reach it here: the absorption
+  sits on the seats while the shell and the domes reflect almost everything (α ≈ 0.1, scattering 0.02–0.05), so the
+  late field is not diffuse. Raising all scattering to at least 0.2 or 0.5 (`--min-scatter`) changed T30 by less
+  than 0.05 s. The likely cause is the inputs tuned for Odeon's scattering model; an engine error is not
+  indicated (shoebox check above). The 2.5D conversion (domes → vault) is not the cause.
+- For comparison, the same authors' Odeon calibrations of four opera houses end within −0.06 … +0.12 s in T30 and
+  −0.4 … +0.6 dB in C80 at 500–1000 Hz (Fratoni, D'Orazio & Garai 2023, Table 1); calibrated commercial GA is not
+  exact either.
+- What this means for use: in a hall like ULH, with inputs from a GA calibration, the engine reproduces the
+  measured room criteria at mid and high frequencies; in a hall with strongly non-diffuse geometry (STC) it does
+  not without calibration of its own (`calibrate.py` with measured T30). Neither check tests the early arrivals,
+  ITDG or the PA paths seat by seat: the measured values are receiver means.
+
+```bash
+python validate_fratoni.py "<dataset folder>" ULH --obj ULH_model.obj --rays 20000 --out validation/fratoni_ULH
+python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --rays 6000 --out validation/fratoni_STC
+python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --no-3d --stc-doors Wood --out validation/fratoni_STC_doors_Wood
+```
+The converted halls (`validation/fratoni_*_2p5d_config.json`, CC BY 4.0 with the dataset's attribution) open in the
+page with **Load config…**. Run 2026-11-05 (ULH 3D mesh 64 min, STC 46 min on 2 CPU cores).
+
 ## Seat dip
 
 Not modelled. A literature check found no closed-form or parametric model that predicts the seat-dip filter
@@ -391,6 +496,11 @@ For other loudspeakers, use manufacturer data or your own measurements.
 
 - Drawn hall is 2.5D: the cross-section along the depth is the same at every x (no side balconies,
   no boxes, no ceiling reflectors that vary across the width); four material groups only
+- OBJ mesh halls: Python engine only; image sources to order 1, no diffraction; the conversion to a drawn hall
+  keeps the volume and maps the absorption so that T30 stays close to the mesh, not where absorption sits (see *3D OBJ halls*)
+- Room-criteria check against measured halls: within about 1 JND at 500 Hz–4 kHz in a raked lecture hall (ULH),
+  about 15 % too long in an elliptical domed hall (STC) with the dataset's Odeon-calibrated inputs (see *Room
+  criteria against measured halls*)
 - Drawn hall values come from ray tracing and carry random noise (see above); the shoebox ones do not
 - Shoebox: uniform absorption, no diffraction, diffuse late field. Both: scattering not modelled in the image sources
 - Diffraction: first order only, straight edges of the drawn surfaces; no seats, no edge end points (see above)
@@ -413,6 +523,9 @@ For other loudspeakers, use manufacturer data or your own measurements.
 ## Third-party
 
 - BRAS database (for `validate_bras.py` only; not bundled): CC BY-SA 4.0 per the repository page, doi:10.14279/depositonce-6726.3.
+- Fratoni dataset (for `validate_fratoni.py`; not bundled): CC BY 4.0, doi:10.17632/y7xnv6xg5s.1. Derived files in
+  `validation/fratoni_*` carry its attribution.
+- fast-simplification (Python, MIT licence; optional): mesh decimation for large OBJ halls.
 
 - h5wasm 0.10.3 (NIST software licence; includes the HDF5 library), loaded from jsDelivr only when a
   SOFA directivity file is opened; not bundled. Check the licence text before distributing the viewer.

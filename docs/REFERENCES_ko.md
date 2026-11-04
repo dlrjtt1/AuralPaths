@@ -21,6 +21,8 @@
 | 1차 모서리 회절 | UTD: Kouyoumjian & Pathak 1974, Tsingos et al. 2001 | `diffraction.py`, `GEOM.diffract` |
 | 재료 보정 (실측 T30에 맞추기) | ISO 3382-1 Annex A (JND 5 %) | `calibrate.py` |
 | 회절 실측 검증 (RS5, 500 Hz–2 kHz 평균 1.8 dB 차) | BRAS RS5 (Aspöck et al. 2020) | `validate_bras.py`, `validation/` |
+| OBJ 3D 홀 계산·2.5D 변환 | 복셀 채우기 + 메시 Sabine 면적 → 2.5D Eyring 지수(자체 구현), fast-simplification(MIT) | `geometry.py`, `obj_to_hall.py` |
+| 실측 홀 지표 대조 (ULH 500 Hz–4 kHz 약 1 JND 이내, STC 약 15% 김) | Fratoni 데이터셋(CC BY 4.0), Fratoni 2022, Fratoni et al. 2023 | `validate_fratoni.py`, `validation/fratoni_*` |
 | 좌석 dip — **만들지 않음** | Meyer, Tahvanainen, Saarelma & Lokki 2023 (모델 부재 확인) | README "Seat dip" |
 | 음원 지향성 CSV | B&K BP 1689, NTi DS3 데이터시트, Meyer CQ-1 / UPM-1P 데이터시트 | `directivity/*.csv` |
 | SOFA 지향성 불러오기 | h5wasm (브라우저) | `viewer_template.html` |
@@ -129,6 +131,16 @@
 - Brinkmann, F., Aspöck, L., Ackermann, D., Lepa, S., Vorländer, M., & Weinzierl, S. (2019). A round robin on room acoustical simulation and auralization. *J. Acoust. Soc. Am.*, 145(4), 2746–2760. [doi:10.1121/1.5096178](https://doi.org/10.1121/1.5096178)
 - 용도: 기하음향 시뮬레이션의 한계를 서술할 때 인용(계획서 3장). AuralPaths 코드에서 직접 쓰지는 않았다.
 
+### 5.4 Fratoni 데이터셋 (실측 홀 지표 대조용)
+- **무엇:** Fratoni, G. *Materials for calibrating four complex virtual environments through acoustic simulations*. Mendeley Data, v1. [doi:10.17632/y7xnv6xg5s.1](https://doi.org/10.17632/y7xnv6xg5s.1). 홀 4곳(TCB, DUS, STC, ULH)의 SketchUp 모델, ISO 3382-1 실측 지표(음원별 수음점 평균), 경계 조건(GA용 흡음·산란, FDTD용 LRC), FDTD IR.
+- **라이선스:** CC BY 4.0(데이터셋 페이지 표기).
+- **관련 문헌:**
+  - Fratoni, G. (2022). Simulazioni acustiche di ambienti complessi tramite algoritmi FDTD innovativi. *48° Convegno Nazionale AIA*, Matera. ISBN 978-88-88942-62-9. DOI는 찾지 못했다. 표 1(체적·좌석 수: 타원형 홀 950 m³, 계단식 강의실 900 m³, 각 200석)을 형상 확인에 썼다.
+  - Fratoni, G., D'Orazio, D., & Garai, M. (2023). Uncertainty of input data for wave-based room acoustic simulations in large non-trivial environments. *Forum Acusticum 2023*, Turin. [doi:10.61782/fa.2023.1114](https://doi.org/10.61782/fa.2023.1114). CC BY 3.0. Odeon에서 GA 계수를 실측에 맞춘 절차와, 보정된 GA의 잔차(오페라 극장 4곳, 500–1000 Hz T30 −0.06 … +0.12 s)를 비교 기준으로 인용했다. 이 논문의 홀 4곳은 오페라 극장(그림 1(a)의 25,400 m³는 TCB와 같다)이며 ULH·STC는 포함되지 않는다.
+  - Christensen, C. L., & Rindel, J. H. (2005). A new scattering method that combines roughness and diffraction effects. *Forum Acusticum 2005*, Budapest. [DTU Orbit](https://orbit.dtu.dk/en/publications/a-new-scattering-method-that-combines-roughness-and-diffraction-e/). Odeon이 산란 계수에 면 크기·경로 길이에 따른 회절 산란을 더한다는 근거(STC 차이의 해석에 사용).
+- **어디:** `validate_fratoni.py`(ULH, STC), `obj_to_hall.py`. TCB와 DUS는 박스석·발코니가 있어 2.5D 범위 밖이다.
+- **상태 (2026-11-05 실행):** ULH는 3D 메시 기준 500 Hz–4 kHz에서 EDT·T30·C50·Ts가 약 1 JND 이내, 125–250 Hz에서 T30이 1–2 JND 짧다. STC는 3D 메시·2.5D 모두 T30이 약 15% 길다(입력이 Odeon용으로 보정된 영향으로 해석, 엔진 오류는 슈박스 확인에서 보이지 않음). 위치는 시트 그림에서 읽었고(±0.3 m), STC 재료 대응 일부는 판단이다. 결과 파일: `validation/fratoni_*`.
+
 ---
 
 ## 6. 브라우저 쪽 외부 라이브러리 (논문 아님)
@@ -165,3 +177,4 @@
 | 지향성 | CSV/SOFA 불러오기, 12면체·Meyer CSV | B&K BP 1689, NTi DS3, Meyer 데이터시트, h5wasm |
 | 보정 도구 | 실측 T30에 재료 맞춤 | ISO 3382-1 Annex A |
 | **v0.5** | 반자동 트레이스(축척 지정, 도면 선 스냅), UTD 1차 회절, 방향성 후기부, 공기흡음 버그 수정, Python 초기부 확산 에너지 추가, BRAS 스크립트, 좌석 dip 검토 | Kouyoumjian & Pathak 1974, Tsingos et al. 2001, Habets et al. 2008, Aspöck et al. 2020, Meyer et al. 2023 |
+| 2026-11-05 | OBJ 3D 홀(Python), OBJ → 2.5D 변환(체적 보존, 흡음은 메시 Sabine 면적 → 2.5D Eyring 지수), 실측 홀 2곳 지표 대조 | Fratoni 데이터셋, Fratoni 2022, Fratoni et al. 2023, Christensen & Rindel 2005, ISO 3382-1 Annex A |

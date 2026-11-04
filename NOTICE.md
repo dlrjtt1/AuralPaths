@@ -26,6 +26,15 @@ loaded and keeps its own licence.
 - Licence of the derived files: Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0), as required by the
   source licence, https://creativecommons.org/licenses/by-sa/4.0/
 
+### Fratoni-derived validation results and converted halls (`validation/fratoni_*`)
+- Derived from: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic
+  simulations*, Mendeley Data, https://doi.org/10.17632/y7xnv6xg5s.1 (halls ULH and STC: 3D models, boundary
+  conditions, measured room criteria). The dataset's files themselves are not included.
+- Licence of the derived files: Creative Commons Attribution 4.0 (CC BY 4.0), https://creativecommons.org/licenses/by/4.0/
+- **Changes made:** models exported from SketchUp to OBJ (via Blender), decimated (STC) and converted to 2.5D
+  drawn halls with merged materials; source and receiver positions read from the dataset's figures; simulated
+  room criteria computed with AuralPaths. The measured values in the tables are the dataset's.
+
 ### Loudspeaker directivity files (`directivity/`)
 - `dodeca_HBK_4292L.csv`, `dodeca_NTi_DS3.csv`: values read from the polar plots in the manufacturers' public
   data sheets (Brüel & Kjær BP 1689; NTi Audio DS3). **Not official manufacturer data**; reading method and
@@ -42,3 +51,6 @@ loaded and keeps its own licence.
 ## Not included (download separately)
 - `hrir/KU100.sofa` for the Python tools: `HRIR_FULL2DEG.sofa` from Zenodo record 3928297 (CC BY 3.0).
 - BRAS data for `validate_bras.py`: see above.
+- Fratoni dataset for `validate_fratoni.py`: see above.
+- fast-simplification (MIT licence, Python, optional) for decimating large OBJ meshes; openpyxl (MIT) for the
+  dataset sheets.

@@ -18,7 +18,9 @@ By LABO 1557 (Dong-Gyun You).
 - Output: echogram, arrivals by direction, C80 / D50 / Ts / EDT / T30 / IACC, seat maps of effective ITDG and
   level ratio, A/B listening with your own dry recordings (optional headphone EQ for Sennheiser HD600).
 - Python tools (same model, for research use): `run.py` (BRIR sets), `make_stimuli.py` (listening-test stimuli),
-  `calibrate.py` (fit absorption to measured T30), `validate_bras.py` (diffraction check against BRAS).
+  `calibrate.py` (fit absorption to measured T30), `validate_bras.py` (diffraction check against BRAS),
+  `obj_to_hall.py` (3D OBJ hall → drawn hall the page can open), `validate_fratoni.py` (room criteria against
+  two measured halls).
 
 ## Accuracy and limits — read before using the results
 - **It does not claim to reproduce a real hall.** Room-acoustic simulation tools differ noticeably from
@@ -29,6 +31,11 @@ By LABO 1557 (Dong-Gyun You).
 - Diffraction check against BRAS scene RS5 (a 2.07 m partition on a hard floor, 16 positions): mean absolute
   difference 1.8 dB in third-octave bands 500 Hz–2 kHz (2.2 dB at the 11 shadow positions). This is one simple
   scene, not a measure of whole-hall accuracy. Details: `validation/`, `docs/MODEL_en.md`.
+- Room-criteria check against two measured halls (Fratoni dataset, inputs from the authors' Odeon calibration,
+  unchanged): raked lecture hall (ULH) EDT / T30 / C50 / Ts within about 1 JND at 500 Hz–4 kHz, T30 1–2 JND short
+  at 125–250 Hz; elliptical domed hall (STC) T30 about 15 % too long at all bands (non-diffuse field; calibrate
+  first in such halls). Receiver means only: early arrivals and PA paths are not tested by it.
+  Details: `validation/fratoni_*`, `docs/MODEL_en.md`.
 - Loudspeaker directivity files are approximations (see `NOTICE.md`).
 
 ## Python tools
@@ -37,10 +44,14 @@ pip install pyroomacoustics sofar soundfile scipy matplotlib
 # put HRIR_FULL2DEG.sofa (Zenodo 3928297) at hrir/KU100.sofa
 python run.py config.json          # BRIRs, metrics, out/viewer.html
 python export_viewer.py config.json
+# 3D hall from SketchUp/Blender OBJ (Python engine) and its 2.5D version for the page (Load config…)
+pip install fast-simplification openpyxl            # optional: large meshes, dataset sheets
+python obj_to_hall.py mesh_config.json             # -> mesh_config_2p5d.json
 ```
 Full description of the model, the checks and the outputs: `docs/MODEL_en.md` (Korean: `docs/MODEL_ko.md`, Japanese: `docs/MODEL_ja.md`). Literature and data used:
 `docs/REFERENCES_ko.md` (Korean).
 
 ## Licence
 Code: MIT (`LICENSE`). Third-party data keep their own licences (KU100 HRIRs and headphone filter: CC BY 3.0;
-BRAS-derived validation results: CC BY-SA 4.0): see `NOTICE.md`.
+BRAS-derived validation results: CC BY-SA 4.0; Fratoni-derived validation results and converted halls:
+CC BY 4.0): see `NOTICE.md`.

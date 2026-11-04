@@ -4,7 +4,9 @@ https://doi.org/10.17632/y7xnv6xg5s.1, CC BY 4.0). Two of its four rooms fit Aur
 lecture hall, about 900 m3) and STC (elliptical concert hall with domed ceiling, about 950 m3).
 
     python validate_fratoni.py <dataset folder> ULH|STC --obj <hall.obj> [--rays 50000] [--max-faces 3000]
-                               [--out validation/fratoni_ULH] [--no-2p5d]
+                               [--out validation/fratoni_ULH] [--no-2p5d | --no-3d] [--min-scatter s]
+                               [--stc-doors Wood] [--preserve eyring|sabine]
+    python validate_fratoni.py --replot validation/fratoni_ULH.csv      (figure only, from saved results)
 
 The data are not included. The 3D models in the dataset are SketchUp files; export each as OBJ with the
 SketchUp tags kept as groups (e.g. Blender + a SketchUp importer, File > Export > Wavefront OBJ with
@@ -210,6 +212,10 @@ def main():
     ap.add_argument("--ism-order", type=int, default=1)
     ap.add_argument("--stc-doors", default="Furniture", help="material of the STC doors_organ tag (sensitivity)")
     ap.add_argument("--no-2p5d", action="store_true")
+    ap.add_argument("--no-3d", action="store_true", help="run only the 2.5D hall (quick)")
+    ap.add_argument("--min-scatter", type=float, default=0.0,
+                    help="sensitivity run: raise every scattering coefficient to at least this value")
+    ap.add_argument("--preserve", default="eyring", choices=["eyring", "sabine", "room-eyring"], help="see obj_to_hall.py")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     V = VENUES[a.hall]
@@ -224,6 +230,10 @@ def main():
     base = os.path.join(a.dataset, V["folder"])
     mats = read_boundary(glob.glob(os.path.join(base, "Boundary conditions", "*.xlsx"))[0])
     blocks = read_criteria(glob.glob(os.path.join(base, "Measurements results", "*.xlsx"))[0])
+    if a.min_scatter > 0:
+        for m in mats.values():
+            m["s"] = max(m["s"], a.min_scatter)
+        log(f"sensitivity run: scattering raised to at least {a.min_scatter}")
     groups = json.loads(json.dumps(V["groups"]))
     if a.hall == "STC":
         groups["doors_organ"] = a.stc_doors
@@ -258,11 +268,12 @@ def main():
     log("height above the surface below (m): " + ", ".join(
         f"{k} {height_above(G, cfg['sources'][k]['pos'] if k in cfg['sources'] else cfg['receivers'][k]):.2f}"
         for k in list(plan) + sorted({r for v in plan.values() for r in v}, key=lambda r: int(r[1:]))))
-    res3, per3 = simulate(cfg, plan, a.rays, "3D mesh", log)
+    res3, per3 = (None, []) if a.no_3d else simulate(cfg, plan, a.rays, "3D mesh", log)
     res25, per25, rep25 = None, [], None
     if not a.no_2p5d:
         import obj_to_hall
-        cfg25, rep25 = obj_to_hall.convert(cfg, V["depth_axis"], V["stage_end"], V["stage_depth"])
+        cfg25, rep25 = obj_to_hall.convert(cfg, V["depth_axis"], V["stage_end"], V["stage_depth"],
+                                          preserve=a.preserve)
         cfg25["geometry"].update(ism_order=a.ism_order, rays=a.rays, diffraction=False)
         G25 = bp._geom(cfg25)
         import geometry
@@ -318,7 +329,7 @@ def main():
             md.append("")
     md += ["Values in brackets: simulated - measured in JND (ISO 3382-1 Annex A: EDT / T30 5 %, C80 / C50 1 dB, Ts 10 ms).", ""]
     if rep25:
-        md += ["2.5D conversion (obj_to_hall.py), absorption-area-preserving materials:", "", "```",
+        md += [f"2.5D conversion (obj_to_hall.py, --preserve {a.preserve}):", "", "```",
                json.dumps(rep25, indent=1), "```", ""]
     with open(out + ".md", "w", encoding="utf-8") as f:
         f.write("\n".join(md))
@@ -329,6 +340,25 @@ def main():
         w = csv.DictWriter(f, fieldnames=list(allp[0])); w.writeheader(); w.writerows(allp)
     plot(blocks, plan, res3, res25, a.hall, out + ".png")
     print("->", out + ".md", out + ".csv", out + ".png")
+
+
+def replot(csv_path):
+    """Redraw the figure from a results csv written by this script (no simulation)."""
+    rows = list(csv.DictReader(open(csv_path, encoding="utf-8")))
+    hall = rows[0]["hall"]
+    srcs = list(dict.fromkeys(r["source"] for r in rows))
+    blocks, res = [], {"3D mesh": {}, "2.5D": {}}
+    for s in srcs:
+        b = {"source": s, "metrics": {}}
+        for r in rows:
+            if r["source"] != s:
+                continue
+            i = BANDS.index(int(float(r["band_hz"])))
+            b["metrics"].setdefault(r["criterion"], [np.nan] * 6)[i] = float(r["measured"])
+            res[r["model"]].setdefault(s, {}).setdefault(r["criterion"], np.full(6, np.nan))[i] = float(r["simulated"])
+        blocks.append(b)
+    plan = {s: [] for s in srcs}
+    plot(blocks, plan, res["3D mesh"] or None, res["2.5D"] or None, hall, os.path.splitext(csv_path)[0] + ".png")
 
 
 def plot(blocks, plan, res3, res25, hall, path):
@@ -350,17 +380,22 @@ def plot(blocks, plan, res3, res25, hall, path):
             band = jv * meas if kind == "rel" else np.full(6, jv)
             ax.fill_between(range(6), meas - band, meas + band, color="0.88", label="measured +- 1 JND")
             ax.plot(range(6), meas, "k-o", ms=3, lw=1.4, label="measured")
-            ax.plot(range(6), res3[s][n], "-s", color="#c2571a", ms=3, lw=1.2, label="3D mesh")
+            if res3 is not None:
+                ax.plot(range(6), res3[s][n], "-s", color="#c2571a", ms=3, lw=1.2, label="3D mesh")
             if res25 is not None:
                 ax.plot(range(6), res25[s][n], "--^", color="#2a6fb0", ms=3, lw=1.2, label="2.5D")
             ax.set_xticks(range(6)); ax.set_xticklabels(["125", "250", "500", "1k", "2k", "4k"], fontsize=8)
             ax.set_title(f"{s}: {n} ({'s' if n in ('EDT', 'T30') else 'dB' if n.startswith('C') else 'ms'})", fontsize=9)
             ax.grid(alpha=0.3)
-    axs[0][0].legend(fontsize=7)
+    h, l = axs[0][0].get_legend_handles_labels()
+    fig.legend(h, l, loc="lower center", ncol=len(l), fontsize=8, frameon=False)
     fig.suptitle(f"Fratoni {hall}: measured (receiver mean) vs AuralPaths Python engine, dataset GA inputs unchanged", fontsize=10)
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0.06, 1, 1))
     fig.savefig(path, dpi=110)
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 3 and sys.argv[1] == "--replot":
+        replot(sys.argv[2])
+    else:
+        main()
