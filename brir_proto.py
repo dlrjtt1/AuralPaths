@@ -36,13 +36,26 @@ def has_geometry(cfg):
     return bool(cfg.get("geometry"))
 
 
+def is_mesh(cfg):
+    """3D OBJ hall (geometry.build_mesh) rather than a drawn 2.5D hall."""
+    return has_geometry(cfg) and "mesh" in cfg["geometry"]
+
+
 def stage_y(cfg):
     return cfg["room"]["dims_m"][1] - cfg["room"].get("stage_depth_m", 0.0)
 
 
+_GEOM_CACHE = {}
+
+
 def _geom(cfg):
+    """Built hall surfaces (cached: a mesh hall is voxelised once per configuration)."""
     import geometry
-    return geometry.build(cfg["geometry"], stage_y(cfg))
+    seed = next(iter(cfg["sources"][s]["pos"] for s in source_names(cfg)))
+    key = json.dumps([cfg["geometry"], stage_y(cfg), seed], sort_keys=True, default=str)
+    if key not in _GEOM_CACHE:
+        _GEOM_CACHE[key] = geometry.build(cfg["geometry"], stage_y(cfg), seed=seed)
+    return _GEOM_CACHE[key]
 
 
 def make_room(cfg, max_order, rand_ism=False, ray_tracing=False):
@@ -54,6 +67,11 @@ def make_room(cfg, max_order, rand_ism=False, ray_tracing=False):
         cen = probe.octave_bands.centers
         walls = geometry.pra_walls(_geom(cfg), cfg["geometry"]["materials"], len(cen), cen)
         room = pra.Room(walls, fs=cfg["fs"], max_order=max_order, air_absorption=r["air_absorption"], ray_tracing=ray_tracing)
+        if is_mesh(cfg):
+            # pyroomacoustics' inside test casts one ray and counts wall crossings, which fails on meshes with
+            # overlapping solids (seat blocks) or tiny gaps; use the voxel room of geometry.build_mesh instead
+            G = _geom(cfg)
+            room.is_inside = lambda p, include_borders=True: geometry.inside(G, p)
     else:
         ab = r["absorption_octave"]
         mat = pra.Material({"coeffs": ab["values"], "center_freqs": ab["_bands_hz"]}, r["scattering"])
@@ -64,7 +82,10 @@ def make_room(cfg, max_order, rand_ism=False, ray_tracing=False):
 
 
 def early_order(cfg):
-    return cfg["geometry"].get("ism_order", 4) if has_geometry(cfg) else cfg["binaural"]["ism_order_early"]
+    if not has_geometry(cfg):
+        return cfg["binaural"]["ism_order_early"]
+    # mesh halls: pyroomacoustics enumerates images over all wall sequences (N^order), so order 1 by default
+    return cfg["geometry"].get("ism_order", 1 if is_mesh(cfg) else 4)
 
 
 def receiver_names(cfg):
@@ -526,7 +547,9 @@ _DIFF_CACHE = {}
 
 
 def diffraction_on(cfg):
-    return has_geometry(cfg) and cfg["geometry"].get("diffraction", True)
+    # off by default for mesh halls: a tessellated curved surface has thousands of shallow "edges" that are not
+    # physical wedges (UTD needs real edges between plane faces)
+    return has_geometry(cfg) and cfg["geometry"].get("diffraction", not is_mesh(cfg))
 
 
 def diffraction_arrivals(cfg, src, rec, centers, air, t_max):
@@ -827,7 +850,11 @@ def crossfade_windows(n_len, fs, t_start, cf_ms):
 
 
 def late_on(cfg):
-    return has_geometry(cfg) and cfg["binaural"].get("late_directional", True)
+    # the direction tracer holds a rays x surfaces matrix; for large meshes fall back to the isotropic late field
+    if not has_geometry(cfg):
+        return False
+    default = not is_mesh(cfg) or len(_geom(cfg)["S"]) <= 3000
+    return cfg["binaural"].get("late_directional", default)
 
 
 def late_directions(cfg, src, recs, centers, air, n_rays=None):
@@ -911,6 +938,51 @@ def seat_direct(cfg, pts, centers, band_idx=(2, 3)):
 
 
 # ---------------------------------------------------------------- 지표
+def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None):
+    """energy_hist for several receivers at once (one image-source run and one ray-tracing run shared by all
+    receivers; same model as energy_hist). Used for room-criteria checks over many seats (validate_fratoni.py).
+    Returns ({rec: hist [n_bands, n_bins]}, band_centres)."""
+    import zlib
+    c = cfg["c"]
+    g = cfg.get("geometry") or {}
+    pos = [cfg["receivers"][r] for r in recs]
+    room = make_room(cfg, early_order(cfg) if has_geometry(cfg) else cfg["binaural"]["ism_order_omni"])
+    room.add_source(cfg["sources"][src]["pos"])
+    room.add_microphone_array(np.array(pos, float).T)
+    room.image_source_model()
+    out = {}
+    if not has_geometry(cfg):
+        for i, r in enumerate(recs):
+            out[r] = _image_energy_hist(room, pos[i], c, t_max, cfg=cfg, src=src)
+        return out, room.octave_bands.centers
+    rt = make_room(cfg, 0, ray_tracing=True)
+    rt.set_ray_tracing(n_rays=int(n_rays or g.get("rays", 50000)), receiver_radius=0.5, hist_bin_size=HIST_BIN,
+                       time_thres=t_max, energy_thres=1e-9)
+    rt.add_source(cfg["sources"][src]["pos"])
+    rt.add_microphone_array(np.array(pos, float).T)
+    pra.libroom.set_rng_seed(int(seed) if seed is not None else zlib.crc32(f"{src}|*".encode()))
+    rt.ray_tracing()
+    dm = dir_model(cfg, src, room.octave_bands.centers)
+    for i, r in enumerate(recs):
+        h_ism = _image_energy_hist(room, pos[i], c, t_max, room.visibility[0][i].astype(bool), cfg, src)
+        if diffraction_on(cfg):
+            for q in diffraction_arrivals(cfg, src, r, room.octave_bands.centers, room.air_absorption, t_max):
+                k = int(q["t"] / HIST_BIN)
+                if k < h_ism.shape[1]:
+                    h_ism[:, k] += q["eb"]
+            h_ism = np.maximum(h_ism, 0.0)
+        h_rt = np.zeros_like(h_ism)
+        raw = np.asarray(rt.rt_histograms[i][0][0])
+        n = min(raw.shape[1], h_rt.shape[1])
+        h_rt[:, :n] = raw[:, :n]
+        t_c = (np.arange(h_rt.shape[1]) + 0.5) * HIST_BIN
+        h_rt = h_rt * np.exp(-np.outer(np.asarray(room.air_absorption, float), c * t_c))
+        if dm is not None:
+            h_rt = h_rt * dm["diffuse"][:, None]
+        out[r] = h_ism + np.maximum(0.0, _smooth(h_rt) - _smooth(h_ism))
+    return out, room.octave_bands.centers
+
+
 def schroeder_db(x):
     e = np.cumsum((x ** 2)[::-1])[::-1]
     return 10 * np.log10(e / e[0] + 1e-30)
