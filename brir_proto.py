@@ -45,6 +45,14 @@ def stage_y(cfg):
     return cfg["room"]["dims_m"][1] - cfg["room"].get("stage_depth_m", 0.0)
 
 
+# pyroomacoustics ray tracing: energy_thres ends a ray once its energy falls below energy_thres x its start energy,
+# but the same number is also an ABSOLUTE floor for every scattered ("diffuse rain") contribution to a receiver
+# (libroom_src/room.cpp, scat_ray: scat_trans.maxCoeff() > energy_thres), and a ray starts with 2 / n_rays. With 1e-9
+# the rain was dropped from about 0.5 s on (earlier with more rays), so T30 came out short and fell with the ray count
+# (tiled 12 x 9 x 7 m box, alpha 0.2, s 1: 1.11 / 1.04 / 0.99 s at 2000 / 20 000 / 100 000 rays; 1e-15: 1.12 s;
+# validation/check_box_lambert.js). 1e-20 keeps the rain to well below -100 dB; rays then run to time_thres.
+RT_ENERGY_THRES = 1e-20
+
 _GEOM_CACHE = {}
 
 
@@ -629,7 +637,7 @@ def energy_hist(cfg, src, rec, t_max=2.5, return_resid=False):
         h_ism = np.maximum(h_ism, 0.0)
     rt = make_room(cfg, 0, ray_tracing=True)
     rt.set_ray_tracing(n_rays=int(g.get("rays", 50000)), receiver_radius=0.5, hist_bin_size=HIST_BIN,
-                       time_thres=t_max, energy_thres=1e-9)
+                       time_thres=t_max, energy_thres=RT_ENERGY_THRES)
     rt.add_source(cfg["sources"][src]["pos"])
     rt.add_microphone(cfg["receivers"][rec])
     import zlib
@@ -978,7 +986,7 @@ def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None):
         return out, room.octave_bands.centers
     rt = make_room(cfg, 0, ray_tracing=True)
     rt.set_ray_tracing(n_rays=int(n_rays or g.get("rays", 50000)), receiver_radius=0.5, hist_bin_size=HIST_BIN,
-                       time_thres=t_max, energy_thres=1e-9)
+                       time_thres=t_max, energy_thres=RT_ENERGY_THRES)
     rt.add_source(cfg["sources"][src]["pos"])
     rt.add_microphone_array(np.array(pos, float).T)
     pra.libroom.set_rng_seed(int(seed) if seed is not None else zlib.crc32(f"{src}|*".encode()))

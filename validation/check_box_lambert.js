@@ -12,8 +12,10 @@
 // Result on 2026-11-06 (20 000 rays, three receivers averaged, no air absorption):
 //   s = 1.0: mean free path 5.94 m (4V/S 5.93 m), g2 0.35, predicted 1.11 s, traced 1.12 s; Eyring 1.07 s
 //   s = 0.5: mean free path 6.36 m, g2 0.27, predicted 1.18 s, traced 1.16 s (the field is not diffuse)
-// pyroomacoustics on the same box (check_mesh_box.py 1.0): 1.03 s at 125 Hz (air absorption negligible there), below
-// Eyring, which a tracer with this free-path spread should not give; the cause in pyroomacoustics was not located.
+// pyroomacoustics on the same box (check_mesh_box.py 1.0) gave 1.03 s with energy_thres 1e-9, below Eyring: that
+// setting is also an absolute floor for its scattered ("diffuse rain") contributions and dropped them from about
+// 0.5 s on. With energy_thres 1e-20 (brir_proto.RT_ENERGY_THRES) Python gives the browser's values (s 0.5: 1.16 /
+// 1.14 / 1.10 s at 125 / 500 / 2000 Hz with air absorption, both engines).
 const fs = require("fs"), path = require("path");
 const GEOM = eval(fs.readFileSync(path.join(__dirname, "..", "engine_geom.js"), "utf8") + ";GEOM");
 const X = 12, Y = 7, Z = 9, V = [], F = [];            // OBJ y-up: x, height, depth (as check_mesh_box.py)
