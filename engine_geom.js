@@ -163,11 +163,179 @@ const GEOM = (() => {
     return { S, plan, floor, ceil, y0, y1, V, area: Sa, stageY: sy };
   }
 
-  function inside(G, p) { return inPoly2(G.plan, p[0], p[1]) && p[2] > profAt(G.floor, p[1]) + 1e-6 && p[2] < profAt(G.ceil, p[1]) - 1e-6; }
+  function inside(G, p) {
+    if (G.mesh) return voxInRoom(G.vox, p);
+    return inPoly2(G.plan, p[0], p[1]) && p[2] > profAt(G.floor, p[1]) + 1e-6 && p[2] < profAt(G.ceil, p[1]) - 1e-6;
+  }
+
+  // ---------- OBJ mesh halls (same method as geometry.build_mesh in Python) ----------
+  // parse Wavefront OBJ text: vertices, faces (index lists), and per face the group / object / material names
+  function loadObj(text) {
+    const V = [], F = [], names = []; let g = [], o = "", m = "", afterFace = false;
+    for (const raw of text.split(/\r?\n/)) {
+      const line = raw.trim();
+      if (line.startsWith("v ")) { const t = line.split(/\s+/); V.push([+t[1], +t[2], +t[3]]); }
+      else if (line.startsWith("f ")) {
+        const idx = line.split(/\s+/).slice(1).map((tok) => { const i = parseInt(tok.split("/")[0], 10); return i > 0 ? i - 1 : V.length + i; });
+        if (idx.length >= 3) { F.push(idx); names.push(g.join("|") + "|" + o + "|" + m); }
+        afterFace = true;
+      } else if (line.startsWith("g ")) { g = afterFace ? [line.slice(2).trim()] : g.concat([line.slice(2).trim()]); afterFace = false; }
+      else if (line.startsWith("o ")) o = line.slice(2).trim();
+      else if (line.startsWith("usemtl ")) m = line.slice(7).trim();
+    }
+    return { V, F, names };
+  }
+  // distinct group labels of an OBJ (for the material table): the last "g" name of each face's group list
+  function objGroups(obj) { // distinct face labels (group | object | material) with face counts, for the material table
+    const cnt = new Map(); for (const nm of obj.names) cnt.set(nm, (cnt.get(nm) || 0) + 1);
+    return [...cnt.entries()].map(([name, n]) => ({ name, n }));
+  }
+  const newell = (P) => { const n = [0, 0, 0]; for (let i = 0; i < P.length; i++) { const a = P[i], b = P[(i + 1) % P.length]; n[0] += (a[1] - b[1]) * (a[2] + b[2]); n[1] += (a[2] - b[2]) * (a[0] + b[0]); n[2] += (a[0] - b[0]) * (a[1] + b[1]); } return n; };
+  function sampleTri(a, b, c, h, out) { // points on a triangle with spacing <= h
+    const L = Math.max(Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]), Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2]), Math.hypot(c[0] - b[0], c[1] - b[1], c[2] - b[2]));
+    const k = Math.max(1, Math.ceil(L / h));
+    for (let i = 0; i <= k; i++) for (let j = 0; i + j <= k; j++) { const u = i / k, w = j / k; out.push([a[0] + u * (b[0] - a[0]) + w * (c[0] - a[0]), a[1] + u * (b[1] - a[1]) + w * (c[1] - a[1]), a[2] + u * (b[2] - a[2]) + w * (c[2] - a[2])]); }
+  }
+  // flood-fill the free space connected to seed on a voxel grid (6-connected, surface band dilated by one voxel)
+  function voxelRoom(V, T, seed, h) {
+    const lo = [0, 1, 2].map((k) => Math.min(...V.map((v) => v[k])) - 3 * h), hi = [0, 1, 2].map((k) => Math.max(...V.map((v) => v[k])) + 3 * h);
+    const nx = Math.ceil((hi[0] - lo[0]) / h) + 1, ny = Math.ceil((hi[1] - lo[1]) / h) + 1, nz = Math.ceil((hi[2] - lo[2]) / h) + 1, N = nx * ny * nz;
+    const id = (i, j, k) => (i * ny + j) * nz + k;
+    const solid0 = new Uint8Array(N);
+    const pts = [];
+    for (const [a, b, c] of T) { pts.length = 0; sampleTri(V[a], V[b], V[c], h / 2, pts); for (const p of pts) solid0[id(Math.floor((p[0] - lo[0]) / h), Math.floor((p[1] - lo[1]) / h), Math.floor((p[2] - lo[2]) / h))] = 1; }
+    const solid = new Uint8Array(N);   // binary dilation, cross-shaped structure (as scipy.ndimage defaults)
+    for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) for (let k = 0; k < nz; k++) {
+      const q = id(i, j, k);
+      if (solid0[q] || (i > 0 && solid0[q - ny * nz]) || (i < nx - 1 && solid0[q + ny * nz]) || (j > 0 && solid0[q - nz]) || (j < ny - 1 && solid0[q + nz]) || (k > 0 && solid0[q - 1]) || (k < nz - 1 && solid0[q + 1])) solid[q] = 1;
+    }
+    const si = Math.floor((seed[0] - lo[0]) / h), sj = Math.floor((seed[1] - lo[1]) / h), sk = Math.floor((seed[2] - lo[2]) / h);
+    if (si < 0 || sj < 0 || sk < 0 || si >= nx || sj >= ny || sk >= nz) throw new Error("the first source lies outside the model");
+    if (solid[id(si, sj, sk)]) throw new Error("the first source lies in the surface band of the model; move it away from surfaces");
+    const room = new Uint8Array(N), queue = new Int32Array(N); let qh = 0, qt = 0;
+    room[id(si, sj, sk)] = 1; queue[qt++] = id(si, sj, sk);
+    while (qh < qt) {
+      const q = queue[qh++], k = q % nz, j = ((q - k) / nz) % ny, i = (q - k - j * nz) / (ny * nz);
+      const nb = [i > 0 ? q - ny * nz : -1, i < nx - 1 ? q + ny * nz : -1, j > 0 ? q - nz : -1, j < ny - 1 ? q + nz : -1, k > 0 ? q - 1 : -1, k < nz - 1 ? q + 1 : -1];
+      for (const r of nb) if (r >= 0 && !solid[r] && !room[r]) { room[r] = 1; queue[qt++] = r; }
+    }
+    if (room[0]) throw new Error("the model is not closed: the room leaks to the outside (gap wider than the voxel band)");
+    let nIn = qt, nBand = 0;
+    for (let q = 0; q < N; q++) if (solid[q]) { const k = q % nz, j = ((q - k) / nz) % ny, i = (q - k - j * nz) / (ny * nz);
+      if ((i > 0 && room[q - ny * nz] === 1) || (i < nx - 1 && room[q + ny * nz] === 1) || (j > 0 && room[q - nz] === 1) || (j < ny - 1 && room[q + nz] === 1) || (k > 0 && room[q - 1] === 1) || (k < nz - 1 && room[q + 1] === 1)) nBand++; }
+    for (let q = 0; q < N; q++) if (solid[q] && !room[q]) room[q] = 2;   // 2: surface band (neither room nor enclosed void)
+    return { lo, h, dims: [nx, ny, nz], room, volume: (nIn + 0.5 * nBand) * h ** 3 };
+  }
+  function voxInRoom(vx, p) {
+    const [nx, ny, nz] = vx.dims, i = Math.floor((p[0] - vx.lo[0]) / vx.h), j = Math.floor((p[1] - vx.lo[1]) / vx.h), k = Math.floor((p[2] - vx.lo[2]) / vx.h);
+    if (i < 0 || j < 0 || k < 0 || i >= nx || j >= ny || k >= nz) return false;
+    return vx.room[(i * ny + j) * nz + k] === 1;
+  }
+  // a point in free space that the room flood fill did not reach: the void inside a solid or the outside of the hall
+  function voxVoid(vx, p) {
+    const [nx, ny, nz] = vx.dims, i = Math.floor((p[0] - vx.lo[0]) / vx.h), j = Math.floor((p[1] - vx.lo[1]) / vx.h), k = Math.floor((p[2] - vx.lo[2]) / vx.h);
+    if (i < 0 || j < 0 || k < 0 || i >= nx || j >= ny || k >= nz) return true;
+    return vx.room[(i * ny + j) * nz + k] === 0;
+  }
+  function inflatePoly(P, n, e) { // move every edge of a planar convex polygon outward by e (closes cracks between faces)
+    const k = P.length, c = [0, 1, 2].map((a) => P.reduce((s, p) => s + p[a], 0) / k), lines = [];
+    for (let i = 0; i < k; i++) {
+      const a = P[i], b = P[(i + 1) % k], t0 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], tl = Math.hypot(...t0) + 1e-12, t = t0.map((v) => v / tl);
+      let out = crs(t, n); if (out[0] * (c[0] - a[0]) + out[1] * (c[1] - a[1]) + out[2] * (c[2] - a[2]) > 0) out = out.map((v) => -v);
+      lines.push([[a[0] + e * out[0], a[1] + e * out[1], a[2] + e * out[2]], t]);
+    }
+    return P.map((p, i) => {
+      const [a1, t1] = lines[(i - 1 + k) % k], [a2, t2] = lines[i];
+      // least squares x1 t1 - x2 t2 = a2 - a1
+      const r = [a2[0] - a1[0], a2[1] - a1[1], a2[2] - a1[2]], A11 = dot(t1, t1), A12 = -dot(t1, t2), A22 = dot(t2, t2), b1 = dot(t1, r), b2 = -dot(t2, r), det = A11 * A22 - A12 * A12;
+      let q = null;
+      if (Math.abs(det) > 1e-12) { const x1 = (b1 * A22 - A12 * b2) / det; q = [a1[0] + x1 * t1[0], a1[1] + x1 * t1[1], a1[2] + x1 * t1[2]]; }
+      if (!q || Math.hypot(q[0] - p[0], q[1] - p[1], q[2] - p[2]) > 20 * e) { const d = [p[0] - c[0], p[1] - c[1], p[2] - c[2]], dl = Math.hypot(...d) + 1e-12; q = [p[0] + e * d[0] / dl, p[1] + e * d[1] / dl, p[2] + e * d[2] / dl]; }
+      return q;
+    });
+  }
+  // spec = { obj (parsed by loadObj), groups: { substring: materialKey }, default, axes: "y-up" | "z-up", voxel (m),
+  //          twoSided (default true), inflateMm (default 1), maxVoxels (default 2e7) }, seed = first source position
+  function buildMesh(spec, seed) {
+    const obj = spec.obj, axes = spec.axes || "y-up";
+    const V = obj.V.map((v) => (axes === "z-up" ? v.slice() : [v[0], -v[2], v[1]]));
+    const groups = Object.entries(spec.groups || {}).map(([g, v]) => [g.toLowerCase(), v]);
+    const T = [], owner = [];
+    obj.F.forEach((f, k) => { for (let i = 1; i + 1 < f.length; i++) { T.push([f[0], f[i], f[i + 1]]); owner.push(k); } });
+    const ext = [0, 1, 2].map((a) => Math.max(...V.map((v) => v[a])) - Math.min(...V.map((v) => v[a])));
+    const h = spec.voxel || Math.max(0.05, Math.cbrt((ext[0] + 0.3) * (ext[1] + 0.3) * (ext[2] + 0.3) / (spec.maxVoxels || 2e7)));
+    const vx = voxelRoom(V, T, seed, h), off = 2.5 * h, inflate = (spec.inflateMm == null ? 1 : spec.inflateMm) / 1000, twoSided = spec.twoSided !== false;
+    const triOf = new Map(); owner.forEach((k, i) => { if (!triOf.has(k)) triOf.set(k, []); triOf.get(k).push(T[i]); });
+    const S = [], unmatched = new Set(); let dropped = 0;
+    obj.F.forEach((f, k) => {
+      const P = f.map((i) => V[i]), nw = newell(P), A = Math.hypot(...nw) / 2; if (A < 1e-6) return;
+      const n = nw.map((v) => v / (2 * A)), C = [];
+      for (const [a, b, c] of triOf.get(k)) { C.push([(V[a][0] + V[b][0] + V[c][0]) / 3, (V[a][1] + V[b][1] + V[c][1]) / 3, (V[a][2] + V[b][2] + V[c][2]) / 3]); }
+      for (const [a, b, c] of triOf.get(k)) sampleTri(V[a], V[b], V[c], 0.2, C);
+      let fwd = 0, bwd = 0; for (const p of C) { if (voxInRoom(vx, [p[0] + off * n[0], p[1] + off * n[1], p[2] + off * n[2]])) fwd++; if (voxInRoom(vx, [p[0] - off * n[0], p[1] - off * n[1], p[2] - off * n[2]])) bwd++; }
+      if (fwd === 0 && bwd === 0) { dropped++; return; }
+      const both = Math.min(fwd, bwd) > 0.2 * Math.max(fwd, bwd), nn = fwd >= bwd ? n : n.map((v) => -v);
+      const nm = obj.names[k].toLowerCase(); let key = spec.default;
+      for (const [g, v] of groups) if (nm.includes(g)) { key = v; break; }
+      if (key && typeof key === "object") key = key[nn[2] < -0.3 ? "ceiling" : nn[2] > 0.3 ? "floor" : "wall"] || key.default;
+      if (key == null) { unmatched.add(obj.names[k]); return; }
+      const Pv = inflate > 0 ? inflatePoly(P, nn, inflate) : P;
+      const s = makeSurface(Pv, nn, key, "mesh"); s.area = A; S.push(s);
+      if (both || twoSided) { const t = makeSurface(Pv.map((p) => [p[0] - 0.002 * nn[0], p[1] - 0.002 * nn[1], p[2] - 0.002 * nn[2]]), nn.map((v) => -v), key, "mesh-twin"); t.area = A; t.solo = !both; S.push(t); }
+    });
+    if (unmatched.size) throw new Error("model faces without a material: " + [...unmatched].slice(0, 8).join("; "));
+    const area = {}; for (const s of S) if (s.kind === "mesh") area[s.mat] = (area[s.mat] || 0) + s.area;
+    const lo = [0, 1, 2].map((a) => Math.min(...V.map((v) => v[a]))), hi = [0, 1, 2].map((a) => Math.max(...V.map((v) => v[a])));
+    const G = { S, mesh: true, vox: vx, V: vx.volume, area: Object.values(area).reduce((a, b) => a + b, 0), areaByMat: area, nDropped: dropped, nFaces: obj.F.length, bbox: [lo, hi], h };
+    G.bvh = bvhBuild(G.S);
+    return G;
+  }
+
+  // ---------- bounding volume hierarchy over surfaces (mesh halls: thousands of faces) ----------
+  function bvhBuild(S) {
+    const n = S.length, lo = new Float64Array(3 * n), hi = new Float64Array(3 * n), ctr = new Float64Array(3 * n);
+    S.forEach((s, i) => { for (let a = 0; a < 3; a++) { let mn = Infinity, mx = -Infinity; for (const v of s.verts) { mn = Math.min(mn, v[a]); mx = Math.max(mx, v[a]); } lo[3 * i + a] = mn - 1e-6; hi[3 * i + a] = mx + 1e-6; ctr[3 * i + a] = (mn + mx) / 2; } });
+    const idx = Int32Array.from({ length: n }, (_, i) => i), nodes = [];   // node: [lo3, hi3, left, right, start, count]
+    function make(start, end) {
+      const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+      for (let k = start; k < end; k++) { const i = idx[k]; for (let a = 0; a < 3; a++) { b[a] = Math.min(b[a], lo[3 * i + a]); b[3 + a] = Math.max(b[3 + a], hi[3 * i + a]); } }
+      const me = nodes.length; nodes.push({ b, l: -1, r: -1, s: start, c: end - start });
+      if (end - start <= 4) return me;
+      let ax = 0; const ex = [b[3] - b[0], b[4] - b[1], b[5] - b[2]]; if (ex[1] > ex[ax]) ax = 1; if (ex[2] > ex[ax]) ax = 2;
+      const sub = Array.from(idx.subarray(start, end)).sort((p, q) => ctr[3 * p + ax] - ctr[3 * q + ax]); idx.set(sub, start);
+      const mid = (start + end) >> 1; nodes[me].l = make(start, mid); nodes[me].r = make(mid, end); nodes[me].c = 0;
+      return me;
+    }
+    if (n) make(0, n);
+    return { nodes, idx };
+  }
+  // visit the surfaces whose boxes the ray o + t d (0 <= t <= tmax) passes; fn(i) returns a new tmax (or undefined)
+  function bvhWalk(bvh, o, d, tmax, fn) {
+    const inv = [1 / d[0], 1 / d[1], 1 / d[2]], stack = [0];
+    while (stack.length) {
+      const nd = bvh.nodes[stack.pop()], b = nd.b; let t0 = 0, t1 = tmax;
+      for (let a = 0; a < 3; a++) { let ta = (b[a] - o[a]) * inv[a], tb = (b[3 + a] - o[a]) * inv[a]; if (ta > tb) { const x = ta; ta = tb; tb = x; } if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t0 > t1) break; }
+      if (t0 > t1) continue;
+      if (nd.c) { for (let k = nd.s; k < nd.s + nd.c; k++) { const r = fn(bvh.idx[k]); if (r !== undefined) tmax = r; if (tmax < 0) return; } }
+      else { stack.push(nd.l, nd.r); }
+    }
+  }
 
   // segment a->b intersects a surface (excluding the ones in skip) strictly between the ends?
   function occluded(G, a, b, skipA, skipB) {
     const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+    if (G.bvh) {
+      let hit = false;
+      bvhWalk(G.bvh, a, [dx, dy, dz], 1, (i) => {
+        if (i === skipA || i === skipB) return;
+        const s = G.S[i], den = s.n[0] * dx + s.n[1] * dy + s.n[2] * dz;
+        if (Math.abs(den) < EPS) return;
+        const t = (s.d - (s.n[0] * a[0] + s.n[1] * a[1] + s.n[2] * a[2])) / den;
+        if (t <= 1e-6 || t >= 1 - 1e-6) return;
+        if (inSurface(s, [a[0] + t * dx, a[1] + t * dy, a[2] + t * dz])) { hit = true; return -1; }
+      });
+      return hit;
+    }
     for (let i = 0; i < G.S.length; i++) {
       if (i === skipA || i === skipB) continue;
       const s = G.S[i], den = s.n[0] * dx + s.n[1] * dy + s.n[2] * dz;
@@ -299,7 +467,8 @@ const GEOM = (() => {
       }
       return occluded(G, p, imgs[0], prevWall, -1) ? null : pts;
     }
-    const ctr = [(Math.min(...G.plan.map((q) => q[0])) + Math.max(...G.plan.map((q) => q[0]))) / 2, (G.y0 + G.y1) / 2, 0];
+    const ctr = G.mesh ? [(G.bbox[0][0] + G.bbox[1][0]) / 2, (G.bbox[0][1] + G.bbox[1][1]) / 2, 0] : [(Math.min(...G.plan.map((q) => q[0])) + Math.max(...G.plan.map((q) => q[0]))) / 2, (G.y0 + G.y1) / 2, 0];
+    const span = G.mesh ? Math.hypot(G.bbox[1][0] - G.bbox[0][0], G.bbox[1][1] - G.bbox[0][1]) : Math.hypot(G.y1 - G.y0, 50);
     function rec(imgs, seq) {
       const last = imgs[imgs.length - 1];
       if (seq.length) recs.forEach((r, k) => { if (Math.hypot(last[0] - r[0], last[1] - r[1], last[2] - r[2]) > maxD[k]) return; const f = audible(r, imgs, seq); if (f) push(k, last, seq, r, f); });
@@ -309,7 +478,7 @@ const GEOM = (() => {
         const s = G.S[w], side = s.n[0] * last[0] + s.n[1] * last[1] + s.n[2] * last[2] - s.d;
         if (side <= 1e-9) continue; // image must be in front of the reflecting plane
         const im = [last[0] - 2 * side * s.n[0], last[1] - 2 * side * s.n[1], last[2] - 2 * side * s.n[2]];
-        if (Math.hypot(im[0] - ctr[0], im[1] - ctr[1]) - Math.hypot(G.y1 - G.y0, 50) > maxAll + 50) continue;
+        if (Math.hypot(im[0] - ctr[0], im[1] - ctr[1]) - span > maxAll + 50) continue;
         let nearest = Infinity; for (const r of recs) nearest = Math.min(nearest, Math.hypot(im[0] - r[0], im[1] - r[1], im[2] - r[2]));
         if (nearest > maxAll) continue;
         imgs.push(im); seq.push(w); rec(imgs, seq); imgs.pop(); seq.pop();
@@ -330,25 +499,38 @@ const GEOM = (() => {
     let st = seed >>> 0 || 1; const rnd = () => { st ^= st << 13; st >>>= 0; st ^= st >>> 17; st ^= st << 5; st >>>= 0; return st / 4294967296; };
     const Vs = 4 / 3 * Math.PI * radius ** 3, r2 = radius * radius, Lmax = c * tMax, e0 = 4 * Math.PI / n;
     const Rpow = {}; for (const m in mats) Rpow[m] = mats[m].R.map((r) => r * r);
-    let escaped = 0, hits = 0;
+    let escaped = 0, hits = 0, leaked = 0;
     const tHit = new Float64Array(G.S.length);
     for (let k = 0; k < n; k++) {
       // uniform direction (stratified in z)
       const zc = 1 - 2 * (k + rnd()) / n, ph = 2 * Math.PI * rnd(), sr = Math.sqrt(Math.max(0, 1 - zc * zc));
       let dx = sr * Math.cos(ph), dy = sr * Math.sin(ph), dz = zc;
-      let ox = src[0], oy = src[1], oz = src[2], L = 0, last = -1;
+      let ox = src[0], oy = src[1], oz = src[2], L = 0, last = -1, twinPrev = false;
       const e = new Float64Array(NB).fill(e0);
       for (let bounce = 0; bounce < 400; bounce++) {
         // nearest surface
         let best = Infinity, bi = -1;
-        for (let i = 0; i < G.S.length; i++) {
-          if (i === last) continue;
+        const test = (i) => {
+          if (i === last) return;
           const s = G.S[i], den = s.n[0] * dx + s.n[1] * dy + s.n[2] * dz;
-          if (den >= -1e-12) continue; // moving away from the inside face
+          if (den >= -1e-12) return; // moving away from the inside face
           const t = (s.d - (s.n[0] * ox + s.n[1] * oy + s.n[2] * oz)) / den;
-          if (t > 1e-9 && t < best && inSurface(s, [ox + t * dx, oy + t * dy, oz + t * dz])) { best = t; bi = i; }
-        }
+          if (t > 1e-9 && t < best && inSurface(s, [ox + t * dx, oy + t * dy, oz + t * dz])) { best = t; bi = i; return t; }
+        };
+        if (G.bvh) bvhWalk(G.bvh, [ox, oy, oz], [dx, dy, dz], Infinity, test);
+        else for (let i = 0; i < G.S.length; i++) test(i);
         if (bi < 0) { escaped++; break; }
+        // mesh halls: a ray that got through a crack into a solid (or out of the hall) is ended here, before it
+        // deposits energy. Behind a face it would bounce between the back-facing twins with little loss and, passing
+        // near a receiver, add a long artificial tail (CR3: T30 +50 %). The segment is tested at 1/4, 1/2 and 3/4 of its
+        // length: a point in a void that the room flood fill did not reach ends the ray. Points in the surface band are
+        // not counted (a ray passing close to a seat or a rail is still in the room).
+        // A ray that meets the back-facing twin of a one-sided face came through a crack in that face and is sent
+        // back into the room; one that meets two such twins in a row is moving inside a solid and is ended.
+        if (G.mesh && G.S[bi].solo) { if (twinPrev) { leaked++; break; } twinPrev = true; } else twinPrev = false;
+        if (G.mesh && best > 3 * G.vox.h) { let lk = false;
+          for (const f of [0.25, 0.5, 0.75]) if (voxVoid(G.vox, [ox + f * best * dx, oy + f * best * dy, oz + f * best * dz])) { lk = true; break; }
+          if (lk) { leaked++; break; } }
         // receivers along this segment
         for (let m = 0; m < recs.length; m++) {
           const r = recs[m], wx = r[0] - ox, wy = r[1] - oy, wz = r[2] - oz, tc = wx * dx + wy * dy + wz * dz;
@@ -370,18 +552,33 @@ const GEOM = (() => {
         const s = G.S[bi], P = Rpow[s.mat]; let emax = 0;
         for (let b = 0; b < NB; b++) { e[b] *= P[b]; if (e[b] > emax) emax = e[b]; }
         if (emax < e0 * 1e-7) break;
-        if (rnd() < mats[s.mat].s) { // Lambert reflection around the inward normal
+        const sc = mats[s.mat].s; let scat, blend = -1;
+        if (G.mesh) { // mesh halls: as the pyroomacoustics tracer used by the Python mesh path (libroom room.cpp), the new
+          // direction is the normalised mix s*Lambert + (1-s)*specular with s the mean over bands; no energy split
+          let p = 0; if (Array.isArray(sc)) { for (let b = 0; b < NB; b++) p += sc[Math.min(b, sc.length - 1)]; p /= NB; } else p = sc;
+          blend = p; scat = p > 0;
+        } else if (Array.isArray(sc)) { // per-band scattering: one direction for all bands, chosen with the mean probability, energies reweighted (unbiased)
+          let p = 0; for (let b = 0; b < NB; b++) p += sc[Math.min(b, sc.length - 1)]; p = Math.min(0.999, Math.max(0.001, p / NB));
+          scat = rnd() < p;
+          for (let b = 0; b < NB; b++) { const sb = sc[Math.min(b, sc.length - 1)]; e[b] *= scat ? sb / p : (1 - sb) / (1 - p); }
+        } else scat = rnd() < sc;
+        if (scat) { // Lambert reflection around the inward normal
           const u1 = rnd(), u2 = rnd(), sq = Math.sqrt(u1), phi = 2 * Math.PI * u2, n0 = s.n;
           const t1 = Math.abs(n0[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
           let ax = [n0[1] * t1[2] - n0[2] * t1[1], n0[2] * t1[0] - n0[0] * t1[2], n0[0] * t1[1] - n0[1] * t1[0]]; const al = Math.hypot(...ax); ax = ax.map((v) => v / al);
           const ay = [n0[1] * ax[2] - n0[2] * ax[1], n0[2] * ax[0] - n0[0] * ax[2], n0[0] * ax[1] - n0[1] * ax[0]];
           const a1 = sq * Math.cos(phi), a2 = sq * Math.sin(phi), a3 = Math.sqrt(Math.max(0, 1 - u1));
-          dx = a1 * ax[0] + a2 * ay[0] + a3 * n0[0]; dy = a1 * ax[1] + a2 * ay[1] + a3 * n0[1]; dz = a1 * ax[2] + a2 * ay[2] + a3 * n0[2];
+          const lx = a1 * ax[0] + a2 * ay[0] + a3 * n0[0], ly = a1 * ax[1] + a2 * ay[1] + a3 * n0[1], lz = a1 * ax[2] + a2 * ay[2] + a3 * n0[2];
+          if (blend >= 0) {
+            const dn = 2 * (dx * n0[0] + dy * n0[1] + dz * n0[2]);
+            const mx = blend * lx + (1 - blend) * (dx - dn * n0[0]), my = blend * ly + (1 - blend) * (dy - dn * n0[1]), mz = blend * lz + (1 - blend) * (dz - dn * n0[2]);
+            const ml = Math.hypot(mx, my, mz); dx = mx / ml; dy = my / ml; dz = mz / ml;
+          } else { dx = lx; dy = ly; dz = lz; }
         } else { const dn = 2 * (dx * s.n[0] + dy * s.n[1] + dz * s.n[2]); dx -= dn * s.n[0]; dy -= dn * s.n[1]; dz -= dn * s.n[2]; }
         last = bi;
       }
     }
-    return { H, W, escaped, hits, n };
+    return { H, W, escaped, hits, n, leaked };
   }
 
   // ---------- loudspeaker directivity (generic, axisymmetric; an engineering assumption, not measured data)
@@ -530,6 +727,6 @@ const GEOM = (() => {
     return out;
   }
 
-  return { build, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, transition, utd, DF, FIB, fresnel, panels, specFactor };
+  return { build, buildMesh, loadObj, objGroups, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, transition, utd, DF, FIB, fresnel, panels, specFactor };
 })();
 if (typeof module !== "undefined") module.exports = GEOM;
