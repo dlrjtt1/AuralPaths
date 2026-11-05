@@ -214,7 +214,8 @@ def _newell(v):
 
 
 def pra_walls(G, materials, n_bands, band_centres):
-    """pyroomacoustics walls; materials[group] = {"alpha": [...6 octave bands from 125 Hz], "s": scattering}."""
+    """pyroomacoustics walls; materials[group] = {"alpha": [...6 octave bands from 125 Hz], "s": scattering (one
+    value, or a list per octave band like alpha)}."""
     import pyroomacoustics as pra
     walls = []
     for s in G["S"]:
@@ -224,7 +225,9 @@ def pra_walls(G, materials, n_bands, band_centres):
         m = materials[s["mat"]]
         a = list(m["alpha"])
         a8 = [a[i] if i < len(a) else a[-1] for i in range(n_bands)]
-        walls.append(pra.wall_factory(np.ascontiguousarray(v.T), a8, [m.get("s", 0.0)] * n_bands, name=s["mat"]))
+        sc = m.get("s", 0.0)
+        s8 = [sc[i] if i < len(sc) else sc[-1] for i in range(n_bands)] if isinstance(sc, (list, tuple)) else [sc] * n_bands
+        walls.append(pra.wall_factory(np.ascontiguousarray(v.T), a8, s8, name=s["mat"]))
     return walls
 
 

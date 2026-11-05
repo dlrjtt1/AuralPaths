@@ -828,7 +828,7 @@ const WORKER_SRC = GEOM_SRC + withDiffraction.toString() + tLateOf.toString() + 
 self.onmessage = (e) => {
   const m = e.data, G = GEOM.build(m.geom), E = m.diff ? GEOM.edges(G) : null;
   m.srcs.forEach((src, i) => {
-    const I = withDiffraction(G, E, src, m, GEOM.ism(G, src, m.recs, m.order, m.tWin, m.c, m.mats, m.air));
+    const I = withDiffraction(G, E, src, m, GEOM.ism(G, src, m.recs, m.order, m.tWin, m.c, m.mats, m.air, m.bands));
     const RT = GEOM.rays(G, src, m.recs, { n: m.rays, c: m.c, seed: 1000 + 7919 * m.seeds[i], tLate: tLateOf(src, m) }, m.mats, m.air);
     const ism = I.map((L) => L.map(slim));
     const H = RT.H.map((bands) => bands.map((a) => Float32Array.from(a)));
@@ -866,7 +866,7 @@ function inline(msg, progress) { // fallback without a worker: same engine on th
   return new Promise((ok) => {
     const G = GEOM.build(msg.geom), E = msg.diff ? GEOM.edges(G) : null, res = []; let i = 0;
     const step = () => {
-      const src = msg.srcs[i], I = withDiffraction(G, E, src, msg, GEOM.ism(G, src, msg.recs, msg.order, msg.tWin, msg.c, msg.mats, msg.air));
+      const src = msg.srcs[i], I = withDiffraction(G, E, src, msg, GEOM.ism(G, src, msg.recs, msg.order, msg.tWin, msg.c, msg.mats, msg.air, msg.bands));
       const RT = GEOM.rays(G, src, msg.recs, { n: msg.rays, c: msg.c, seed: 1000 + 7919 * msg.seeds[i], tLate: tLateOf(src, msg) }, msg.mats, msg.air);
       res[i] = { ism: I.map((L) => L.map(slim)), H: RT.H, W: RT.W, escaped: RT.escaped, n: RT.n };
       progress(++i); if (i < msg.srcs.length) setTimeout(step, 0); else ok(res);

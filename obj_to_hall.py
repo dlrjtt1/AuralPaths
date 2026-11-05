@@ -152,7 +152,10 @@ def convert(cfg, depth_axis="y", stage_end="min", stage_depth=0.0, slice_m=0.25,
         a = np.array([m["alpha"][i] if i < len(m["alpha"]) else m["alpha"][-1] for i in range(nb)], float)
         acc[g][0] += a * s["area"]
         acc[g][1] += s["area"]
-        acc[g][2] += m.get("s", 0.0) * s["area"]
+        sc = m.get("s", 0.0)
+        if isinstance(sc, (list, tuple)):      # per-band scattering: the page's material table holds one value; use 1 kHz
+            sc = sc[min(3, len(sc) - 1)]
+        acc[g][2] += sc * s["area"]
     geom25 = {"plan": plan, "floor": floor, "ceiling": ceil}
     dims = [max(p[0] for p in plan), yd, max(z for _, z in ceil)]
     G25 = geometry.build(dict(geom25), stage_y if stage_depth > 0 else yd + 1)

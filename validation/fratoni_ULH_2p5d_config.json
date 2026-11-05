@@ -1,5 +1,5 @@
 {
- "_note": "2.5D hall converted with obj_to_hall.py from the ULH 3D model of G. Fratoni, 'Materials for calibrating four complex virtual environments through acoustic simulations', Mendeley Data, https://doi.org/10.17632/y7xnv6xg5s.1, CC BY 4.0. Changes: geometry reduced to plan x floor/ceiling profiles, materials merged into four groups (Eyring-preserving), source/receiver positions read from the dataset's figures (about +-0.3 m). S_amp, B_L, B_R are placeholders, not part of the dataset.",
+ "_note": "2.5D hall converted with obj_to_hall.py from the ULH 3D model of G. Fratoni, 'Materials for calibrating four complex virtual environments through acoustic simulations', Mendeley Data, https://doi.org/10.17632/y7xnv6xg5s.1, CC BY 4.0. Changes: geometry reduced to plan x floor/ceiling profiles, materials merged into four groups (obj_to_hall.py --preserve eyring), source/receiver positions read from the dataset's figures (about +-0.3 m). S_amp, B_L, B_R are placeholders, not part of the dataset.",
  "name": "Fratoni ULH (2.5D from OBJ)",
  "fs": 48000,
  "c": 343.0,

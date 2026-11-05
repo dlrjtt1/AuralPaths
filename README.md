@@ -12,7 +12,8 @@ By LABO 1557 (Dong-Gyun You).
 ## What it does
 - Hall: shoebox, or a 2.5D drawn hall (plan outline × floor and ceiling profile) traced over your own PDF / image
   drawings, with scale from a known dimension and snapping to the PDF's lines.
-- Acoustics: image sources (early part) + ray tracing (diffuse part) + first-order edge diffraction (UTD);
+- Acoustics: image sources (early part; each reflection weighted for finite panel size, Kirchhoff–Fresnel after
+  Rindel, and for scattering loss) + ray tracing (diffuse part) + first-order edge diffraction (UTD);
   binaural rendering with KU100 HRIRs; late reverberation with the ear energies and interaural coherence of the
   ray-traced arrival directions.
 - Output: echogram, arrivals by direction, C80 / D50 / Ts / EDT / T30 / IACC, seat maps of effective ITDG and
@@ -38,9 +39,9 @@ By LABO 1557 (Dong-Gyun You).
   first in such halls). Receiver means only: early arrivals and PA paths are not tested by it.
   Details: `validation/fratoni_*`, `docs/MODEL_en.md`.
 - Position-by-position check against measured RIRs of two real halls (BRAS CR3 chamber music hall, CR4 auditorium;
-  3D models): with the BRAS coefficients T30 is 8–16 % too long (calibrate with measured T30 first), C80 / C50 / Ts
-  within about 1–1.4 JND. First-order reflections: right in time and level (+1.2 dB median) in CR3, about 6.5 dB too
-  strong in CR4. A drawn 2.5D version of a hall with balconies keeps reverberation and clarity roughly but **not its
+  3D models): with the BRAS coefficients T30 is 7–18 % too long (calibrate with measured T30 first), C80 / C50 / Ts
+  within about 0.9–1.6 JND. First-order reflections: right in time and level in CR3 (+1.6 dB median); in CR4 +2.7 dB
+  median after the finite-panel correction (+6.5 dB before), with poor reflection-by-reflection agreement. A drawn 2.5D version of a hall with balconies keeps reverberation and clarity roughly but **not its
   individual early reflections**, so check ITDG-related results of such halls against a measurement.
 - Loudspeaker directivity files are approximations (see `NOTICE.md`).
 

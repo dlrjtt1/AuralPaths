@@ -17,7 +17,8 @@ Simulation, v3, https://doi.org/10.14279/depositonce-6726.3, CC BY-SA 4.0 (licen
                                     the groups are then named ..._SU_mat_CRn_<material>...).
 
 Materials: the BRAS third-octave absorption and scattering (20 Hz - 20 kHz) averaged arithmetically over the three
-third-octaves of each octave band 125 Hz - 4 kHz. "initial" = estimated from databases and in-situ measurements,
+third-octaves of each octave band 125 Hz - 4 kHz (scattering per band; the engine's image sources lose (1 - s) per
+reflection and are weighted for finite reflector size, reflections.py). "initial" = estimated from databases and in-situ measurements,
 "fitted" = absorption adjusted by the BRAS authors so that Eyring's formula gives the measured reverberation time
 (mat_CRn.txt). The fitted set is the default: it removes most of the input uncertainty, so what remains is the
 engine (geometry, image sources, ray tracing).
@@ -124,7 +125,8 @@ def window_level(y, on, fs, t, w=(0.0002, 0.0008)):
 # ---------------------------------------------------------------- predicted early reflections
 def predicted_first_order(cfg, src, recs, bands_idx=(2, 3, 4)):
     """{rec: [(delay after direct s, level dB re direct)]} of visible first-order image sources (pyroomacoustics),
-    energy mean over the 500 Hz, 1 kHz and 2 kHz octaves; specular only (the image sources carry no scattering loss)."""
+    energy mean over the 500 Hz, 1 kHz and 2 kHz octaves, with the engine's specular factors (finite reflector size,
+    scattering loss: reflections.py) unless the configuration switches them off."""
     room = bp.make_room(cfg, 1)
     room.add_source(cfg["sources"][src]["pos"])
     room.add_microphone_array(np.array([cfg["receivers"][r] for r in recs], float).T)
@@ -136,9 +138,12 @@ def predicted_first_order(cfg, src, recs, bands_idx=(2, 3, 4)):
         vis = room.visibility[0][i].astype(bool)
         d0 = np.linalg.norm(m - np.asarray(cfg["sources"][src]["pos"], float))
         lst = []
-        for k in np.flatnonzero(vis & (S.orders == 1)):
+        ks = np.flatnonzero(vis & (S.orders == 1))
+        F = bp.specular_factors(cfg, room, ks, cfg["sources"][src]["pos"], m)    # same factors as the engine
+        for j, k in enumerate(ks):
             d = np.linalg.norm(S.images[:, k] - m)
-            e = np.mean((S.damping[list(bands_idx), k] / d) ** 2) / (1 / d0 ** 2)
+            f = F[list(bands_idx), j] if F is not None else 1.0
+            e = np.mean((S.damping[list(bands_idx), k] / d) ** 2 * f) / (1 / d0 ** 2)
             lst.append(((d - d0) / cfg["c"], 10 * np.log10(e + 1e-30)))
         out[r] = sorted(lst)
     return out
@@ -195,7 +200,7 @@ def main():
            "sources": {k: {"pos": v} for k, v in srcs.items()}, "receivers": recs,
            "geometry": {"mesh": {"obj": a.obj, "groups": {k: k for k in mats}, "max_faces": a.max_faces,
                                  "voxel": a.voxel},
-                        "materials": {k: {"alpha": v["alpha"], "s": v["s"]} for k, v in mats.items()},
+                        "materials": {k: {"alpha": v["alpha"], "s": v["s_oct"]} for k, v in mats.items()},
                         "ism_order": 1, "rays": a.rays, "diffraction": False}}
     G = bp._geom(cfg)
     vol_ref = {"CR3": 3330.6, "CR4": 8656.5}.get(hall)
@@ -209,7 +214,7 @@ def main():
     log("Sabine / Eyring T (s), no air: " + ", ".join(
         f"{b} Hz {0.161 * G['volume'] / A[i]:.2f} / {0.161 * G['volume'] / (-S_t * np.log(1 - A[i] / S_t)):.2f}"
         for i, b in enumerate(BANDS)))
-    log(f"absorption: BRAS {a.coeffs}_estimates; scattering at 1 kHz: " +
+    log(f"absorption: BRAS {a.coeffs}_estimates; scattering per octave band (shown: 1 kHz): " +
         ", ".join(f"{k.split('_', 2)[2]} {v['s']:.2f}" for k, v in mats.items()))
 
     # measured criteria per pair

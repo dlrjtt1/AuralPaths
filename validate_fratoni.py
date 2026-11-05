@@ -289,8 +289,13 @@ def main():
         log(f"2.5D hall: {rep25['n_plan_vertices']} plan vertices, {rep25['n_surfaces_2p5d']} surfaces, volume "
             f"{rep25['volume_2p5d_m3']} m3 (mesh {rep25['volume_mesh_m3']}); positions lifted above the averaged floor: "
             + (", ".join(moved) if moved else "none"))
+        note = (f"2.5D hall converted with obj_to_hall.py from the {a.hall} 3D model of G. Fratoni, 'Materials for calibrating "
+                "four complex virtual environments through acoustic simulations', Mendeley Data, "
+                "https://doi.org/10.17632/y7xnv6xg5s.1, CC BY 4.0. Changes: geometry reduced to plan x floor/ceiling profiles, "
+                "materials merged into four groups (obj_to_hall.py --preserve eyring), source/receiver positions read from the dataset's "
+                "figures (about +-0.3 m). S_amp, B_L, B_R are placeholders, not part of the dataset.")
         with open(out + "_2p5d_config.json", "w", encoding="utf-8") as f:
-            json.dump({k: v for k, v in cfg25.items()}, f, ensure_ascii=False, indent=1)
+            json.dump(dict({"_note": note}, **cfg25), f, ensure_ascii=False, indent=1)
         res25, per25 = simulate(cfg25, plan, a.rays, "2.5D", log)
 
     # ---------------------------------------------------------------- tables, csv, figure

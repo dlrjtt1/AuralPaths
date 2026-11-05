@@ -153,6 +153,41 @@ for final numbers. (Measured before the air-absorption fix below, which changes 
 500 Hz–1 kHz by less than 0.5 dB.) BRIR energies browser vs Python after the fixes (two drawn test halls, 24 paths): first
 100 ms within 1.0 dB, 120–300 ms within 0.9 dB, 0.3–1.6 s within 1.8 dB (independent noise and rays).
 
+### Specular reflection factors (finite reflector size, scattering loss)
+
+Drawn and OBJ halls, both engines (`reflections.py`, `engine_geom.js` `specFactor`; identical code, image energies
+agree within 2·10⁻⁶ up to order 4). An image source treats every surface as an infinite plane and reflects all
+non-absorbed energy specularly. Each reflection of an image-source path now gets, per octave band, the energy factor
+
+  (1 − s) · K₁ · K₂
+
+- (1 − s): the scattered part leaves the specular path (the ray tracer carries it). Scattering may be one value or
+  one value per band (`"s": [...]`, Python; the page's material table keeps one value).
+- K₁, K₂: Kirchhoff–Fresnel factors of the reflecting panel in two orthogonal sections through the reflection point
+  (Rindel 2005, "Reflection of sound from finite-size plane and curved surfaces", 150th ASA meeting, JASA 118(3);
+  presentation [core.ac.uk/download/13729852.pdf](https://core.ac.uk/download/13729852.pdf); design form in Rindel
+  1992, Proc. IoA 14(2), [PDF](https://www.ioa.org.uk/system/files/publications/JH%20RINDEL%20ACOUSTIC%20DESIGN%20OF%20REFLECTORS%20IN%20AUDITORIA.pdf)):
+  K = ½[(C(v₂) − C(v₁))² + (S(v₂) − S(v₁))²], v = 2x cos θ / √(λ a*), a* = 2a₁a₂ / (a₁ + a₂), with x the distances from
+  the reflection point to the panel edges in that section, θ the angle of incidence (cos θ only in the section that
+  contains the incidence direction), a₁, a₂ the unfolded path lengths from the source to the point and from the point
+  to the receiver (for higher orders an engineering extension; Rindel's formula is for one reflection). K = 1 for an
+  infinite plane, ¼ (−6 dB) for a point on an edge. Averaged over the band centre and ± ⅓ octave.
+- Panel: the connected surfaces in one plane (touching within 1 cm, normals within 2°). In drawn halls each wall
+  edge, floor strip and step is its own panel, so steps and narrow strips reflect weakly at low frequencies.
+- Implementation detail: pyroomacoustics keeps only the images a receiver can hear and does not store their parents,
+  so the wall sequence of each image is recovered by generating all images from the source (as the browser engine
+  does) and keeping the sequence whose reflection points lie on their surfaces.
+- Switch off with `"geometry": {"finite_reflectors": false, "specular_scatter_loss": false}` (Python). The shoebox is
+  unchanged.
+
+Check against the measured first-order reflections of BRAS CR3 / CR4 (same 36 / 35 reflections before and after,
+see *Position-by-position check*): CR4 median predicted − measured +6.5 → +2.7 dB, mean absolute 6.1 → 5.3 dB,
+correlation 0.30 → 0.35; CR3 +1.2 → +1.6 dB, mean absolute 2.8 → 2.8 dB, correlation 0.59 → 0.55. The systematic
+overestimate in CR4 is mostly gone; reflection-by-reflection accuracy in CR4 stays poor. A 10° panel tolerance (so
+that gentle bends count as one panel) gave +4.1 dB in CR4 and was not kept. Energy histograms of a drawn test hall
+change by about −0.1 dB in the first 100 ms (the ray-traced diffuse part fills in most of what the specular paths
+lose); individual reflections change by up to tens of dB (small steps, edges).
+
 ### Edge diffraction (first order, UTD)
 
 Drawn halls only, both engines (`diffraction.py`, `GEOM.edges` / `GEOM.diffract`; the two agree to 1e-10).
@@ -375,11 +410,11 @@ Results (simulated − measured, in JND; full tables and figures in `validation/
 
 | hall, source | model | T30 125 / 250 / 500 / 1k / 2k / 4k Hz | EDT 500–4k | C50 / C80 500–4k | Ts 500–4k |
 |---|---|---|---|---|---|
-| ULH, S1 (26 receivers) | 3D mesh | −2.3 / −1.2 / +0.9 / +1.0 / +0.1 / −0.9 | −0.1 … +0.7 | −0.2 … +0.2 | −0.2 … +0.4 |
-| | 2.5D | −3.9 / −2.1 / −0.7 / +0.1 / −1.2 / −2.5 | −1.0 … +0.9 | −0.6 … +0.3 | −0.6 … +0.6 |
+| ULH, S1 (26 receivers) | 3D mesh | −2.3 / −1.2 / +0.9 / +1.0 / +0.1 / −0.9 | −0.1 … +0.8 | −0.2 … +0.2 | −0.2 … +0.4 |
+| | 2.5D | −3.9 / −2.1 / −0.7 / +0.1 / −1.2 / −2.5 | −1.1 … +0.9 | −0.8 … +0.1 | −0.5 … +0.8 |
 | STC, S1 (10) | 3D mesh | +6.8 / +4.1 / +4.0 / +2.3 / +3.6 / +3.5 | +3.8 … +5.2 | −1.6 … −1.0 | +2.1 … +3.1 |
-| | 2.5D | +7.4 / +4.5 / +4.1 / +2.1 / +3.3 / +3.3 | +5.1 … +6.9 | −2.1 … −1.6 | +2.4 … +3.4 |
-| STC, S2 (4) | 3D mesh | +8.8 / +2.8 / +2.5 / +2.6 / +4.1 / +4.0 | +2.8 … +5.4 | −2.1 … −1.0 | +1.7 … +2.8 |
+| | 2.5D | +7.4 / +4.5 / +4.1 / +2.1 / +3.3 / +3.3 | +5.1 … +6.9 | −2.2 … −1.6 | +2.4 … +3.5 |
+| STC, S2 (4) | 3D mesh | +8.8 / +2.8 / +2.5 / +2.6 / +4.1 / +4.0 | +2.9 … +5.5 | −2.1 … −1.0 | +1.8 … +2.9 |
 | | 2.5D | +8.6 / +2.6 / +2.0 / +1.6 / +3.2 / +3.1 | +2.1 … +4.4 | −1.6 … −0.4 | +1.2 … +2.4 |
 
 Reading:
@@ -409,7 +444,8 @@ python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --rays 600
 python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --no-3d --stc-doors Wood --out validation/fratoni_STC_doors_Wood
 ```
 The converted halls (`validation/fratoni_*_2p5d_config.json`, CC BY 4.0 with the dataset's attribution) open in the
-page with **Load config…**. Run 2026-11-05 (ULH 3D mesh 64 min, STC 46 min on 2 CPU cores).
+page with **Load config…**. Run 2026-11-05, re-run 2026-11-06 with the specular reflection factors (changes ≤ 0.2 JND;
+ULH 3D mesh about 65 min, STC 46 min on 2 CPU cores).
 
 ## Position-by-position check against two real halls (`validate_bras_cr.py`)
 
@@ -437,45 +473,52 @@ diffraction). 4000 rays. With 500 rays T30 came out 13–33 % long in CR3 (noisy
 reverberation criteria.
 
 Room criteria (simulated − measured in JND, mean absolute over the positions, 500 Hz–2 kHz; signed values and all
-bands in `validation/bras_CR3.md`, `bras_CR4.md`):
+bands in `validation/bras_CR3.md`, `bras_CR4.md`). Current model, with the specular reflection factors (finite panel
+size, scattering loss; per-band scattering); in brackets the first run without them:
 
 | hall | model | EDT | T30 | C80 | C50 | Ts |
 |---|---|---|---|---|---|---|
-| CR3 | 3D mesh | 3.3 | 2.9 (all long, +9–16 %) | 1.1 | 1.0 | 1.2 |
-| | 3D calibrated, held-out LS2 | 1.6 | 3.7 | 0.8 | 0.9 | 0.8 |
-| | 2.5D | 4.3 | 2.9 | 1.6 | 2.3 | 2.0 |
-| CR4 | 3D mesh | 2.7 | 2.2 (all long, +8–16 %) | 1.0 | 1.0 | 1.4 |
-| | 3D calibrated, held-out LS2 | 1.4 | 0.7 | 1.8 | 1.8 | 1.7 |
-| | 2.5D | 1.9 | 1.2 | 0.8 | 1.3 | 1.3 |
+| CR3 | 3D mesh | 2.6 (3.3) | 2.7 (2.9), all long, +7–12 % | 1.0 (1.1) | 1.6 (1.0) | 1.2 (1.2) |
+| | 3D calibrated, held-out LS2 | 1.7 (1.6) | 1.6 (3.7) | 0.9 (0.8) | 1.3 (0.9) | 1.0 (0.8) |
+| | 2.5D | 4.4 (4.3) | 2.9 (2.9) | 1.7 (1.6) | 2.3 (2.3) | 2.1 (2.0) |
+| CR4 | 3D mesh | 2.3 (2.7) | 2.2 (2.2), all long, +10–18 % | 0.9 (1.0) | 1.2 (1.0) | 1.2 (1.4) |
+| | 3D calibrated, held-out LS2 | 2.7 (1.4) | 0.8 (0.7) | 0.9 (1.8) | 1.3 (1.8) | 1.3 (1.7) |
+| | 2.5D | 1.9 (1.9) | 1.1 (1.2) | 0.8 (0.8) | 1.4 (1.3) | 1.1 (1.3) |
 
 Early reflections (500 Hz–2 kHz): every first-order image source the engine predicts at ≥ −15 dB re direct, ≥ 2 ms
 after the direct sound and 1.5 ms away from other predicted ones, against the measured energy in a 1 ms window at
 its predicted time (dB re the same window on the direct sound). Controls: the same window 2 ms later, and random
-times 3–20 ms after the direct sound.
+times 3–20 ms after the direct sound. Current model (the set of reflections above −15 dB changes with the model;
+on the same set as the first run, see *Specular reflection factors*: CR3 +1.2 → +1.6 dB, CR4 +6.5 → +2.7 dB):
 
 | hall | model | n | predicted (median) | measured at predicted time | measured 2 ms later | measured at random times | predicted − measured (median, IQR) | r |
 |---|---|---|---|---|---|---|---|---|
-| CR3 | 3D mesh | 36 | −5.3 dB | −6.8 dB | −10.4 dB | −11.5 dB | +1.2 dB (+0.1 … +3.9) | 0.59 |
-| | 2.5D | 27 | −5.6 | −12.0 | −10.6 | −11.5 | +3.9 (+3.4 … +8.3) | 0.30 |
+| CR3 | 3D mesh | 36 | −5.5 dB | −6.8 dB | −10.4 dB | −11.5 dB | +1.6 dB (+0.1 … +3.4) | 0.55 |
+| | 2.5D | 20 | −5.8 | −13.1 | −10.1 | −11.5 | +5.6 (+2.4 … +8.1) | 0.17 |
+| CR4 | 3D mesh | 28 | −9.0 | −13.5 | −14.0 | −21.0 | +4.6 (+1.9 … +7.8) | 0.46 |
+| | 2.5D | 23 | −9.3 | −13.8 | −13.9 | −21.0 | +5.0 (+1.0 … +8.2) | 0.28 |
+| first run, without the factors: CR3 | 3D mesh | 36 | −5.3 | −6.8 | −10.4 | −11.5 | +1.2 (+0.1 … +3.9) | 0.59 |
 | CR4 | 3D mesh | 35 | −6.7 | −13.7 | −14.3 | −21.0 | +6.5 (+2.6 … +8.9) | 0.30 |
-| | 2.5D | 29 | −6.7 | −14.2 | −14.1 | −21.0 | +6.9 (+1.5 … +9.2) | 0.34 |
 
 Reading:
-- Reverberation: with Eyring-fitted coefficients the ray tracer gives T30 8–16 % too long in both halls (2–3 JND). A
-  uniform-absorption test on the CR3 mesh (α = 0.2) also decays 24 % slower than Eyring, while the same pipeline on a
-  tiled shoebox follows Eyring (`validation/check_rt_eyring.py`, `validation/check_mesh_box.py`): the halls'
-  fields are not diffuse, so coefficients fitted with Eyring are too low for a ray tracer. Calibrating this engine on
-  measured T30 is therefore needed (`calibrate.py`). Calibrated on LS1, the held-out LS2 positions came within 0.7
-  JND in T30 in CR4 but stayed 3.7 JND long in CR3 (the calibration did not carry over: the model's LS2 positions decay more slowly than its LS1 positions);
-  EDT, C80 / C50 and Ts are within about 1–2 JND in both.
-- Clarity and Ts are within 1.0–1.4 JND (mean absolute) in the 3D runs before calibration.
-- Early reflections, 3D mesh: in CR3 the predicted reflections are real (at their predicted times the measured level is 4.7 dB
-  above random times and drops by 3.6 dB 2 ms later) and their levels are right to +1.2 dB (median). In CR4 the measured energy at
-  the predicted times is above random times but not above the same window 2 ms later, and the predicted levels are
-  6.5 dB too high (median): specular first-order reflections are overestimated in this hall. The cause is not
-  identified (candidates: surfaces modelled flat that scatter in reality, simplifications of the BRAS model, image
-  sources without scattering loss). For ITDG and level-ratio work in a real hall, check the early reflections of the
-  hall at hand against a measurement before relying on them.
+- Reverberation: with Eyring-fitted coefficients the ray tracer gives T30 7–18 % too long in both halls (1.4–3.6 JND).
+  A uniform-absorption test on the CR3 mesh (α = 0.2) also decays 24 % slower than Eyring, while the same pipeline on
+  a tiled shoebox follows Eyring (`validation/check_rt_eyring.py`, `validation/check_mesh_box.py`): the halls' fields
+  are not diffuse, so coefficients fitted with Eyring are too low for a ray tracer. Calibrating this engine on
+  measured T30 is therefore needed (`calibrate.py`). Calibrated on LS1, the held-out LS2 positions came within 0.8
+  JND (CR4) and 1.6 JND (CR3) in T30; EDT, C80 / C50 and Ts within about 1–3 JND.
+- Clarity and Ts are within 0.9–1.6 JND (mean absolute) in the 3D runs before calibration.
+- Effect of the specular reflection factors on the room criteria: EDT better (CR3 3.3 → 2.6, CR4 2.7 → 2.3 JND), T30
+  of the held-out CR3 positions after calibration better (3.7 → 1.6), C50 worse (CR3 1.0 → 1.6, CR4 1.0 → 1.2), the
+  rest within ±0.2 JND, except EDT of the held-out CR4 positions after calibration (1.4 → 2.7). The cause of the
+  C50 change is not identified.
+- Early reflections, 3D mesh: in CR3 the predicted reflections are real (at their predicted times the measured level
+  is 4.7 dB above random times and drops by 3.6 dB 2 ms later) and their levels are right to +1.6 dB (median). In CR4
+  the measured energy at the predicted times is above random times but not above the same window 2 ms later; the
+  predicted levels were 6.5 dB too high (median) before the specular reflection factors and 2.7 dB on the same
+  reflections after them (finite panels: the white panels between concrete beams had been +8.6 dB). Reflection by
+  reflection, CR4 stays poor (correlation 0.35–0.46). For ITDG and level-ratio work in a real hall, check the early
+  reflections of the hall at hand against a measurement before relying on them.
 - 2.5D hall: reverberation and clarity stay within a few JND, but in CR3 its predicted reflections are not in the
   measurement (the measured level at their times equals that at random times): with balconies and side galleries
   reduced to a 2.5D plan × section, the individual early reflections, and so the ITDG of a seat, do not correspond
@@ -487,7 +530,8 @@ Reading:
 python validate_bras_cr.py "CR3 medium room (chamber music hall)" "3 Surface descriptions" --obj CR3.obj --rays 4000 --out validation/bras_CR3
 python validate_bras_cr.py "CR4 large room (auditorium)" "3 Surface descriptions" --obj CR4.obj --rays 4000 --voxel 0.08 --out validation/bras_CR4
 ```
-Run 2026-11-05 (CR3 about 50 min, CR4 about 75 min on 2 CPU cores). The 2.5D halls
+Run 2026-11-05, re-run 2026-11-06 with the specular reflection factors (CR3 about 50 min, CR4 about 75 min on 2 CPU
+cores). The 2.5D halls
 (`validation/bras_CR*_2p5d_config.json`, CC BY-SA 4.0) open in the page with **Load config…**. `calibrate.py` now
 traces once per source for mesh halls (all receivers of that source together).
 
@@ -581,12 +625,14 @@ For other loudspeakers, use manufacturer data or your own measurements.
 - Room-criteria check against measured halls: within about 1 JND at 500 Hz–4 kHz in a raked lecture hall (ULH),
   about 15 % too long in an elliptical domed hall (STC) with the dataset's Odeon-calibrated inputs (see *Room
   criteria against measured halls*)
-- Position-by-position check against two real halls (BRAS CR3 / CR4): T30 8–16 % long with Eyring-fitted
-  coefficients (calibrate first); first-order reflection levels right in CR3, about 6.5 dB high in CR4; a 2.5D
+- Position-by-position check against two real halls (BRAS CR3 / CR4): T30 7–18 % long with Eyring-fitted
+  coefficients (calibrate first); first-order reflection levels +1.6 dB (CR3) and +2.7 dB (CR4) median, reflection by
+  reflection poor in CR4; a 2.5D
   version of a hall with balconies does not reproduce its individual early reflections (see *Position-by-position
   check*)
 - Drawn hall values come from ray tracing and carry random noise (see above); the shoebox ones do not
-- Shoebox: uniform absorption, no diffraction, diffuse late field. Both: scattering not modelled in the image sources
+- Shoebox: uniform absorption, no diffraction, diffuse late field, image sources without scattering loss or finite-size
+  factor (drawn and OBJ halls have both, see *Specular reflection factors*)
 - Diffraction: first order only, straight edges of the drawn surfaces; no seats, no edge end points (see above)
 - No seat-dip effect (see above)
 - Level ratio is a BRIR energy ratio (white-input equivalent), not the stimulus RMS defined in the

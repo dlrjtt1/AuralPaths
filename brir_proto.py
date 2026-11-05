@@ -519,6 +519,20 @@ def emission_dirs(cfg, room, src_pos, idx):
 HIST_BIN = 0.001
 
 
+def specular_factors(cfg, room, sel, src_pos, rec_pos):
+    """Energy factors [n_bands, len(sel)] of the image sources `sel`: finite reflector size (Kirchhoff-Fresnel) and
+    scattering loss (1 - s) per reflection (reflections.py). Drawn and mesh halls only; switched off with
+    "geometry": {"finite_reflectors": false} / {"specular_scatter_loss": false}. None when nothing applies."""
+    if cfg is None or not has_geometry(cfg):
+        return None
+    g = cfg["geometry"]
+    fin, sca = g.get("finite_reflectors", True), g.get("specular_scatter_loss", True)
+    if not (fin or sca):
+        return None
+    import reflections
+    return reflections.image_factors(_geom(cfg), room, sel, src_pos, rec_pos, cfg["c"], g["materials"], fin, sca)
+
+
 def _image_energy_hist(room, rec_pos, c, t_max, vis=None, cfg=None, src=None):
     S = room.sources[0]
     m = np.asarray(rec_pos, dtype=float)
@@ -528,6 +542,10 @@ def _image_energy_hist(room, rec_pos, c, t_max, vis=None, cfg=None, src=None):
     keep = (d / c < t_max) & (d > 1e-9)
     d, damp, sel = d[keep], damp[:, keep], sel[keep]
     E = (damp / d) ** 2 * np.exp(-np.asarray(room.air_absorption)[:, None] * d)
+    if cfg is not None and src is not None:
+        F = specular_factors(cfg, room, sel, cfg["sources"][src]["pos"], rec_pos)
+        if F is not None:
+            E = E * F
     dm = dir_model(cfg, src, room.octave_bands.centers) if cfg is not None and src is not None else None
     if dm is not None:
         E = E * dir_amp(dm, emission_dirs(cfg, room, cfg["sources"][src]["pos"], sel)) ** 2
@@ -680,6 +698,9 @@ def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len):
     amp = damp / dist
     if room.air_absorption is not None and len(room.air_absorption):
         amp = amp * np.exp(-0.5 * np.asarray(room.air_absorption)[:, None] * dist)
+    F = specular_factors(cfg, room, sel, cfg["sources"][src]["pos"], cfg["receivers"][rec])
+    if F is not None:
+        amp = amp * np.sqrt(F)
     dm = dir_model(cfg, src, band_f)
     if dm is not None:
         amp = amp * dir_amp(dm, emission_dirs(cfg, room, cfg["sources"][src]["pos"], sel))

@@ -179,25 +179,113 @@ const GEOM = (() => {
     return false;
   }
 
+  // ---------- specular factors of image-source reflections (same algorithm as reflections.py):
+  // finite reflector size (Kirchhoff-Fresnel after Rindel 2005) and scattering loss (1 - s), as energy factors
+  function fresnel(x) { // [C(x), S(x)], C = int_0^x cos(pi t^2 / 2) dt; series |x| < 3, asymptotic above
+    const ax = Math.abs(x); let c, s;
+    if (ax < 3) {
+      const z = Math.PI * ax * ax / 2, z2 = z * z; let tc = 1, ts = z, n = 0; c = 0; s = 0;
+      for (;;) { c += tc / (4 * n + 1); s += ts / (4 * n + 3); tc *= -z2 / ((2 * n + 1) * (2 * n + 2)); ts *= -z2 / ((2 * n + 2) * (2 * n + 3)); n++; if (Math.abs(tc) < 1e-17 && Math.abs(ts) < 1e-17 || n > 60) break; }
+      c *= ax; s *= ax;
+    } else {
+      const pz = Math.PI * ax * ax, u = 1 / (pz * pz), z = pz / 2;
+      const f = (1 - u * (3 - u * (105 - u * 10395))) / (Math.PI * ax), g = (1 - u * (15 - u * (945 - u * 135135))) / (Math.PI * pz * ax);
+      c = 0.5 + f * Math.sin(z) - g * Math.cos(z); s = 0.5 - f * Math.cos(z) - g * Math.sin(z);
+    }
+    return x >= 0 ? [c, s] : [-c, -s];
+  }
+  function fresnelK(lo, hi) { const a = fresnel(lo), b = fresnel(hi); return 0.5 * ((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2); }
+  function segDist(p, a, b) {
+    const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], L2 = Math.max(ab[0] ** 2 + ab[1] ** 2 + ab[2] ** 2, 1e-18);
+    const t = Math.min(1, Math.max(0, ((p[0] - a[0]) * ab[0] + (p[1] - a[1]) * ab[1] + (p[2] - a[2]) * ab[2]) / L2));
+    return Math.hypot(p[0] - a[0] - t * ab[0], p[1] - a[1] - t * ab[1], p[2] - a[2] - t * ab[2]);
+  }
+  function touch(A, B, tol) {
+    for (const [P, Q] of [[A, B], [B, A]]) for (const p of P) for (let k = 0; k < Q.length; k++) if (segDist(p, Q[k], Q[(k + 1) % Q.length]) <= tol) return true;
+    return false;
+  }
+  // touching surfaces whose normals differ by less than PANEL_ANGLE form one panel (cached on G); sweep over bounding boxes
+  const PANEL_ANGLE = 2;
+  function panels(G, tol = 0.01) {
+    if (G._panels) return G._panels;
+    const S = G.S, n = S.length, par = S.map((_, i) => i), cmin = Math.cos(PANEL_ANGLE * Math.PI / 180);
+    const find = (a) => { while (par[a] !== a) { par[a] = par[par[a]]; a = par[a]; } return a; };
+    const lo = S.map((s) => [0, 1, 2].map((k) => Math.min(...s.verts.map((v) => v[k])) - tol)), hi = S.map((s) => [0, 1, 2].map((k) => Math.max(...s.verts.map((v) => v[k])) + tol));
+    const order = S.map((_, i) => i).sort((a, b) => lo[a][0] - lo[b][0] || a - b);
+    let active = [];
+    for (const a of order) {
+      active = active.filter((b) => hi[b][0] >= lo[a][0]);
+      for (const b of active) {
+        const A = S[a], B = S[b];
+        if (A.n[0] * B.n[0] + A.n[1] * B.n[1] + A.n[2] * B.n[2] < cmin || lo[a][1] > hi[b][1] || lo[b][1] > hi[a][1] || lo[a][2] > hi[b][2] || lo[b][2] > hi[a][2]) continue;
+        if (find(a) !== find(b) && touch(A.verts, B.verts, tol)) par[find(b)] = find(a);
+      }
+      active.push(a);
+    }
+    const pid = S.map((_, i) => find(i)), members = new Map();
+    pid.forEach((p, i) => { if (!members.has(p)) members.set(p, []); members.get(p).push(i); });
+    return (G._panels = { pid, members });
+  }
+  function chord(G, mem, P, e, f) { // interval [smin <= 0 <= smax] of the line P + s e inside the panel's polygons
+    const iv = [];
+    for (const i of mem) {
+      const V = G.S[i].verts, x = V.map((v) => (v[0] - P[0]) * e[0] + (v[1] - P[1]) * e[1] + (v[2] - P[2]) * e[2]), y = V.map((v) => (v[0] - P[0]) * f[0] + (v[1] - P[1]) * f[1] + (v[2] - P[2]) * f[2]);
+      const xs = [];
+      for (let k = 0; k < x.length; k++) { const k2 = (k + 1) % x.length, y1 = y[k], y2 = y[k2]; if ((y1 <= 0 && 0 < y2) || (y2 <= 0 && 0 < y1)) xs.push(x[k] + (0 - y1) * (x[k2] - x[k]) / (y2 - y1)); }
+      xs.sort((a, b) => a - b); for (let j = 0; j + 1 < xs.length; j += 2) iv.push([xs[j], xs[j + 1]]);
+    }
+    if (!iv.length) return [-1e9, 1e9];
+    iv.sort((a, b) => a[0] - b[0]); const mg = [iv[0].slice()];
+    for (const [a, b] of iv.slice(1)) { const L = mg[mg.length - 1]; if (a <= L[1] + 1e-3) L[1] = Math.max(L[1], b); else mg.push([a, b]); }
+    for (const [a, b] of mg) if (a - 1e-3 <= 0 && 0 <= b + 1e-3) return [Math.min(a, 0), Math.max(b, 0)];
+    let best = mg[0]; for (const q of mg) if (Math.min(Math.abs(q[0]), Math.abs(q[1])) < Math.min(Math.abs(best[0]), Math.abs(best[1]))) best = q;
+    return [Math.min(best[0], 0), Math.max(best[1], 0)];
+  }
+  function reflK(G, w, P, uin, a1, a2, freqs, c) { // energy factor K1*K2 per frequency
+    const { pid, members } = panels(G), n = G.S[w].n, un = uin[0] * n[0] + uin[1] * n[1] + uin[2] * n[2], cosT = Math.abs(un);
+    let t = [uin[0] - un * n[0], uin[1] - un * n[1], uin[2] - un * n[2]];
+    if (Math.hypot(...t) < 1e-6) t = Math.abs(n[0]) < 0.9 ? crs(n, [1, 0, 0]) : crs(n, [0, 1, 0]);
+    const tl = Math.hypot(...t), e1 = [t[0] / tl, t[1] / tl, t[2] / tl], e2 = crs(n, e1), mem = members.get(pid[w]);
+    const s1 = chord(G, mem, P, e1, e2), s2 = chord(G, mem, P, e2, e1), as = 2 * a1 * a2 / (a1 + a2);
+    return freqs.map((fr) => { const k = 2 / Math.sqrt(c / fr * as); return fresnelK(k * s1[0] * cosT, k * s1[1] * cosT) * fresnelK(k * s2[0], k * s2[1]); });
+  }
+  // energy factors [nb] for a reflection path: pts = reflection points (source side first), seq = surface indices
+  function specFactor(G, src, r, seq, pts, mats, bands, c) {
+    const NB = bands.length, F = new Float64Array(NB).fill(1); if (!seq.length) return F;
+    const path = [src].concat(pts, [r]), seg = [];
+    for (let i = 0; i + 1 < path.length; i++) seg.push(Math.hypot(path[i + 1][0] - path[i][0], path[i + 1][1] - path[i][1], path[i + 1][2] - path[i][2]));
+    const tot = seg.reduce((a, b) => a + b, 0); let a1 = 0;
+    const fq = bands.map((f) => [f * 2 ** (-1 / 3), f, f * 2 ** (1 / 3)]);
+    seq.forEach((w, j) => {
+      a1 += seg[j]; const P = pts[j], L = Math.max(seg[j], 1e-12), uin = [(P[0] - path[j][0]) / L, (P[1] - path[j][1]) / L, (P[2] - path[j][2]) / L];
+      const sc = mats[G.S[w].mat].s, scb = Array.isArray(sc) ? sc : null;
+      for (let b = 0; b < NB; b++) {
+        const K = reflK(G, w, P, uin, a1, tot - a1, fq[b], c), km = (K[0] + K[1] + K[2]) / 3;
+        F[b] *= (1 - (scb ? scb[Math.min(b, scb.length - 1)] : sc || 0)) * km;
+      }
+    });
+    return F;
+  }
+
   // ---------- image sources. mats: { name: { R:[nb], s } }, air: [nb]
-  function ism(G, src, recs, order, tWindow, c, mats, air) {
+  function ism(G, src, recs, order, tWindow, c, mats, air, bands) { // bands (Hz): with them, reflections get specFactor
     const NB = air.length, out = recs.map(() => []);
     const maxD = recs.map((r) => Math.hypot(src[0] - r[0], src[1] - r[1], src[2] - r[2]) + c * tWindow);
     const maxAll = Math.max(...maxD);
     // direct
-    recs.forEach((r, k) => { if (!occluded(G, src, r, -1, -1)) push(k, src, [], r, r); });
-    // first: the point the path leaves the source towards (receiver for the direct sound, first reflection point otherwise)
-    function push(k, img, seq, r, first) {
+    recs.forEach((r, k) => { if (!occluded(G, src, r, -1, -1)) push(k, src, [], r, [r]); });
+    // pts: reflection points, source side first (for the direct sound: [receiver]); pts[0] is where the path leaves the source to
+    function push(k, img, seq, r, pts) {
       const d = Math.hypot(img[0] - r[0], img[1] - r[1], img[2] - r[2]); if (d > maxD[k] || d < 1e-9) return;
-      const g = new Float64Array(NB);
-      for (let b = 0; b < NB; b++) { let a = 1; for (const w of seq) a *= mats[G.S[w].mat].R[b]; g[b] = a / d * Math.exp(-0.5 * air[b] * d); }
+      const first = pts[0], g = new Float64Array(NB), F = bands && seq.length ? specFactor(G, src, r, seq, pts, mats, bands, c) : null;
+      for (let b = 0; b < NB; b++) { let a = 1; for (const w of seq) a *= mats[G.S[w].mat].R[b]; g[b] = a / d * Math.exp(-0.5 * air[b] * d) * (F ? Math.sqrt(F[b]) : 1); }
       const ex = first[0] - src[0], ey = first[1] - src[1], ez = first[2] - src[2], el = Math.hypot(ex, ey, ez) || 1;
       out[k].push({ d, t: d / c, o: seq.length, h: [(img[1] - r[1]) / d, -(img[0] - r[0]) / d, (img[2] - r[2]) / d], g, seq: seq.slice(), e: [ex / el, ey / el, ez / el] });
     }
     // validate path receiver <- ... <- image by back-tracing; images: stack of positions per order.
-    // Returns the first reflection point (where the path leaves the source to), or null.
+    // Returns the reflection points, source side first (pts[0]: where the path leaves the source to), or null.
     function audible(r, imgs, seq) {
-      let p = r, prevWall = -1;
+      let p = r, prevWall = -1; const pts = [];
       for (let k = seq.length - 1; k >= 0; k--) {
         const s = G.S[seq[k]], im = imgs[k + 1];
         const dx = im[0] - p[0], dy = im[1] - p[1], dz = im[2] - p[2], den = s.n[0] * dx + s.n[1] * dy + s.n[2] * dz;
@@ -207,9 +295,9 @@ const GEOM = (() => {
         const q = [p[0] + t * dx, p[1] + t * dy, p[2] + t * dz];
         if (!inSurface(s, q)) return null;
         if (occluded(G, p, q, prevWall, seq[k])) return null;
-        p = q; prevWall = seq[k];
+        p = q; prevWall = seq[k]; pts.unshift(q);
       }
-      return occluded(G, p, imgs[0], prevWall, -1) ? null : p;
+      return occluded(G, p, imgs[0], prevWall, -1) ? null : pts;
     }
     const ctr = [(Math.min(...G.plan.map((q) => q[0])) + Math.max(...G.plan.map((q) => q[0]))) / 2, (G.y0 + G.y1) / 2, 0];
     function rec(imgs, seq) {
@@ -442,6 +530,6 @@ const GEOM = (() => {
     return out;
   }
 
-  return { build, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, transition, utd, DF, FIB };
+  return { build, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, transition, utd, DF, FIB, fresnel, panels, specFactor };
 })();
 if (typeof module !== "undefined") module.exports = GEOM;
