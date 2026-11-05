@@ -414,10 +414,15 @@ energy difference 7 × 10⁻⁷).
   The browser follows Python within 0–3 % in T30 (CR3 16 000 rays, CR4 8 000 rays per source); both are 8–14 % above
   the measured T30, as in *Position-by-position check*. In CR4 the browser's C80 is 0.5–0.7 dB lower than Python's.
   Per position pair the two tracers scatter more (mean |T30 difference| 6–11 %), so use the band means or more rays.
-- Known difference: on a shoebox written as an OBJ of 1 m tiles (α 0.2, s 0.5), the browser gives T30 1.16 / 1.14 /
-  1.10 s at 125 / 500 / 2000 Hz, Python 1.09 / 1.07 / 1.04 s (Eyring 1.07 s): the missing diffuse-rain term makes
-  the browser decay about 6 % slower in this simple room. On CR3 / CR4 the two agree (table), so the size of this
-  difference depends on the hall.
+- Known difference on a shoebox written as an OBJ of 1 m tiles (α 0.2; `validation/check_box_lambert.js`,
+  `validation/check_mesh_box.py`): with s = 1 (pure Lambert) the browser's T30 is 1.12 s, and its own free paths
+  (mean 5.93 m = 4V/S, relative variance 0.35) predict 1.11 s; Python (pyroomacoustics) gives 1.03 s, below Eyring
+  (1.07 s), which a tracer with this free-path spread should not give (the prediction, derived in the script: the
+  number of reflections in time t is about normal, so the mean energy decays as exp((ct/m)(ln(1 − α) + γ²/2 ·
+  ln²(1 − α))), slower than Eyring). With s = 0.5: browser 1.14 s, Python 1.07 s at 500 Hz. The cause in
+  pyroomacoustics was not located; on CR3 / CR4 the two agree within 3 % (table). Adding pyroomacoustics' diffuse-rain
+  term to the browser was tried: it added about 45 % ray energy with the same decay (T30 unchanged), raised C80 on
+  CR3 by 0.2–0.3 dB (to 0.2 dB above Python) and made ray tracing 3–4 times slower, so it was left out.
 - Time: CR3 (2600 faces) builds in about 4 s; 10 000 rays per source take about 25 s. The worker rebuilds the room
   for every computation (no shared memory with the page).
 
@@ -668,8 +673,9 @@ For other loudspeakers, use manufacturer data or your own measurements.
 - OBJ mesh halls: image sources to order 1, no diffraction; the conversion to a drawn hall keeps the volume and
   maps the absorption so that T30 stays close to the mesh, not where absorption sits (see *3D OBJ halls*). In the
   browser, the plan and section are projections (balconies show only as the column's lowest floor and highest
-  ceiling), heights are above the lowest floor, and the ray tracer has no diffuse-rain term (about 6 % longer T30
-  than Python on a tiled shoebox, within 3 % on CR3 / CR4)
+  ceiling), heights are above the lowest floor, and the ray tracer has no diffuse-rain term (T30 within 3 % of Python
+  on CR3 / CR4; on a tiled shoebox 6–9 % longer than Python, where the browser follows the prediction from its own
+  free paths and Python lies below Eyring)
 - Room-criteria check against measured halls: within about 1 JND at 500 Hz–4 kHz in a raked lecture hall (ULH),
   about 15 % too long in an elliptical domed hall (STC) with the dataset's Odeon-calibrated inputs (see *Room
   criteria against measured halls*)

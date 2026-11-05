@@ -3,10 +3,12 @@ Check of the OBJ mesh path (geometry.build_mesh: voxel flood fill, inward normal
 on a shoebox written as an OBJ of 1 m tiles: the ray-traced T30 should follow Eyring as the plain shoebox does
 (validation/check_rt_eyring.py).
 
-    python validation/check_mesh_box.py
+    python validation/check_mesh_box.py [scattering]
 
 Result on 2026-11-05 (12 x 7 x 9 m, alpha 0.2, scattering 0.5, 20 000 rays, air absorption on):
     T30 1.09 / 1.07 / 1.04 s at 125 / 500 / 2000 Hz; Eyring 1.07 s, Sabine 1.19 s (no air); voxel volume 731 m3 (756).
+With scattering 1.0 (pure Lambert): T30 1.03 / 1.02 / 0.99 s, below Eyring; with 0.1: 1.14 / 1.12 / 1.08 s
+(validation/check_box_lambert.js compares the browser tracer on the same box).
 The same test on the BRAS CR3 mesh (alpha 0.2 everywhere, scattering 0.5) gave T30 about 1.03 s against Eyring
 0.83 s and Sabine 0.93 s: the hall decays slower than diffuse-field theory; the mesh path itself does not.
 """
@@ -44,7 +46,7 @@ with open(path, "w") as f:
     f.write("g wall\n")
     f.writelines("v %f %f %f\n" % tuple(p) for p in V)
     f.writelines("f " + " ".join(map(str, q)) + "\n" for q in F)
-a, s = 0.2, 0.5
+a, s = 0.2, float(sys.argv[1]) if len(sys.argv) > 1 else 0.5   # optional argument: scattering
 cfg = {"name": "box", "fs": 48000, "c": 343.5, "room": {"air_absorption": True, "dims_m": [1, 1, 1], "stage_depth_m": 0},
        "binaural": {"late_directional": False}, "sources": {"S": {"pos": [3, -3, 1.5]}},
        "receivers": {"R1": [8, -5, 1.2], "R2": [6, -2, 2.0], "R3": [10, -7, 3.0]},
