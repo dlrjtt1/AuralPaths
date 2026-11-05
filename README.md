@@ -10,8 +10,9 @@ browser; drawings and audio files you load stay on your computer.
 By LABO 1557 (Dong-Gyun You).
 
 ## What it does
-- Hall: shoebox, or a 2.5D drawn hall (plan outline × floor and ceiling profile) traced over your own PDF / image
-  drawings, with scale from a known dimension and snapping to the PDF's lines.
+- Hall: shoebox, a 2.5D drawn hall (plan outline × floor and ceiling profile) traced over your own PDF / image
+  drawings, with scale from a known dimension and snapping to the PDF's lines, or a 3D model (Wavefront OBJ, e.g.
+  exported from SketchUp or Blender) with each surface name mapped to a material.
 - Acoustics: image sources (early part; each reflection weighted for finite panel size, Kirchhoff–Fresnel after
   Rindel, and for scattering loss) + ray tracing (diffuse part) + first-order edge diffraction (UTD);
   binaural rendering with KU100 HRIRs; late reverberation with the ear energies and interaural coherence of the
@@ -28,7 +29,9 @@ By LABO 1557 (Dong-Gyun You).
 - **It does not claim to reproduce a real hall.** Room-acoustic simulation tools differ noticeably from
   measurements (Brinkmann et al. 2019, https://doi.org/10.1121/1.5096178). Calibrate the absorption with measured
   T30 (`calibrate.py`) and check against measurements before drawing conclusions about a real room.
-- 2.5D geometry (the cross-section is the same across the width); first-order diffraction only; no seat-dip
+- Drawn halls are 2.5D (the cross-section is the same across the width); 3D models get first-order image sources
+  only and no diffraction (browser and Python ray tracers agree within 3 % in T30 on two real halls); first-order
+  diffraction only; no seat-dip
   effect; scattering as a random (Lambert) model; nearest-direction HRIRs; non-individual (dummy-head) HRTFs.
 - Diffraction check against BRAS scene RS5 (a 2.07 m partition on a hard floor, 16 positions): mean absolute
   difference 1.8 dB in third-octave bands 500 Hz–2 kHz (2.2 dB at the 11 shadow positions). This is one simple
@@ -51,7 +54,7 @@ pip install pyroomacoustics sofar soundfile scipy matplotlib
 # put HRIR_FULL2DEG.sofa (Zenodo 3928297) at hrir/KU100.sofa
 python run.py config.json          # BRIRs, metrics, out/viewer.html
 python export_viewer.py config.json
-# 3D hall from SketchUp/Blender OBJ (Python engine) and its 2.5D version for the page (Load config…)
+# 3D hall from SketchUp/Blender OBJ (the page opens the OBJ too) and its 2.5D version (order > 1, diffraction)
 pip install fast-simplification openpyxl            # optional: large meshes, dataset sheets
 python obj_to_hall.py mesh_config.json             # -> mesh_config_2p5d.json
 ```

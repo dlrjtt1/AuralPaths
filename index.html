@@ -277,12 +277,23 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
       <div id="drawnCtl" hidden>
         <p class="note">Width, depth and height set the drawing frame; the traced outline and the floor and ceiling lines scale with it. Trace on the Plan and Section panels.</p>
         <div class="row">
-          <label class="vol">Image-source order <select id="selOrder"><option>2</option><option>3</option><option selected>4</option><option>5</option></select></label>
+          <label class="vol">Image-source order <select id="selOrder"><option>1</option><option>2</option><option>3</option><option selected>4</option><option>5</option></select></label>
           <label class="vol">Rays <select id="selRays"><option value="10000">10 000 (draft)</option><option value="30000" selected>30 000</option><option value="50000">50 000</option><option value="100000">100 000 (fine)</option></select></label>
           <label class="vol">Edge diffraction <select id="selDiff"><option value="1" selected>On (UTD, 1st order)</option><option value="0">Off</option></select></label>
         </div>
         <p class="cap">Surface materials · α per octave band, scattering s</p>
         <div class="tablewrap"><table class="layout" id="matTable"></table></div>
+      </div>
+      <div id="meshCtl" hidden>
+        <div class="row">
+          <input type="file" id="fObj" accept=".obj,text/plain" aria-label="3D model (Wavefront OBJ)">
+          <label class="vol">Up axis <select id="selAxes"><option value="y-up">y up (SketchUp, Blender OBJ export)</option><option value="z-up">z up</option></select></label>
+          <label class="vol">Turn plan <select id="selRot"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
+          <label class="vol">Voxel <select id="selVox"><option value="0">auto</option><option value="0.05">5 cm</option><option value="0.08">8 cm</option><option value="0.1">10 cm</option></select></label>
+        </div>
+        <p class="note" id="meshNote"></p>
+        <p class="cap">Model surface names → material</p>
+        <div class="tablewrap"><table class="layout" id="meshTable"></table></div>
       </div>
       <div class="row">
         <span class="note">On resize</span>
@@ -690,12 +701,17 @@ const GEOM = (() => {
   //          twoSided (default true), inflateMm (default 1), maxVoxels (default 2e7) }, seed = first source position
   function buildMesh(spec, seed) {
     const obj = spec.obj, axes = spec.axes || "y-up";
-    const V = obj.V.map((v) => (axes === "z-up" ? v.slice() : [v[0], -v[2], v[1]]));
-    const groups = Object.entries(spec.groups || {}).map(([g, v]) => [g.toLowerCase(), v]);
+    // page frame (optional): turn by rot degrees about z, then shift (the page moves the model to x, y, z >= 0)
+    const sh = spec.shift || [0, 0, 0], ra = (spec.rot || 0) * Math.PI / 180, cr = Math.cos(ra), sr = Math.sin(ra);
+    const V = obj.V.map((v) => (axes === "z-up" ? v.slice() : [v[0], -v[2], v[1]])).map((v) => [cr * v[0] - sr * v[1] + sh[0], sr * v[0] + cr * v[1] + sh[1], v[2] + sh[2]]);
+    // longer names first, so that a name that is part of another one does not take its faces
+    const groups = Object.entries(spec.groups || {}).map(([g, v]) => [g.toLowerCase(), v]).sort((a, b) => b[0].length - a[0].length);
     const T = [], owner = [];
     obj.F.forEach((f, k) => { for (let i = 1; i + 1 < f.length; i++) { T.push([f[0], f[i], f[i + 1]]); owner.push(k); } });
     const ext = [0, 1, 2].map((a) => Math.max(...V.map((v) => v[a])) - Math.min(...V.map((v) => v[a])));
-    const h = spec.voxel || Math.max(0.05, Math.cbrt((ext[0] + 0.3) * (ext[1] + 0.3) * (ext[2] + 0.3) / (spec.maxVoxels || 2e7)));
+    // voxel size: as given, but never more than 2.5 x maxVoxels cells (browser memory); auto: >= 5 cm within maxVoxels
+    const box = (ext[0] + 0.3) * (ext[1] + 0.3) * (ext[2] + 0.3), mv = spec.maxVoxels || 2e7;
+    const h = spec.voxel ? Math.max(spec.voxel, Math.cbrt(box / (2.5 * mv))) : Math.max(0.05, Math.cbrt(box / mv));
     const vx = voxelRoom(V, T, seed, h), off = 2.5 * h, inflate = (spec.inflateMm == null ? 1 : spec.inflateMm) / 1000, twoSided = spec.twoSided !== false;
     const triOf = new Map(); owner.forEach((k, i) => { if (!triOf.has(k)) triOf.set(k, []); triOf.get(k).push(T[i]); });
     const S = [], unmatched = new Set(); let dropped = 0;
@@ -720,7 +736,42 @@ const GEOM = (() => {
     const lo = [0, 1, 2].map((a) => Math.min(...V.map((v) => v[a]))), hi = [0, 1, 2].map((a) => Math.max(...V.map((v) => v[a])));
     const G = { S, mesh: true, vox: vx, V: vx.volume, area: Object.values(area).reduce((a, b) => a + b, 0), areaByMat: area, nDropped: dropped, nFaces: obj.F.length, bbox: [lo, hi], h };
     G.bvh = bvhBuild(G.S);
+    meshViews(G);
     return G;
+  }
+  // plan and section views of a mesh room for the page: per voxel column the lowest and highest room voxel, the plan
+  // outline as the x range of each y row (exact for outlines that are convex across x), and the floor / ceiling lines
+  // as the lowest floor and highest ceiling of each y row
+  function meshViews(G) {
+    const vx = G.vox, [nx, ny, nz] = vx.dims, h = vx.h, cf = new Float32Array(nx * ny).fill(NaN), cc = new Float32Array(nx * ny).fill(NaN);
+    for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) { const b = (i * ny + j) * nz;
+      let k0 = -1, k1 = -1; for (let k = 0; k < nz; k++) if (vx.room[b + k] === 1) { if (k0 < 0) k0 = k; k1 = k; }
+      if (k0 >= 0) { cf[i * ny + j] = vx.lo[2] + k0 * h; cc[i * ny + j] = vx.lo[2] + (k1 + 1) * h; } }
+    vx.colFloor = cf; vx.colCeil = cc;
+    const left = [], right = [], floor = [], ceil = [], step = Math.max(1, Math.round(0.25 / h));
+    for (let j = 0; j < ny; j += step) {
+      let i0 = -1, i1 = -1, f = Infinity, c = -Infinity;
+      for (let jj = j; jj < Math.min(ny, j + step); jj++) for (let i = 0; i < nx; i++) { const q = i * ny + jj; if (!(cf[q] === cf[q])) continue;
+        if (i0 < 0 || i < i0) i0 = i; if (i > i1) i1 = i; f = Math.min(f, cf[q]); c = Math.max(c, cc[q]); }
+      if (i0 < 0) continue;
+      const y = vx.lo[1] + (j + Math.min(step, ny - j) / 2) * h;
+      left.push([vx.lo[0] + i0 * h, y]); right.push([vx.lo[0] + (i1 + 1) * h, y]); floor.push([y, f]); ceil.push([y, c]);
+    }
+    if (left.length) { // close the outline at the first and last row edges
+      const y0 = left[0][1] - step * h / 2, y1 = left[left.length - 1][1] + step * h / 2;
+      left.unshift([left[0][0], y0]); right.unshift([right[0][0], y0]); left.push([left[left.length - 1][0], y1]); right.push([right[right.length - 1][0], y1]);
+    }
+    G.plan = left.concat(right.reverse()); G.floor = floor; G.ceil = ceil;
+    // wall faces projected on the plan (one-sided room faces, |n_z| < 0.5) for the drawing
+    G.planSegs = []; for (const s of G.S) if (s.kind === "mesh" && Math.abs(s.n[2]) < 0.5) { const P = s.verts || s.P; if (!P) continue;
+      let a = 0, b = 0, best = -1; for (let u = 0; u < P.length; u++) for (let v = u + 1; v < P.length; v++) { const d = (P[u][0] - P[v][0]) ** 2 + (P[u][1] - P[v][1]) ** 2; if (d > best) { best = d; a = u; b = v; } }
+      if (best > 1e-4) G.planSegs.push([P[a][0], P[a][1], P[b][0], P[b][1], s.mat]); }
+  }
+  // lowest floor / highest ceiling (m) of the room above the plan point (x, y) of a mesh hall; null outside the room
+  function meshColumn(G, x, y) {
+    const vx = G.vox, [nx, ny] = vx.dims, i = Math.floor((x - vx.lo[0]) / vx.h), j = Math.floor((y - vx.lo[1]) / vx.h);
+    if (i < 0 || j < 0 || i >= nx || j >= ny) return null; const q = i * ny + j, f = vx.colFloor[q];
+    return f === f ? [f, vx.colCeil[q]] : null;
   }
 
   // ---------- bounding volume hierarchy over surfaces (mesh halls: thousands of faces) ----------
@@ -1159,7 +1210,7 @@ const GEOM = (() => {
     return out;
   }
 
-  return { build, buildMesh, loadObj, objGroups, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, transition, utd, DF, FIB, fresnel, panels, specFactor };
+  return { build, buildMesh, meshColumn, loadObj, objGroups, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, transition, utd, DF, FIB, fresnel, panels, specFactor };
 })();
 if (typeof module !== "undefined") module.exports = GEOM;
 </script>
@@ -1486,28 +1537,75 @@ $("ver").textContent = "v" + D.version; $("ver2").textContent = "v" + D.version;
 
 const deep = (o) => JSON.parse(JSON.stringify(o));
 const GROUPS = [["aud", "Audience floor"], ["stage", "Stage floor"], ["wall", "Walls"], ["ceil", "Ceiling"]];
+// material groups in use: the four above, plus (3D models) materials of their own for names in the model
+const matGroups = () => GROUPS.concat(Object.keys((typeof HALL !== "undefined" && HALL.mats) || {}).filter((k) => !GROUPS.some(([g]) => g === k)).map((k) => [k, (HALL.matNames && HALL.matNames[k]) || k]));
+// scattering may be one value or one per octave band (configs from the Python validation scripts)
+const sMean = (s) => (Array.isArray(s) ? +(s.reduce((a, b) => a + b, 0) / s.length).toFixed(3) : s);
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const ownKey = (name) => "own_" + name.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 40);
 function defaultMats(alpha, s) { const m = {}; for (const [g] of GROUPS) m[g] = { alpha: alpha.slice(), s }; return m; }
 const INIT = {
   hall: Object.assign(deep(D.hall), {
-    geom: D.geometry ? { plan: deep(D.geometry.plan), floor: deep(D.geometry.floor || []), ceil: deep(D.geometry.ceiling || []) } : null,
-    mats: D.geometry && D.geometry.materials ? deep(D.geometry.materials) : defaultMats(D.hall.alpha, D.scattering ?? 0.1),
+    geom: D.geometry && !D.geometry.mesh ? { plan: deep(D.geometry.plan), floor: deep(D.geometry.floor || []), ceil: deep(D.geometry.ceiling || []) } : null,
+    mesh: D.geometry && D.geometry.mesh && D.geometry.mesh.obj_text ? meshState(Object.assign({}, D.geometry.mesh, { _mats: D.geometry.materials })) : null,
+    mats: Object.assign(defaultMats(D.hall.alpha, D.scattering ?? 0.1), D.geometry && D.geometry.materials ? deep(D.geometry.materials) : {}),
     order: D.geometry?.ism_order ?? 4, rays: D.geometry?.rays ?? 30000, diff: D.geometry?.diffraction !== false, seatMap: Array.isArray(D.seatMap) && D.seatMap.length ? deep(D.seatMap) : null }),
   objs: D.sources.map((s) => ({ id: s.id, kind: s.kind, pos: s.pos.slice(), locked: false, ...(s.kind === "pa" || s.dir ? { dir: s.dir ? deep(s.dir) : { cov: 0, az: 0, el: 0 } } : {}) })).concat(
     Object.entries(D.receivers).map(([k, p]) => ({ id: k, kind: "seat", pos: p.slice(), locked: false }))),
 };
+if (INIT.hall.mesh) { // config positions are in the model frame; the page works in the turned and shifted frame
+  for (const o of INIT.objs) o.pos = meshToPage(INIT.hall.mesh, o.pos);
+  if (INIT.hall.seatMap) INIT.hall.seatMap = INIT.hall.seatMap.map((p) => meshToPage(INIT.hall.mesh, p));
+  INIT.hall.dims = INIT.hall.mesh.dims.slice(); INIT.hall.stage = 0; INIT.hall.order = 1; INIT.hall.diff = false;
+}
 let HALL = deep(INIT.hall), OBJ = deep(INIT.objs);
 // ---- geometry helpers (shoebox: flat floor at 0, ceiling at the room height)
 let GM = null; // built mesh of the drawn hall
-const isDrawn = () => !!HALL.geom;
-function buildGeom() { GM = isDrawn() ? GEOM.build({ plan: HALL.geom.plan, floor: HALL.geom.floor, ceil: HALL.geom.ceil, stageY: HALL.dims[1] - HALL.stage }) : null; return GM; }
+const isMesh = () => !!HALL.mesh;                  // 3D model (OBJ): engine_geom.js buildMesh, as geometry.build_mesh
+const isDrawn = () => !!HALL.geom || isMesh();     // both use the image-source + ray-tracing engine in the worker
+const MESHC = { key: "", G: null, err: "" };       // the voxelised model, rebuilt only when the model or its settings change
+function meshSpec(m) { return { obj: GEOM.loadObj(m.text), groups: m.groups, default: m.def || "wall", axes: m.axes, rot: m.rot, shift: m.shift, voxel: m.voxel || 0 }; }
+function buildGeom() {
+  if (isMesh()) {
+    if (MESHC.defer) { GM = null; return null; }
+    const m = HALL.mesh, key = [m.text.length, m.name, m.axes, m.rot, m.voxel, JSON.stringify(m.groups), m.def].join("|");
+    if (MESHC.key !== key) {
+      // the room is the free space connected to a seed point: the first source or seat inside, else the model centre
+      const spec = meshSpec(m), seeds = OBJ.map((o) => o.pos).concat([m.dims.map((v) => v / 2)]); let G = null, err = "";
+      for (const sd of seeds) { try { G = GEOM.buildMesh(spec, sd); G.seed = sd.slice(); break; } catch (e) { err = String(e.message || e); if (/without a material/.test(err)) break; } }
+      MESHC.key = key; MESHC.G = G; MESHC.err = G ? "" : err;
+    }
+    GM = MESHC.G; return GM;
+  }
+  GM = isDrawn() ? GEOM.build({ plan: HALL.geom.plan, floor: HALL.geom.floor, ceil: HALL.geom.ceil, stageY: HALL.dims[1] - HALL.stage }) : null; return GM;
+}
+// model frame (after the up-axis change, as in the Python config) <-> page frame (turned, shifted to x, y, z >= 0)
+function meshToPage(m, p) { const a = m.rot * Math.PI / 180, c = Math.cos(a), s = Math.sin(a); return [c * p[0] - s * p[1] + m.shift[0], s * p[0] + c * p[1] + m.shift[1], p[2] + m.shift[2]].map((v) => Math.round(v * 1000) / 1000); }
+function meshToModel(m, p) { const a = m.rot * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), x = p[0] - m.shift[0], y = p[1] - m.shift[1]; return [c * x + s * y, -s * x + c * y, p[2] - m.shift[2]].map((v) => Math.round(v * 1000) / 1000); }
+// one name per model face for the material table: its OBJ material (usemtl), else its group, else its object
+function meshLabels(obj) { const n = new Map(); for (const nm of obj.names) { const t = nm.split("|"), mt = t[t.length - 1], o = t[t.length - 2], g = t.slice(0, -2).filter(Boolean); const k = mt || g[g.length - 1] || o || "(unnamed)"; n.set(k, (n.get(k) || 0) + 1); } return [...n.entries()].map(([name, faces]) => ({ name, faces })); }
+function meshGuess(name) { const t = name.toLowerCase(); return /seat|audience|chair|stalls|parterre|aud/.test(t) ? "aud" : /stage|podium|platform/.test(t) ? "stage" : /ceil|roof|soffit/.test(t) ? "ceil" : /floor/.test(t) ? "aud" : "wall"; }
+// page state of a model: frame (turn + shift to the positive octant), size, name -> material table
+function meshState(cm, text, name) {
+  const t = text ?? cm.obj_text, obj = GEOM.loadObj(t), axes = cm.axes || "y-up", rot = +cm.rotate_deg || 0, a = rot * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
+  if (!obj.F.length) throw new Error("no faces in the model");
+  const P = obj.V.map((v) => (axes === "z-up" ? v : [v[0], -v[2], v[1]])).map((v) => [c * v[0] - s * v[1], s * v[0] + c * v[1], v[2]]);
+  const lo = [0, 1, 2].map((k) => Math.min(...P.map((v) => v[k]))), hi = [0, 1, 2].map((k) => Math.max(...P.map((v) => v[k])));
+  const labels = meshLabels(obj), groups = {};
+  // config groups are name parts (as geometry.build_mesh): the longest one contained in the name wins
+  const cg = Object.entries(cm.groups || {}).sort((a, b) => b[0].length - a[0].length), known = (k) => GROUPS.some(([g]) => g === k) || !!(cm._mats && cm._mats[k]);
+  for (const L of labels) { const v = cg.find(([k]) => L.name.toLowerCase().includes(k.toLowerCase())); groups[L.name] = v && known(v[1]) ? v[1] : meshGuess(L.name); }
+  return { name: name || cm.obj || "model.obj", text: t, axes, rot, voxel: +(cm.voxel ?? cm.voxel_m) || 0, def: "wall", groups, labels, shift: lo.map((v) => -v), dims: hi.map((v, k) => +(v - lo[k]).toFixed(2)) };
+}
 buildGeom();
-const floorAt = (y) => (GM ? GEOM.profAt(GM.floor, y) : 0);
-const ceilAt = (y) => (GM ? GEOM.profAt(GM.ceil, y) : HALL.dims[2]);
-const inOutline = (x, y) => (GM ? GEOM.inPoly2(GM.plan, x, y) : x > 0 && x < HALL.dims[0] && y > 0 && y < HALL.dims[1]);
+// mesh halls: floor and ceiling of the voxel column under (x, y); drawn halls: the section lines
+const floorAt = (y, x) => { if (GM && GM.mesh && x !== undefined) { const c = GEOM.meshColumn(GM, x, y); if (c) return c[0]; } return GM ? GEOM.profAt(GM.floor, y) : 0; };
+const ceilAt = (y, x) => { if (GM && GM.mesh && x !== undefined) { const c = GEOM.meshColumn(GM, x, y); if (c) return c[1]; } return GM ? GEOM.profAt(GM.ceil, y) : HALL.dims[2]; };
+const inOutline = (x, y) => (GM ? (GM.mesh ? !!GEOM.meshColumn(GM, x, y) : GEOM.inPoly2(GM.plan, x, y)) : x > 0 && x < HALL.dims[0] && y > 0 && y < HALL.dims[1]);
 // every item keeps a height above the local floor; z follows the floor when the item or the floor moves
-function initHeights(list) { for (const o of list) if (o.h === undefined) o.h = o.pos[2] - floorAt(o.pos[1]); }
+function initHeights(list) { for (const o of list) if (o.h === undefined) o.h = o.pos[2] - floorAt(o.pos[1], o.pos[0]); }
 initHeights(INIT.objs); initHeights(OBJ);
-function syncZ(o) { const f = floorAt(o.pos[1]), top = ceilAt(o.pos[1]); o.h = Math.max(0.2, Math.min(o.h, top - f - 0.2)); o.pos[2] = Math.round((f + o.h) * 1000) / 1000; }
+function syncZ(o) { const f = floorAt(o.pos[1], o.pos[0]), top = ceilAt(o.pos[1], o.pos[0]); o.h = Math.max(0.2, Math.min(o.h, top - f - 0.2)); o.pos[2] = Math.round((f + o.h) * 1000) / 1000; }
 const byId = (id) => OBJ.find((o) => o.id === id);
 const AMP = () => OBJ.find((o) => o.kind === "amp");
 const PAL = () => byId("B_L"), PAR = () => byId("B_R");
@@ -1560,7 +1658,7 @@ function tLateOf(src, m) { return m.lateDir ? m.recs.map((r) => Math.hypot(src[0
 function slim(q) { const o = { t: q.t, d: q.d, o: q.o, h: q.h, e: q.e, g: Array.from(q.g) }; if (q.dif) Object.assign(o, { dif: 1, ga: q.ga, eb: q.eb, dr: q.dr, di: q.di }); return o; }
 const WORKER_SRC = GEOM_SRC + withDiffraction.toString() + tLateOf.toString() + slim.toString() + `
 self.onmessage = (e) => {
-  const m = e.data, G = GEOM.build(m.geom), E = m.diff ? GEOM.edges(G) : null;
+  const m = e.data, G = m.geom.mesh ? GEOM.buildMesh(Object.assign({}, m.geom.mesh, { obj: GEOM.loadObj(m.geom.mesh.text) }), m.geom.mesh.seed) : GEOM.build(m.geom), E = m.diff ? GEOM.edges(G) : null;
   m.srcs.forEach((src, i) => {
     const I = withDiffraction(G, E, src, m, GEOM.ism(G, src, m.recs, m.order, m.tWin, m.c, m.mats, m.air, m.bands));
     const RT = GEOM.rays(G, src, m.recs, { n: m.rays, c: m.c, seed: 1000 + 7919 * m.seeds[i], tLate: tLateOf(src, m) }, m.mats, m.air);
@@ -1573,12 +1671,14 @@ self.onmessage = (e) => {
 let worker = null, jobId = 0, workerOK = true, LOST = 0;
 function workerMats() {
   const out = {};
-  for (const [g] of GROUPS) { const a = HALL.mats[g].alpha, a8 = D.praBands.map((_, i) => (i < a.length ? a[i] : a[a.length - 1])); out[g] = { R: a8.map((v) => Math.sqrt(Math.max(1e-6, 1 - v))), s: HALL.mats[g].s }; }
+  for (const [g] of matGroups()) { const a = HALL.mats[g].alpha, a8 = D.praBands.map((_, i) => (i < a.length ? a[i] : a[a.length - 1])); out[g] = { R: a8.map((v) => Math.sqrt(Math.max(1e-6, 1 - v))), s: HALL.mats[g].s }; }
   return out;
 }
 function geomCompute(srcs, seats) {
-  const msg = { job: ++jobId, geom: { plan: HALL.geom.plan, floor: HALL.geom.floor, ceil: HALL.geom.ceil, stageY: HALL.dims[1] - HALL.stage },
-    mats: workerMats(), air: D.air, c: D.c, order: HALL.order, rays: HALL.rays, tWin: 0.16, diff: !!HALL.diff, bands: D.praBands, lateDir: !!D.lateDir, tEarly: D.earlyMs / 1000,
+  const M = HALL.mesh, geom = isMesh() ? { mesh: { text: M.text, groups: M.groups, default: M.def || "wall", axes: M.axes, rot: M.rot, shift: M.shift, voxel: GM.vox.h, seed: GM.seed } }
+    : { plan: HALL.geom.plan, floor: HALL.geom.floor, ceil: HALL.geom.ceil, stageY: HALL.dims[1] - HALL.stage };
+  const msg = { job: ++jobId, geom,
+    mats: workerMats(), air: D.air, c: D.c, order: isMesh() ? 1 : HALL.order, rays: HALL.rays, tWin: 0.16, diff: !isMesh() && !!HALL.diff, bands: D.praBands, lateDir: !!D.lateDir, tEarly: D.earlyMs / 1000,
     srcs: srcs.map((o) => o.pos.slice()), seeds: srcs.map((o) => pathIndex(o)), recs: seats.map((s) => s.pos.slice()) };
   const progress = (k) => { $("busy").textContent = `Computing hall ${k}/${srcs.length}`; };
   progress(0);
@@ -1598,7 +1698,7 @@ function geomCompute(srcs, seats) {
 }
 function inline(msg, progress) { // fallback without a worker: same engine on the main thread
   return new Promise((ok) => {
-    const G = GEOM.build(msg.geom), E = msg.diff ? GEOM.edges(G) : null, res = []; let i = 0;
+    const G = msg.geom.mesh ? GM : GEOM.build(msg.geom), E = msg.diff ? GEOM.edges(G) : null, res = []; let i = 0;
     const step = () => {
       const src = msg.srcs[i], I = withDiffraction(G, E, src, msg, GEOM.ism(G, src, msg.recs, msg.order, msg.tWin, msg.c, msg.mats, msg.air, msg.bands));
       const RT = GEOM.rays(G, src, msg.recs, { n: msg.rays, c: msg.c, seed: 1000 + 7919 * msg.seeds[i], tLate: tLateOf(src, msg) }, msg.mats, msg.air);
@@ -1703,8 +1803,9 @@ function iaccE3(seatId, c, t0) {
 // Python reference applies only while hall, amplified source, PAs and seats match config.json
 function matchesConfig() {
   if (JSON.stringify(HALL.dims) !== JSON.stringify(INIT.hall.dims) || HALL.stage !== INIT.hall.stage) return false;
-  if (isDrawn() !== !!INIT.hall.geom) return false;
-  if (isDrawn() ? JSON.stringify([HALL.geom, HALL.mats, HALL.order, HALL.diff]) !== JSON.stringify([INIT.hall.geom, INIT.hall.mats, INIT.hall.order, INIT.hall.diff]) : JSON.stringify(HALL.alpha) !== JSON.stringify(INIT.hall.alpha)) return false;
+  if (isDrawn() !== !!(INIT.hall.geom || INIT.hall.mesh) || isMesh() !== !!INIT.hall.mesh) return false;
+  if (isMesh() && JSON.stringify([HALL.mesh.text.length, HALL.mesh.groups, HALL.mesh.axes, HALL.mesh.voxel, HALL.mats]) !== JSON.stringify([INIT.hall.mesh.text.length, INIT.hall.mesh.groups, INIT.hall.mesh.axes, INIT.hall.mesh.voxel, INIT.hall.mats])) return false;
+  if (!isMesh() && (isDrawn() ? JSON.stringify([HALL.geom, HALL.mats, HALL.order, HALL.diff]) !== JSON.stringify([INIT.hall.geom, INIT.hall.mats, INIT.hall.order, INIT.hall.diff]) : JSON.stringify(HALL.alpha) !== JSON.stringify(INIT.hall.alpha))) return false;
   const dsig = (o) => (o && o.dir ? (o.dir.table ? `t|${o.dir.file}|${(+o.dir.az).toFixed(1)}|${(+o.dir.el).toFixed(1)}` : +o.dir.cov > 0 ? `c|${o.dir.cov}|${(+o.dir.az).toFixed(1)}|${(+o.dir.el).toFixed(1)}` : "omni") : "omni");
   for (const o of INIT.objs) { if (o.kind === "unamp") continue; const n = byId(o.id); if (!n || dist(n.pos, o.pos) > 1e-6 || dsig(n) !== dsig(o)) return false; }
   return true;
@@ -1826,7 +1927,7 @@ $("bSeatCsv").onclick = () => { const t = seatCsv();
     .catch(() => ($("seatNote").textContent = t)); };
 function moveToSeat(o, q) {
   if (!o) return; if (isLocked(o)) { $("posNote").textContent = `${o.id} is locked. Unlock it in the layout table or turn off Lock all.`; return; }
-  o.pos = q.p.slice(); o.h = q.p[2] - floorAt(q.p[1]); syncZ(o); syncTable();
+  o.pos = q.p.slice(); o.h = q.p[2] - floorAt(q.p[1], q.p[0]); syncZ(o); syncTable();
   $("posNote").textContent = `${o.id} moved to seat ${q.id} (${q.p.map((v) => v.toFixed(2)).join(", ")} m).`;
   work(() => rebuildSeat(o));
 }
@@ -1874,16 +1975,17 @@ function drawMap() {
     g.strokeStyle = css("--text"); g.lineWidth = 1.75; g.beginPath(); GM.plan.forEach(([x, y], k) => (k ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)))); g.closePath(); g.stroke();
     g.save(); g.beginPath(); GM.plan.forEach(([x, y], k) => (k ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)))); g.closePath(); g.clip();
     g.lineWidth = 1; g.strokeStyle = css("--text-dim"); g.setLineDash([6, 4]); g.beginPath(); g.moveTo(X(0), Y(stageY)); g.lineTo(X(W), Y(stageY)); g.stroke(); g.setLineDash([]); g.restore();
-    if (S.edit) for (const [x, y] of HALL.geom.plan) { g.fillStyle = css("--bg"); g.strokeStyle = css("--text"); g.lineWidth = 1.5; g.fillRect(X(x) - 4, Y(y) - 4, 8, 8); g.strokeRect(X(x) - 4, Y(y) - 4, 8, 8); }
+    if (GM.mesh) { g.save(); g.strokeStyle = css("--text-dim"); g.lineWidth = 0.75; g.globalAlpha = 0.7; g.beginPath(); for (const q of GM.planSegs) { g.moveTo(X(q[0]), Y(q[1])); g.lineTo(X(q[2]), Y(q[3])); } g.stroke(); g.restore(); }
+    if (S.edit && HALL.geom) for (const [x, y] of HALL.geom.plan) { g.fillStyle = css("--bg"); g.strokeStyle = css("--text"); g.lineWidth = 1.5; g.fillRect(X(x) - 4, Y(y) - 4, 8, 8); g.strokeRect(X(x) - 4, Y(y) - 4, 8, 8); }
   } else {
     g.strokeStyle = css("--text"); g.lineWidth = 1.5; g.strokeRect(X(0), Y(Dp), W * sc, Dp * sc);
     g.lineWidth = 1; g.strokeStyle = css("--text-dim"); g.setLineDash([6, 4]); g.beginPath(); g.moveTo(X(0), Y(stageY)); g.lineTo(X(W), Y(stageY)); g.stroke(); g.setLineDash([]);
   }
   if (seatsVis) drawSeats(g, X, Y, sc); else { SEATPX = []; if (HALL.seatMap) $("seatNote").textContent = ""; }
-  if (GM && S.dims && !S.trace) drawPlanDims(g, X, Y, sc);
+  if (GM && !GM.mesh && S.dims && !S.trace) drawPlanDims(g, X, Y, sc);
   if (S.trace === "plan") drawTracePlan(g, X, Y);
   if (S.stagePreview !== null) { axisText(g); g.textAlign = "right"; g.fillText(`stage ${stageDepth()} m (press Enter or Apply)`, X(W) - 4, Y(stageY) - 4); }
-  g.font = `11px ${css("--f-ui")}`; g.fillStyle = css("--grid-text"); g.textAlign = "left"; g.fillText("Stage", X(0.3), Y(Dp) + 15);
+  g.font = `11px ${css("--f-ui")}`; g.fillStyle = css("--grid-text"); g.textAlign = "left"; if (!isMesh()) g.fillText("Stage", X(0.3), Y(Dp) + 15);
   for (const o of OBJ) {
     const [x, y] = o.pos, on = drag && drag.o === o, px = X(x), py = Y(y);
     if (o.kind === "pa") {
@@ -1959,7 +2061,7 @@ function traceHint() {
   $("sectNote").textContent = t === "floor" || t === "ceil" ? `Click along the ${t === "floor" ? "floor" : "ceiling"} from left (back of the hall) to right (stage), ${S.tracePts.length} points so far. Clicking within 15 cm of the previous point's depth makes a vertical step. Enter or double-click finishes; Backspace undoes, Esc cancels.` : $("sectNote").textContent;
 }
 function startTrace(kind) {
-  if (!isDrawn()) return;
+  if (!HALL.geom) return;
   S.trace = kind; S.tracePts = []; S.cursor = null; S.edit = false; $("bEditPlan").setAttribute("aria-pressed", "false");
   traceHint(); drawMap(); drawSection();
 }
@@ -2003,7 +2105,7 @@ $("map").addEventListener("pointerdown", (e) => {
     if (P.length >= 3 && Math.hypot(MG.X(P[0][0]) - m.mx, MG.Y(P[0][1]) - m.my) < 10) return finishTrace();
     P.push(p); traceHint(); drawMap(); return;
   }
-  if (S.edit && isDrawn()) {
+  if (S.edit && HALL.geom) {
     const k = HALL.geom.plan.findIndex(([x, y]) => Math.hypot(MG.X(x) - m.mx, MG.Y(y) - m.my) < 9);
     if (k >= 0) { drag = { corner: k, old: deep(HALL.geom), moved: false }; e.currentTarget.setPointerCapture(e.pointerId); return; }
   }
@@ -2078,7 +2180,7 @@ function drawSection() {
     for (const [y, z] of P) { g.beginPath(); g.arc(X(y), Z(z), 3.5, 0, 2 * Math.PI); g.fillStyle = css("--amp"); g.fill(); }
   }
   if (GM && S.dims && !S.trace) drawSectDims(g, X, Z);
-  axisText(g); g.textAlign = "left"; g.fillText(`${Dp} m × ${Hh} m`, X(0) + 4, Z(Hh) + 12); g.textAlign = "right"; g.fillText("Stage", X(Dp) - 4, Z(Hh) + 12);
+  axisText(g); g.textAlign = "left"; g.fillText(`${Dp} m × ${Hh} m`, X(0) + 4, Z(Hh) + 12); g.textAlign = "right"; if (!isMesh()) g.fillText("Stage", X(Dp) - 4, Z(Hh) + 12);
   for (const o of OBJ) {
     const x = X(o.pos[1]), z = Z(o.pos[2]);
     if (o.kind === "pa") {
@@ -2132,34 +2234,101 @@ function t30(e) {
 function buildMatTable() {
   const bands = D.hall.alphaBands.map((b) => (b >= 1000 ? b / 1000 + "k" : b));
   $("matTable").innerHTML = `<thead><tr><th>Surface</th>${bands.map((b) => `<th>${b}</th>`).join("")}<th>s</th></tr></thead><tbody>` +
-    GROUPS.map(([g, name]) => `<tr><td class="name">${name}</td>${HALL.mats[g].alpha.map((a, i) => `<td><input class="num" type="number" step="0.01" min="0.01" max="0.99" id="m_${g}_${i}" value="${a}" aria-label="${name} α ${bands[i]} Hz"></td>`).join("")}<td><input class="num" type="number" step="0.05" min="0" max="1" id="m_${g}_s" value="${HALL.mats[g].s}" aria-label="${name} scattering"></td></tr>`).join("") + "</tbody>";
+    matGroups().filter(([g]) => !isMesh() || Object.values(HALL.mesh.groups).includes(g)).map(([g, name]) => `<tr><td class="name">${esc(name)}</td>${HALL.mats[g].alpha.map((a, i) => `<td><input class="num" type="number" step="0.01" min="0.01" max="0.99" id="m_${g}_${i}" value="${a}" aria-label="${name} α ${bands[i]} Hz"></td>`).join("")}<td><input class="num" type="number" step="0.05" min="0" max="1" id="m_${g}_s" value="${sMean(HALL.mats[g].s)}" aria-label="${esc(name)} scattering"${Array.isArray(HALL.mats[g].s) ? ` title="per band ${HALL.mats[g].s.join(" / ")}; shown as the mean, kept per band unless you change it"` : ""}></td></tr>`).join("") + "</tbody>";
 }
 function readMats() {
   const m = {};
-  for (const [g] of GROUPS) { m[g] = { alpha: HALL.mats[g].alpha.map((_, i) => +$(`m_${g}_${i}`).value), s: +$(`m_${g}_s`).value }; }
-  const ok = Object.values(m).every((x) => x.alpha.every((a) => a > 0 && a < 1) && x.s >= 0 && x.s <= 1);
+  for (const [g] of matGroups()) { if (!$(`m_${g}_s`)) { m[g] = deep(HALL.mats[g]); continue; }   // not in the table (unused by the model)
+    const s0 = HALL.mats[g].s, sv = +$(`m_${g}_s`).value;
+    m[g] = { alpha: HALL.mats[g].alpha.map((_, i) => +$(`m_${g}_${i}`).value), s: Array.isArray(s0) && Math.abs(sv - sMean(s0)) < 1e-9 ? s0.slice() : sv }; }
+  const ok = Object.values(m).every((x) => x.alpha.every((a) => a > 0 && a < 1) && [].concat(x.s).every((v) => v >= 0 && v <= 1));
   return ok ? m : null;
 }
+function meshTable() {
+  const m = HALL.mesh; if (!m) { $("meshTable").innerHTML = ""; return; }
+  $("meshTable").innerHTML = `<thead><tr><th>Name in the model</th><th>Faces</th><th>Material</th></tr></thead><tbody>` + m.labels.map((L, i) =>
+    `<tr><td class="name">${L.name.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c])}</td><td>${L.faces}</td><td><select id="mg_${i}" aria-label="Material of ${L.name.replace(/"/g, "")}">${matGroups().map(([g, nm]) => `<option value="${g}"${m.groups[L.name] === g ? " selected" : ""}>${esc(nm)}</option>`).join("")}${matGroups().some(([g]) => g === ownKey(L.name)) ? "" : `<option value="__own">Own material…</option>`}</select></td></tr>`).join("") + "</tbody>";
+  m.labels.forEach((L, i) => ($(`mg_${i}`).onchange = (e) => {
+    let v = e.target.value;
+    if (v === "__own") { v = ownKey(L.name); HALL.mats[v] = deep(HALL.mats[m.groups[L.name]] || HALL.mats.wall); HALL.matNames = Object.assign(HALL.matNames || {}, { [v]: L.name }); }
+    m.groups[L.name] = v; HALL.matsSet = true;
+    for (const k of Object.keys(HALL.mats)) if (k.startsWith("own_") && !Object.values(m.groups).includes(k)) delete HALL.mats[k];   // drop unused own materials
+    buildMatTable(); meshTable(); meshRebuild(); }));
+}
+function meshNote() {
+  const m = HALL.mesh; if (!m) return;
+  $("meshNote").textContent = GM ? `${m.name}: ${GM.nFaces} faces, ${GM.S.filter((q) => q.kind === "mesh").length} room surfaces (${GM.nDropped} hidden faces dropped), voxel ${(GM.vox.h * 100).toFixed(1)} cm, volume ${GM.V.toFixed(0)} m³, ${m.dims.join(" × ")} m. Heights are above the lowest floor under each point.`
+    : `${m.name}: ${MESHC.err || "could not be built"}. Check the up axis, or place a source inside the hall.`;
+}
+// rebuild the voxel room after a model setting changed (main thread), then the BRIRs (worker)
+function meshRebuild() { buildGeom(); meshNote(); if (GM) { clampAll(); work(rebuildAll); } }
+// items of a shoebox / drawn hall into a model: the layout keeps its shape around the model centre (then clampAll)
+function placeInMesh(m, from) { const c = m.dims.map((v) => v / 2); for (const o of OBJ) o.pos = [c[0] + (o.pos[0] - from[0] / 2) * 0.5, c[1] + (o.pos[1] - from[1] / 2) * 0.5, o.pos[2]]; }
+function loadObjFile(f) {
+  const r = new FileReader();
+  r.onload = () => {
+    if (S.pendingCfg) { const { c, name } = S.pendingCfg; S.pendingCfg = null; c.geometry.mesh.obj_text = String(r.result); c.geometry.mesh.obj = f.name; applyConfig(c, name); return; }
+    let m; try { m = meshState({ axes: $("selAxes").value, rotate_deg: +$("selRot").value, voxel_m: +$("selVox").value }, String(r.result), f.name); } catch (e) { $("meshNote").textContent = `${f.name}: ${e.message || e}. Nothing changed.`; return; }
+    stop();
+    const old = HALL.mesh; if (!isMesh()) { HALL.geomStash = HALL.geom || HALL.geomStash; HALL.boxStash = { dims: HALL.dims.slice(), stage: HALL.stage, order: HALL.order, diff: HALL.diff }; }
+    if (old) for (const o of OBJ) o.pos = meshToModel(old, o.pos);              // keep positions in the model frame across a reload
+    const place = !old;     // a fresh model: put the items into the room afterwards
+    HALL.geom = null; HALL.mesh = m; HALL.dims = m.dims.slice(); HALL.stage = 0; HALL.order = 1; HALL.diff = false;
+    if (HALL.rays > 10000) HALL.rays = 10000;    // ray tracing in a mesh is slower; raise in the menu for final results
+    if (!place) for (const o of OBJ) o.pos = meshToPage(m, o.pos); else placeInMesh(m, HALL.boxStash.dims);
+    for (const o of OBJ) delete o.h;
+    buildGeom(); shapeUI();
+    if (!GM) { meshNote(); return; }
+    initHeights(OBJ); clampAll(); work(rebuildAll);
+  };
+  r.readAsText(f);
+}
+$("fObj").onchange = (e) => { if (e.target.files[0]) loadObjFile(e.target.files[0]); e.target.value = ""; };
+const meshSetting = (k, conv) => (e) => { if (!HALL.mesh) return; const m = HALL.mesh;
+  for (const o of OBJ) o.pos = meshToModel(m, o.pos);
+  m[k] = conv(e.target.value); const st = meshState({ axes: m.axes, rotate_deg: m.rot }, m.text); m.shift = st.shift; m.dims = st.dims; HALL.dims = m.dims.slice();
+  for (const o of OBJ) { o.pos = meshToPage(m, o.pos); delete o.h; }
+  buildGeom(); shapeUI(); if (GM) { initHeights(OBJ); clampAll(); work(rebuildAll); } };
+$("selAxes").onchange = meshSetting("axes", String); $("selRot").onchange = meshSetting("rot", Number); $("selVox").onchange = meshSetting("voxel", Number);
 function shapeUI() {
-  const d = isDrawn();
-  $("shoeboxMat").hidden = d; $("drawnCtl").hidden = !d; $("planTraceRow").hidden = !d; $("sectTraceRow").hidden = !d;
-  $("modelBanner").textContent = d
+  const d = isDrawn(), mm = isMesh();
+  $("shoeboxMat").hidden = d; $("drawnCtl").hidden = !d; $("planTraceRow").hidden = !d || mm; $("sectTraceRow").hidden = !d || mm; $("meshCtl").hidden = !mm;
+  $("drawnCtl").querySelector("p.note").hidden = mm; $("selOrder").disabled = mm; $("selDiff").disabled = mm;
+  for (const id of ["hW", "hD", "hH", "hS"]) $(id).disabled = mm;
+  if (mm) { $("selAxes").value = HALL.mesh.axes; $("selRot").value = String(HALL.mesh.rot); { const v = String(HALL.mesh.voxel || 0); if (![...$("selVox").options].some((o) => o.value === v)) $("selVox").add(new Option(`${(+v * 100).toFixed(1)} cm`, v)); $("selVox").value = v; } meshTable(); meshNote(); }
+  $("modelBanner").textContent = mm
+    ? `Model: 3D model ${HALL.mesh.name} (voxel room, as the Python mesh path). First 100 ms: first-order image sources, checked for visibility, rendered with KU100 HRIRs; no edge diffraction. Diffuse energy from ray tracing (${HALL.rays.toLocaleString("en")} rays) fills the early window and shapes the late noise. The plan and section show the room projected from the model. Materials are placeholders until you enter real ones.`
+    : d
     ? `Model: drawn hall (plan outline, floor and ceiling lines). First 100 ms: image sources to order ${HALL.order}, checked for visibility, rendered with KU100 HRIRs${HALL.diff ? ", plus first-order edge diffraction (UTD)" : ""}. Diffuse energy from ray tracing (${HALL.rays.toLocaleString("en")} rays) fills the early window and shapes the late noise. Hall values are placeholders until you enter real ones.`
     : "Model: shoebox with uniform absorption. First 100 ms: image sources to order 12 with KU100 HRIRs. After that: noise shaped by the image-source energy envelope (order 60). Hall values are placeholders until you enter real ones.";
-  $("hallSub").textContent = d ? "Drawn hall: plan outline, floor and ceiling lines, four surface materials." : "Shoebox, uniform absorption on all surfaces.";
-  syncSeg($("segShape"), ["box", "drawn"], () => (d ? "drawn" : "box"));
-  if (d) { buildMatTable(); $("selOrder").value = String(HALL.order); $("selRays").value = String(HALL.rays); $("selDiff").value = HALL.diff ? "1" : "0"; }
+  $("hallSub").textContent = mm ? "3D model (OBJ): each name in the model mapped to a material." : d ? "Drawn hall: plan outline, floor and ceiling lines, four surface materials." : "Shoebox, uniform absorption on all surfaces.";
+  syncSeg($("segShape"), ["box", "drawn", "mesh"], () => (mm ? "mesh" : d ? "drawn" : "box"));
+  if (d) { buildMatTable(); $("selOrder").value = String(mm ? 1 : HALL.order); $("selRays").value = String(HALL.rays); $("selDiff").value = HALL.diff ? "1" : "0"; }
 }
-seg($("segShape"), ["box", "drawn"], () => (isDrawn() ? "drawn" : "box"), (v) => {
-  if ((v === "drawn") === isDrawn()) return;
+seg($("segShape"), ["box", "drawn", "mesh"], () => (isMesh() ? "mesh" : isDrawn() ? "drawn" : "box"), (v) => {
+  const cur = isMesh() ? "mesh" : isDrawn() ? "drawn" : "box"; if (v === cur) return;
+  if (v === "mesh") { // back to the last model, or pick one
+    if (!HALL.meshStash) { $("fObj").click(); return; }
+    HALL.boxStash = { dims: HALL.dims.slice(), stage: HALL.stage, order: HALL.order, diff: HALL.diff }; HALL.geomStash = HALL.geom || HALL.geomStash; HALL.geom = null;
+    const from = HALL.dims.slice();
+    HALL.mesh = HALL.meshStash; HALL.meshStash = null; HALL.dims = HALL.mesh.dims.slice(); HALL.stage = 0; HALL.order = 1; HALL.diff = false;
+    placeInMesh(HALL.mesh, from); for (const o of OBJ) delete o.h;
+    buildGeom(); shapeUI(); if (GM) { initHeights(OBJ); clampAll(); work(rebuildAll); } return;
+  }
+  if (isMesh()) { // leave the model: the layout keeps its shape around the hall centre, hall size as before the model
+    const m = HALL.mesh, b = HALL.boxStash || { dims: [20, 24, 8], stage: 5, order: 4, diff: true };
+    for (const o of OBJ) { o.pos = [b.dims[0] / 2 + (o.pos[0] - m.dims[0] / 2) * 2, b.dims[1] / 2 + (o.pos[1] - m.dims[1] / 2) * 2, o.pos[2] - (GM ? floorAt(o.pos[1], o.pos[0]) : 0)]; delete o.h; }
+    HALL.meshStash = m; HALL.mesh = null;
+    HALL.dims = b.dims.slice(); HALL.stage = b.stage; HALL.order = b.order; HALL.diff = b.diff;
+  }
   if (v === "drawn") {
     const [W, Dp, Hh] = HALL.dims;
     HALL.geom = HALL.geomStash || { plan: [[0, 0], [W, 0], [W, Dp], [0, Dp]], floor: [[0, 0]], ceil: [[0, Hh]] };
     if (!HALL.matsSet) HALL.mats = defaultMats(HALL.alpha, HALL.mats?.aud?.s ?? 0.1);
   } else { HALL.geomStash = HALL.geom; HALL.geom = null; }
-  shapeUI(); buildGeom(); clampAll(); work(rebuildAll);
-}, (v) => ({ box: "Shoebox", drawn: "Drawn hall" })[v]);
-$("selOrder").onchange = (e) => { HALL.order = +e.target.value; if (isDrawn()) work(rebuildAll); };
+  shapeUI(); buildGeom(); initHeights(OBJ); clampAll(); work(rebuildAll);
+}, (v) => ({ box: "Shoebox", drawn: "Drawn hall", mesh: "3D model (OBJ)" })[v]);
+$("selOrder").onchange = (e) => { if (isMesh()) return; HALL.order = +e.target.value; if (isDrawn()) work(rebuildAll); };
 $("selRays").onchange = (e) => { HALL.rays = +e.target.value; if (isDrawn()) work(rebuildAll); };
 $("selDiff").onchange = (e) => { HALL.diff = e.target.value === "1"; shapeUI(); if (isDrawn()) work(rebuildAll); };
 function fillHall() {
@@ -2167,11 +2336,12 @@ function fillHall() {
   HALL.alpha.forEach((a, i) => (alphaInputs[i].value = a));
   shapeUI();
   const h = HIST[D.ref + "|" + AMP().id];
-  if (h) { const t = [2, 3].map((b) => t30(h[b])), f = (v) => (Number.isFinite(v) ? v.toFixed(2) + " s" : "longer than the window"); $("rtNote").textContent = `Simulated T30, amplified → seat ${D.ref}: ${f(t[0])} (500 Hz) / ${f(t[1])} (1 kHz)` + (isDrawn() ? ` · ${GM.S.length} surfaces, ${GM.V.toFixed(0)} m³` + (LOST > 0.001 ? ` · ${(LOST * 100).toFixed(1)} % of rays leaked through gaps` : "") : ""); }
+  if (h) { const t = [2, 3].map((b) => t30(h[b])), f = (v) => (Number.isFinite(v) ? v.toFixed(2) + " s" : "longer than the window"); $("rtNote").textContent = `Simulated T30, amplified → seat ${D.ref}: ${f(t[0])} (500 Hz) / ${f(t[1])} (1 kHz)` + (isDrawn() && GM ? ` · ${GM.S.length} surfaces, ${GM.V.toFixed(0)} m³` + (LOST > 0.001 ? ` · ${(LOST * 100).toFixed(1)} % of rays leaked through gaps` : "") : ""); }
 }
 $("bApplyHall").onclick = () => {
   const dims = ["hW", "hD", "hH"].map((id) => +$(id).value), stage = +$("hS").value, alpha = alphaInputs.map((i) => +i.value);
   const mats = isDrawn() ? readMats() : null;
+  if (isMesh()) { if (!mats) { $("rtNote").textContent = "Check the values: α between 0 and 1, scattering between 0 and 1."; return; } HALL.mats = mats; HALL.matsSet = true; work(rebuildAll); return; }
   if (dims.some((v) => !(v >= 2.5)) || alpha.some((a) => !(a > 0 && a < 1)) || !(stage >= 0 && stage < dims[1]) || (isDrawn() && !mats)) { $("rtNote").textContent = "Check the values: sizes at least 2.5 m, α between 0 and 1, scattering between 0 and 1, stage shallower than the room."; return; }
   S.stagePreview = null; const old = deep(HALL); HALL.dims = dims; HALL.stage = stage; HALL.alpha = alpha; if (mats) { HALL.mats = mats; HALL.matsSet = true; }
   relayout(old); work(rebuildAll);
@@ -2181,15 +2351,16 @@ $("bResetHall").onclick = () => { S.loaded = null; S.loadedCfg = null; S.loadedF
 function clampAll() {
   buildGeom();
   let cx = HALL.dims[0] / 2, cy = HALL.dims[1] / 2;
-  if (GM) { cx = 0; cy = 0; for (const [x, y] of GM.plan) { cx += x; cy += y; } cx /= GM.plan.length; cy /= GM.plan.length; if (!GEOM.inPoly2(GM.plan, cx, cy)) [cx, cy] = GM.plan[0]; }
+  if (GM && GM.mesh) { if (!inOutline(cx, cy)) { const s0 = GM.seed; cx = s0[0]; cy = s0[1]; } }
+  else if (GM) { cx = 0; cy = 0; for (const [x, y] of GM.plan) { cx += x; cy += y; } cx /= GM.plan.length; cy /= GM.plan.length; if (!GEOM.inPoly2(GM.plan, cx, cy)) [cx, cy] = GM.plan[0]; }
   for (const o of OBJ) {
     o.pos[0] = Math.min(HALL.dims[0] - 0.2, Math.max(0.2, o.pos[0])); o.pos[1] = Math.min(HALL.dims[1] - 0.2, Math.max(0.2, o.pos[1]));
-    if (GM && !GEOM.inPoly2(GM.plan, o.pos[0], o.pos[1])) { // walk towards the centre until 0.3 m inside
-      let lo = 0, hi = 1; for (let k = 0; k < 30; k++) { const t = (lo + hi) / 2; if (GEOM.inPoly2(GM.plan, o.pos[0] + (cx - o.pos[0]) * t, o.pos[1] + (cy - o.pos[1]) * t)) hi = t; else lo = t; }
+    if (GM && !inOutline(o.pos[0], o.pos[1])) { // walk towards the centre until 0.3 m inside
+      let lo = 0, hi = 1; for (let k = 0; k < 30; k++) { const t = (lo + hi) / 2; if (inOutline(o.pos[0] + (cx - o.pos[0]) * t, o.pos[1] + (cy - o.pos[1]) * t)) hi = t; else lo = t; }
       const L = Math.hypot(cx - o.pos[0], cy - o.pos[1]) || 1, t = Math.min(1, hi + 0.3 / L);
       o.pos[0] += (cx - o.pos[0]) * t; o.pos[1] += (cy - o.pos[1]) * t;
     }
-    if (o.h === undefined) o.h = o.pos[2] - floorAt(o.pos[1]);
+    if (o.h === undefined) o.h = o.pos[2] - floorAt(o.pos[1], o.pos[0]);
     syncZ(o);
   }
 }
@@ -2200,7 +2371,7 @@ function clampAll() {
 //   z      unchanged (heights above the floor), only clamped under the ceiling
 // Locked items keep their absolute position (clamped inside the room).
 function relayout(old, fresh) {
-  if (isDrawn() && old.dims && !fresh) { // the traced shape belongs to the drawing frame: scale it with width, depth and height
+  if (HALL.geom && old.dims && !fresh) { // the traced shape belongs to the drawing frame: scale it with width, depth and height
     const fx = HALL.dims[0] / old.dims[0], fy = HALL.dims[1] / old.dims[1], fz = HALL.dims[2] / old.dims[2];
     if (fx !== 1 || fy !== 1 || fz !== 1) {
       HALL.geom.plan = HALL.geom.plan.map(([x, y]) => [+(x * fx).toFixed(3), +(y * fy).toFixed(3)]);
@@ -2208,7 +2379,7 @@ function relayout(old, fresh) {
       HALL.geom.ceil = HALL.geom.ceil.map(([y, z]) => [+(y * fy).toFixed(3), +(z * fz).toFixed(3)]);
     }
   }
-  if (S.resize === "move") {
+  if (S.resize === "move" && !isMesh()) {
     const [W0, D0] = old.dims, [W1, D1] = HALL.dims, aud0 = D0 - old.stage, aud1 = D1 - HALL.stage;
     for (const o of OBJ) {
       if (isLocked(o)) continue;
@@ -2679,34 +2850,50 @@ function applyConfig(c, name) {
   if (!sp("S_amp") || !sp("B_L") || !sp("B_R")) return fail("sources S_amp, B_L and B_R are required.");
   const seats = Object.entries(rec).filter(([k, p]) => !k.startsWith("_") && P3(p));
   if (!seats.length) return fail("no receivers.");
-  const g = c.geometry;
-  if (g && !(Array.isArray(g.plan) && g.plan.length >= 3)) return fail("geometry.plan needs at least 3 corners.");
+  const g = c.geometry, gm = g && g.mesh;
+  if (g && !gm && !(Array.isArray(g.plan) && g.plan.length >= 3)) return fail("geometry.plan needs at least 3 corners.");
+  let mstate = null;
+  if (gm) { // a 3D model: the OBJ is in the config (saved by this page) or has to be opened next
+    if (typeof gm.obj_text !== "string") { // Python config: the OBJ is a separate file
+      S.pendingCfg = { c, name }; $("meshCtl").hidden = false;
+      $("posNote").textContent = `${name} uses the 3D model ${gm.obj || "(OBJ)"}: open that file with the file button under Hall (3D model) to finish loading. Nothing changed yet.`;
+      $("meshNote").textContent = `Waiting for ${String(gm.obj || "the OBJ").split(/[\\/]/).pop()} (for ${name}).`; return;
+    }
+    try { mstate = meshState(Object.assign({}, gm, { _mats: g.materials })); } catch (e) { return fail(`geometry.mesh: ${e.message || e}.`); }
+  }
   stop();
   HALL.dims = dims.map(Number); HALL.stage = Math.min(HALL.dims[1] - 0.5, Math.max(0, +(r.stage_depth_m ?? HALL.stage)));
   HALL.alpha = alpha.map(Number); if (Array.isArray(r.absorption_octave?._bands_hz)) HALL.alphaBands = r.absorption_octave._bands_hz.slice();
-  if (g) {
+  if (gm) {
+    HALL.geom = null; HALL.mesh = mstate; HALL.mats = Object.assign(defaultMats(HALL.alpha, r.scattering ?? 0.1), g.materials ? deep(g.materials) : {}); HALL.matsSet = !!g.materials; HALL.matNames = {};
+    HALL.rays = +g.rays >= 50000 ? 50000 : +g.rays >= 30000 ? 30000 : 10000; HALL.order = 1; HALL.diff = false; HALL.stage = 0;
+    if (mstate) HALL.dims = mstate.dims.slice();
+  } else if (g) {
+    HALL.mesh = null;
     HALL.geom = { plan: deep(g.plan), floor: deep(g.floor || [[0, 0]]), ceil: deep(g.ceiling || [[0, HALL.dims[2]]]) };
     HALL.mats = g.materials ? deep(g.materials) : defaultMats(HALL.alpha, r.scattering ?? 0.1); HALL.matsSet = !!g.materials;
     HALL.order = [2, 3, 4, 5].includes(+g.ism_order) ? +g.ism_order : 4;
     HALL.rays = +g.rays >= 50000 ? 50000 : +g.rays >= 30000 ? 30000 : 10000;
     HALL.diff = g.diffraction !== false;
-  } else { HALL.geomStash = HALL.geom || HALL.geomStash; HALL.geom = null; }
+  } else { HALL.geomStash = HALL.geom || HALL.geomStash; HALL.geom = null; HALL.mesh = null; }
   HALL.seatMap = Array.isArray(c.seats?.xyz) ? c.seats.xyz.filter(P3).map((p) => p.map(Number)) : null; if (HALL.seatMap && !HALL.seatMap.length) HALL.seatMap = null;
-  buildGeom();
+  MESHC.defer = !!HALL.mesh; buildGeom();     // a model is built once the positions are in the page frame (below)
   const kindOf = (k) => (k === "S_amp" ? "amp" : k === "B_L" || k === "B_R" ? "pa" : "unamp");
   const dirOf = (k) => ({ cov: +src[k].coverage > 0 && +src[k].coverage < 360 ? +src[k].coverage : 0, az: +(src[k].aim?.az ?? 0) || 0, el: +(src[k].aim?.el ?? 0) || 0 });
   OBJ = Object.keys(src).filter((k) => !k.startsWith("_") && sp(k)).slice(0, 9).map((k) => ({ id: k, kind: kindOf(k), pos: sp(k), locked: false, ...(kindOf(k) === "pa" ? { dir: dirOf(k) } : {}) }))
     .concat(seats.map(([k, p]) => ({ id: k, kind: "seat", pos: p.map(Number), locked: false })));
+  if (HALL.mesh) { for (const o of OBJ) o.pos = meshToPage(HALL.mesh, o.pos); if (HALL.seatMap) HALL.seatMap = HALL.seatMap.map((p) => meshToPage(HALL.mesh, p)); MESHC.defer = false; buildGeom(); }
   for (const o of OBJ) { const dv = src[o.id] && src[o.id].directivity;
     if (dv && typeof dv === "object" && dv.balloon && Array.isArray(dv.balloon.db)) { o.dir = { cov: 0, az: +(src[o.id].aim?.az ?? 0) || 0, el: +(src[o.id].aim?.el ?? 0) || 0 };
       const bb = dv.balloon.bands || D.praBands, tb = { balloon: D.praBands.map((fc) => dv.balloon.db[bb.reduce((bi, f, i) => (Math.abs(Math.log(f / fc)) < Math.abs(Math.log(bb[bi] / fc)) ? i : bi), 0)]) }; tb.diffuse = diffuseOf(tb); setDirectivity(o, null, dv.name || "data", tb); continue; }
     if (dv && typeof dv === "object" && Array.isArray(dv.data)) { try { o.dir = { cov: 0, az: +(src[o.id].aim?.az ?? 0) || 0, el: +(src[o.id].aim?.el ?? 0) || 0 }; setDirectivity(o, dv.data.map((r) => [+r[0], String(r[1]).toLowerCase()[0], +r[2], +r[3]]), dv.name || "data", null, dv.normalize || "axis"); } catch (e) { delete o.dir.table; } } }
+  if (gm && !GM) { shapeUI(); $("posNote").textContent = `${name}: ${MESHC.err || "the model could not be built"}. Check geometry.mesh (up axis, groups) or the source positions.`; return; }
   initHeights(OBJ); clampAll();
   if (!byId(D.ref)) D.ref = seats.find(([k]) => k === "C")?.[0] || seats[0][0];
   if (!byId(S.seat)) S.seat = D.ref;
   const dirFiles = Object.keys(src).filter((k) => !k.startsWith("_") && src[k] && typeof src[k].directivity === "string");
   S.loadedCfg = deep(c); S.loadedFile = name; S.loaded = name; S.loadedName = typeof c.name === "string" && c.name ? c.name : "";
-  $("posNote").textContent = `Loaded ${name}: ${isDrawn() ? "drawn hall" : "shoebox"} ${HALL.dims.join(" × ")} m, ${OBJ.length - seats.length} sources, ${seats.length} listening positions${HALL.seatMap ? `, ${HALL.seatMap.length} traced seats` : ""}. Python reference values show only for the config this page was built from; run run.py with ${name} for its own.${dirFiles.length ? ` Directivity files (${dirFiles.join(", ")}) cannot be read here: those sources are omni / generic until you open the viewer export_viewer.py builds for this config.` : ""}`;
+  $("posNote").textContent = `Loaded ${name}: ${isMesh() ? "3D model " + HALL.mesh.name : isDrawn() ? "drawn hall" : "shoebox"} ${HALL.dims.join(" × ")} m, ${OBJ.length - seats.length} sources, ${seats.length} listening positions${HALL.seatMap ? `, ${HALL.seatMap.length} traced seats` : ""}. Python reference values show only for the config this page was built from; run run.py with ${name} for its own.${dirFiles.length ? ` Directivity files (${dirFiles.join(", ")}) cannot be read here: those sources are omni / generic until you open the viewer export_viewer.py builds for this config.` : ""}`;
   shapeUI(); buildFiles(); work(rebuildAll);
 }
 function loadConfigFile(f) {
@@ -2732,10 +2919,11 @@ $("bSaveCfg").onclick = saveConfig;
 $("fCfg").onchange = (e) => { if (e.target.files[0]) loadConfigFile(e.target.files[0]); e.target.value = ""; };
 // the current hall, sources and seats as a complete config (the loaded / built-from config with these parts replaced)
 function currentConfig() {
-  const src = {}; OBJ.filter((o) => o.kind !== "seat").forEach((o) => { src[o.id] = { pos: o.pos.map((v) => +v.toFixed(2)), role: labelOf(o) };
+  const P = (p) => (isMesh() ? meshToModel(HALL.mesh, p) : p).map((v) => +v.toFixed(2));   // mesh halls: model coordinates, as the Python config
+  const src = {}; OBJ.filter((o) => o.kind !== "seat").forEach((o) => { src[o.id] = { pos: P(o.pos), role: labelOf(o) };
     if (o.dir && o.dir.table && (o.dir.rows || o.dir.table.balloon || o.dir.file)) { src[o.id].directivity = o.dir.rows ? { name: o.dir.file || "data", normalize: o.dir.normalize || "axis", data: o.dir.rows } : o.dir.table.balloon ? { name: o.dir.file || "data", balloon: { bands: D.praBands, db: o.dir.table.balloon } } : o.dir.file; src[o.id].aim = { az: +(+o.dir.az).toFixed(1), el: +(+o.dir.el).toFixed(1) }; }
     else if (o.kind === "pa" && o.dir && o.dir.cov > 0) { src[o.id].coverage = o.dir.cov; src[o.id].aim = { az: +(+o.dir.az).toFixed(1), el: +(+o.dir.el).toFixed(1) }; } });
-  const rec = {}; SEATS().forEach((o) => (rec[o.id] = o.pos.map((v) => +v.toFixed(2))));
+  const rec = {}; SEATS().forEach((o) => (rec[o.id] = P(o.pos)));
   const base = deep(S.loadedCfg || D.config || {}), out = base;
   out.room = Object.assign(base.room || {}, { dims_m: HALL.dims, stage_depth_m: HALL.stage, absorption_octave: { _bands_hz: HALL.alphaBands, values: HALL.alpha } });
   const oldSrc = base.sources || {}; for (const k of Object.keys(src)) { const keep = {}; for (const f of ["label", "_note"]) if (oldSrc[k] && oldSrc[k][f] !== undefined) keep[f] = oldSrc[k][f]; src[k] = Object.assign(keep, src[k]); }
@@ -2743,8 +2931,13 @@ function currentConfig() {
   out.sources = src;
   const oldRec = base.receivers || {}; for (const k of Object.keys(oldRec)) if (k.startsWith("_")) rec[k] = oldRec[k];
   out.receivers = rec;
-  if (HALL.seatMap) out.seats = Object.assign(base.seats || { ear_height_m: 1.2 }, { xyz: HALL.seatMap }); else delete out.seats;
-  if (isDrawn()) out.geometry = Object.assign(base.geometry || {}, { plan: HALL.geom.plan, floor: HALL.geom.floor, ceiling: HALL.geom.ceil, materials: HALL.mats, ism_order: HALL.order, rays: Math.max(HALL.rays, 50000), diffraction: HALL.diff }); else delete out.geometry;
+  if (HALL.seatMap) out.seats = Object.assign(base.seats || { ear_height_m: 1.2 }, { xyz: isMesh() ? HALL.seatMap.map(P) : HALL.seatMap }); else delete out.seats;
+  if (isMesh()) { const m = HALL.mesh;
+    out.geometry = { mesh: { obj: m.name, axes: m.axes, groups: m.groups, default: m.def || "wall", voxel: m.voxel || (GM ? +GM.vox.h.toFixed(4) : 0.05), rotate_deg: m.rot, obj_text: m.text,
+      _note: "obj_text: the OBJ itself (this page and geometry.load_obj read it instead of the obj file); rotate_deg: plan turn used by the page only; voxel: the page's voxel size, so that geometry.build_mesh builds the same room; positions are in model coordinates" },
+      materials: HALL.mats, ism_order: 1, rays: Math.max(HALL.rays, 50000), diffraction: false };
+    out.room = Object.assign(out.room, { dims_m: m.dims, stage_depth_m: 0 }); }
+  else if (isDrawn()) out.geometry = Object.assign(base.geometry || {}, { plan: HALL.geom.plan, floor: HALL.geom.floor, ceiling: HALL.geom.ceil, materials: HALL.mats, ism_order: HALL.order, rays: Math.max(HALL.rays, 50000), diffraction: HALL.diff }); else delete out.geometry;
   return out;
 }
 $("bCopy").onclick = () => {

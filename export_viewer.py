@@ -83,6 +83,20 @@ def late_tables(hr):
             "xr": b64(t["X"].real / sc), "xi": b64(t["X"].imag / sc), "pl": b64(t["PL"] / sc), "pr": b64(t["PR"] / sc)}
 
 
+def geometry_for_page(cfg, cfg_path):
+    """The config's geometry block; a 3D model (geometry.mesh) gets its OBJ text (mesh.obj_text), as the page builds
+    the model itself. The OBJ path is taken as given, else relative to the config file."""
+    g = cfg.get("geometry")
+    if not g or "mesh" not in g or "obj_text" in g["mesh"]:
+        return g
+    g = json.loads(json.dumps(g))
+    p = g["mesh"]["obj"]
+    if not os.path.exists(p):
+        p = os.path.join(os.path.dirname(os.path.abspath(cfg_path)), g["mesh"]["obj"])
+    with open(p, encoding="utf-8", errors="ignore") as f:
+        g["mesh"]["obj_text"] = f.read()
+    return g
+
 def main(cfg_path="config.json"):
     cfg = bp.load_config(cfg_path)
     out, fs = cfg["output_dir"], cfg["fs"]
@@ -125,7 +139,7 @@ def main(cfg_path="config.json"):
         "rows": rows,
         "scattering": cfg["room"].get("scattering", 0.1),
         "hpcf": hpcf_data(cfg),
-        "geometry": cfg.get("geometry"),
+        "geometry": geometry_for_page(cfg, cfg_path),
         "name": cfg.get("name", ""),
         "config": cfg,
         "configFile": os.path.basename(cfg_path),

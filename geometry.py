@@ -233,7 +233,7 @@ def pra_walls(G, materials, n_bands, band_centres):
 
 # ---------------------------------------------------------------- 3D mesh halls (Wavefront OBJ)
 """
-A hall can also be given as a triangle / polygon mesh (Python engine only; the browser engine stays 2.5D):
+A hall can also be given as a triangle / polygon mesh (both engines; the browser's is buildMesh in engine_geom.js):
 
     "geometry": {"mesh": {"obj": "path/to/hall.obj", "axes": "y-up",
                           "groups": {"<OBJ group or material name>": "<material key>", ...},
@@ -259,12 +259,14 @@ the room volume (interior voxels + half of the surface band next to them).
 """
 
 
-def load_obj(path):
-    """Return (V [n,3], faces [list of index lists], names [per face: 'g|o|usemtl' joined])."""
+def load_obj(path, text=None):
+    """Return (V [n,3], faces [list of index lists], names [per face: 'g|o|usemtl' joined]). text: the OBJ itself
+    (a config saved by the browser page carries it as mesh.obj_text), read instead of the file."""
+    import io
     V, F, names = [], [], []
     g, o, m = [], "", ""
     after_face = False
-    with open(path, encoding="utf-8", errors="ignore") as f:
+    with (io.StringIO(text) if text is not None else open(path, encoding="utf-8", errors="ignore")) as f:
         for line in f:
             if line.startswith("v "):
                 V.append([float(x) for x in line.split()[1:4]])
@@ -360,9 +362,10 @@ def _in_room(vr, P):
 def build_mesh(geom, seed):
     """Surfaces of an OBJ hall with inward normals and material keys (same dict layout as build)."""
     spec = geom["mesh"]
-    V, F, names = load_obj(spec["obj"])
+    V, F, names = load_obj(spec["obj"], spec.get("obj_text"))
     V = _mesh_axes(V, spec.get("axes", "y-up"))
-    groups = {k.lower(): v for k, v in spec.get("groups", {}).items()}
+    # longer names first, so that a name that is part of another one does not take its faces (as engine_geom.js)
+    groups = dict(sorted(((k.lower(), v) for k, v in spec.get("groups", {}).items()), key=lambda kv: -len(kv[0])))
     default = spec.get("default")
     n_in = len(F)
     if spec.get("max_faces") and len(F) > int(spec["max_faces"]):

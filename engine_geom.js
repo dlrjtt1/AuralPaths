@@ -258,12 +258,17 @@ const GEOM = (() => {
   //          twoSided (default true), inflateMm (default 1), maxVoxels (default 2e7) }, seed = first source position
   function buildMesh(spec, seed) {
     const obj = spec.obj, axes = spec.axes || "y-up";
-    const V = obj.V.map((v) => (axes === "z-up" ? v.slice() : [v[0], -v[2], v[1]]));
-    const groups = Object.entries(spec.groups || {}).map(([g, v]) => [g.toLowerCase(), v]);
+    // page frame (optional): turn by rot degrees about z, then shift (the page moves the model to x, y, z >= 0)
+    const sh = spec.shift || [0, 0, 0], ra = (spec.rot || 0) * Math.PI / 180, cr = Math.cos(ra), sr = Math.sin(ra);
+    const V = obj.V.map((v) => (axes === "z-up" ? v.slice() : [v[0], -v[2], v[1]])).map((v) => [cr * v[0] - sr * v[1] + sh[0], sr * v[0] + cr * v[1] + sh[1], v[2] + sh[2]]);
+    // longer names first, so that a name that is part of another one does not take its faces
+    const groups = Object.entries(spec.groups || {}).map(([g, v]) => [g.toLowerCase(), v]).sort((a, b) => b[0].length - a[0].length);
     const T = [], owner = [];
     obj.F.forEach((f, k) => { for (let i = 1; i + 1 < f.length; i++) { T.push([f[0], f[i], f[i + 1]]); owner.push(k); } });
     const ext = [0, 1, 2].map((a) => Math.max(...V.map((v) => v[a])) - Math.min(...V.map((v) => v[a])));
-    const h = spec.voxel || Math.max(0.05, Math.cbrt((ext[0] + 0.3) * (ext[1] + 0.3) * (ext[2] + 0.3) / (spec.maxVoxels || 2e7)));
+    // voxel size: as given, but never more than 2.5 x maxVoxels cells (browser memory); auto: >= 5 cm within maxVoxels
+    const box = (ext[0] + 0.3) * (ext[1] + 0.3) * (ext[2] + 0.3), mv = spec.maxVoxels || 2e7;
+    const h = spec.voxel ? Math.max(spec.voxel, Math.cbrt(box / (2.5 * mv))) : Math.max(0.05, Math.cbrt(box / mv));
     const vx = voxelRoom(V, T, seed, h), off = 2.5 * h, inflate = (spec.inflateMm == null ? 1 : spec.inflateMm) / 1000, twoSided = spec.twoSided !== false;
     const triOf = new Map(); owner.forEach((k, i) => { if (!triOf.has(k)) triOf.set(k, []); triOf.get(k).push(T[i]); });
     const S = [], unmatched = new Set(); let dropped = 0;
@@ -288,7 +293,42 @@ const GEOM = (() => {
     const lo = [0, 1, 2].map((a) => Math.min(...V.map((v) => v[a]))), hi = [0, 1, 2].map((a) => Math.max(...V.map((v) => v[a])));
     const G = { S, mesh: true, vox: vx, V: vx.volume, area: Object.values(area).reduce((a, b) => a + b, 0), areaByMat: area, nDropped: dropped, nFaces: obj.F.length, bbox: [lo, hi], h };
     G.bvh = bvhBuild(G.S);
+    meshViews(G);
     return G;
+  }
+  // plan and section views of a mesh room for the page: per voxel column the lowest and highest room voxel, the plan
+  // outline as the x range of each y row (exact for outlines that are convex across x), and the floor / ceiling lines
+  // as the lowest floor and highest ceiling of each y row
+  function meshViews(G) {
+    const vx = G.vox, [nx, ny, nz] = vx.dims, h = vx.h, cf = new Float32Array(nx * ny).fill(NaN), cc = new Float32Array(nx * ny).fill(NaN);
+    for (let i = 0; i < nx; i++) for (let j = 0; j < ny; j++) { const b = (i * ny + j) * nz;
+      let k0 = -1, k1 = -1; for (let k = 0; k < nz; k++) if (vx.room[b + k] === 1) { if (k0 < 0) k0 = k; k1 = k; }
+      if (k0 >= 0) { cf[i * ny + j] = vx.lo[2] + k0 * h; cc[i * ny + j] = vx.lo[2] + (k1 + 1) * h; } }
+    vx.colFloor = cf; vx.colCeil = cc;
+    const left = [], right = [], floor = [], ceil = [], step = Math.max(1, Math.round(0.25 / h));
+    for (let j = 0; j < ny; j += step) {
+      let i0 = -1, i1 = -1, f = Infinity, c = -Infinity;
+      for (let jj = j; jj < Math.min(ny, j + step); jj++) for (let i = 0; i < nx; i++) { const q = i * ny + jj; if (!(cf[q] === cf[q])) continue;
+        if (i0 < 0 || i < i0) i0 = i; if (i > i1) i1 = i; f = Math.min(f, cf[q]); c = Math.max(c, cc[q]); }
+      if (i0 < 0) continue;
+      const y = vx.lo[1] + (j + Math.min(step, ny - j) / 2) * h;
+      left.push([vx.lo[0] + i0 * h, y]); right.push([vx.lo[0] + (i1 + 1) * h, y]); floor.push([y, f]); ceil.push([y, c]);
+    }
+    if (left.length) { // close the outline at the first and last row edges
+      const y0 = left[0][1] - step * h / 2, y1 = left[left.length - 1][1] + step * h / 2;
+      left.unshift([left[0][0], y0]); right.unshift([right[0][0], y0]); left.push([left[left.length - 1][0], y1]); right.push([right[right.length - 1][0], y1]);
+    }
+    G.plan = left.concat(right.reverse()); G.floor = floor; G.ceil = ceil;
+    // wall faces projected on the plan (one-sided room faces, |n_z| < 0.5) for the drawing
+    G.planSegs = []; for (const s of G.S) if (s.kind === "mesh" && Math.abs(s.n[2]) < 0.5) { const P = s.verts || s.P; if (!P) continue;
+      let a = 0, b = 0, best = -1; for (let u = 0; u < P.length; u++) for (let v = u + 1; v < P.length; v++) { const d = (P[u][0] - P[v][0]) ** 2 + (P[u][1] - P[v][1]) ** 2; if (d > best) { best = d; a = u; b = v; } }
+      if (best > 1e-4) G.planSegs.push([P[a][0], P[a][1], P[b][0], P[b][1], s.mat]); }
+  }
+  // lowest floor / highest ceiling (m) of the room above the plan point (x, y) of a mesh hall; null outside the room
+  function meshColumn(G, x, y) {
+    const vx = G.vox, [nx, ny] = vx.dims, i = Math.floor((x - vx.lo[0]) / vx.h), j = Math.floor((y - vx.lo[1]) / vx.h);
+    if (i < 0 || j < 0 || i >= nx || j >= ny) return null; const q = i * ny + j, f = vx.colFloor[q];
+    return f === f ? [f, vx.colCeil[q]] : null;
   }
 
   // ---------- bounding volume hierarchy over surfaces (mesh halls: thousands of faces) ----------
@@ -727,6 +767,6 @@ const GEOM = (() => {
     return out;
   }
 
-  return { build, buildMesh, loadObj, objGroups, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, transition, utd, DF, FIB, fresnel, panels, specFactor };
+  return { build, buildMesh, meshColumn, loadObj, objGroups, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, transition, utd, DF, FIB, fresnel, panels, specFactor };
 })();
 if (typeof module !== "undefined") module.exports = GEOM;

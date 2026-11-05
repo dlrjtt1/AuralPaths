@@ -343,9 +343,10 @@ RS6 (finite body) and RS7 (seat dip, 15 blocks) need multiple diffraction, which
 
 ## 3D OBJ halls and conversion to a drawn hall (`obj_to_hall.py`)
 
-The Python engine can also run a hall given as a Wavefront OBJ mesh (`"geometry": {"mesh": {...}}`, described at
-the top of the mesh part of `geometry.py`). The browser page stays 2.5D; `obj_to_hall.py` turns a mesh hall into a
-drawn hall that the page opens with **Load config…**.
+Both engines can run a hall given as a Wavefront OBJ mesh (`"geometry": {"mesh": {...}}`, described at the top of
+the mesh part of `geometry.py`; in the page: **Hall → Shape → 3D model (OBJ)**, see *3D models in the browser* below).
+`obj_to_hall.py` turns a mesh hall into a drawn hall (2.5D) where image sources above order 1 and edge diffraction
+are wanted.
 
 - Mesh: faces have no reliable winding, so the room is found by a voxel flood fill (5 cm) from a source position;
   each face's inward normal is the side where the room is, faces with no room on either side are dropped, and
@@ -375,6 +376,50 @@ drawn hall that the page opens with **Load config…**.
 ```bash
 python obj_to_hall.py mesh_config.json --depth-axis y --stage-end min --stage-depth 2.4   # -> mesh_config_2p5d.json
 ```
+
+### 3D models in the browser
+
+**Hall → Shape → 3D model (OBJ)** opens an OBJ file (or **Load config…** a config with `geometry.mesh`; a config
+saved by the page carries the OBJ as `mesh.obj_text`, a Python config asks for the OBJ file next). `engine_geom.js`
+builds the room as `geometry.build_mesh` does (voxel flood fill from the first source or seat inside, inward
+normals, hidden faces dropped, back-facing twins, 1 mm inflate). Checked on BRAS CR3 at 5 cm voxels: same 4638
+surfaces, 279 dropped faces, volume 3188 m³ and the same 37 first-order image sources as Python (largest relative
+energy difference 7 × 10⁻⁷).
+
+- Page settings: up axis (y up for SketchUp / Blender OBJ exports), plan turn (0 / 90 / 180 / 270°, display only:
+  the page shows the depth along y), voxel size (auto: at least 5 cm and at most 2 × 10⁷ cells, for browser memory).
+  Each name in the model (its OBJ material, else its group) is mapped to the audience floor, stage floor, walls,
+  ceiling, or a material of its own. Plan and section show the room projected from the voxels (outline = x range
+  of each 0.25 m row; floor / ceiling lines = lowest floor and highest ceiling of each row), with the model's wall
+  faces drawn on the plan. Heights of sources and seats are above the lowest floor under each point.
+- Model: first-order image sources (with the specular reflection factors), no edge diffraction, ray tracing in a
+  bounding-volume hierarchy. A ray's new direction after a hit is the normalised mix s·Lambert + (1 − s)·specular
+  with s the mean over bands, as in the pyroomacoustics tracer that the Python mesh path uses (`libroom_src/room.cpp`
+  in pyroomacoustics 0.10.1); the browser leaves out pyroomacoustics' extra "diffuse rain" term (scattered energy
+  sent from each hit straight to the receivers). Rays that pass through a crack into a solid are ended (two
+  back-facing twins in a row, or a segment through free space that the room flood fill did not reach), so that they
+  do not ring on inside the solid. First tried: a random choice per hit between Lambert and specular with per-band
+  weights (energy kept per band); on CR3 its T30 band means were 0–20 % above Python's (largest at 125 Hz), so the
+  page uses Python's direction rule.
+- Check against Python and the measurement (`validation/check_mesh_pyjs.py`, BRAS fitted materials, measured
+  positions; band means over the 10 position pairs, browser / Python / measured):
+
+  | | 500 Hz | 1 kHz | 2 kHz |
+  |---|---|---|---|
+  | CR3 T30 (s) | 1.47 / 1.46 / 1.30 | 1.52 / 1.49 / 1.34 | 1.51 / 1.47 / 1.32 |
+  | CR3 C80 (dB) | 1.0 / 1.1 / 1.5 | 0.6 / 0.7 / 1.7 | 0.8 / 0.9 / 1.6 |
+  | CR4 T30 (s) | 2.24 / 2.29 / 2.07 | 2.29 / 2.29 / 2.10 | 2.03 / 2.05 / 1.84 |
+  | CR4 C80 (dB) | −1.1 / −0.4 / 0.2 | −1.1 / −0.5 / −0.7 | −0.5 / 0.0 / −0.1 |
+
+  The browser follows Python within 0–3 % in T30 (CR3 16 000 rays, CR4 8 000 rays per source); both are 8–14 % above
+  the measured T30, as in *Position-by-position check*. In CR4 the browser's C80 is 0.5–0.7 dB lower than Python's.
+  Per position pair the two tracers scatter more (mean |T30 difference| 6–11 %), so use the band means or more rays.
+- Known difference: on a shoebox written as an OBJ of 1 m tiles (α 0.2, s 0.5), the browser gives T30 1.16 / 1.14 /
+  1.10 s at 125 / 500 / 2000 Hz, Python 1.09 / 1.07 / 1.04 s (Eyring 1.07 s): the missing diffuse-rain term makes
+  the browser decay about 6 % slower in this simple room. On CR3 / CR4 the two agree (table), so the size of this
+  difference depends on the hall.
+- Time: CR3 (2600 faces) builds in about 4 s; 10 000 rays per source take about 25 s. The worker rebuilds the room
+  for every computation (no shared memory with the page).
 
 ## Room criteria against measured halls (`validate_fratoni.py`)
 
@@ -620,8 +665,11 @@ For other loudspeakers, use manufacturer data or your own measurements.
 
 - Drawn hall is 2.5D: the cross-section along the depth is the same at every x (no side balconies,
   no boxes, no ceiling reflectors that vary across the width); four material groups only
-- OBJ mesh halls: Python engine only; image sources to order 1, no diffraction; the conversion to a drawn hall
-  keeps the volume and maps the absorption so that T30 stays close to the mesh, not where absorption sits (see *3D OBJ halls*)
+- OBJ mesh halls: image sources to order 1, no diffraction; the conversion to a drawn hall keeps the volume and
+  maps the absorption so that T30 stays close to the mesh, not where absorption sits (see *3D OBJ halls*). In the
+  browser, the plan and section are projections (balconies show only as the column's lowest floor and highest
+  ceiling), heights are above the lowest floor, and the ray tracer has no diffuse-rain term (about 6 % longer T30
+  than Python on a tiled shoebox, within 3 % on CR3 / CR4)
 - Room-criteria check against measured halls: within about 1 JND at 500 Hz–4 kHz in a raked lecture hall (ULH),
   about 15 % too long in an elliptical domed hall (STC) with the dataset's Odeon-calibrated inputs (see *Room
   criteria against measured halls*)
