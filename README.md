@@ -20,7 +20,8 @@ By LABO 1557 (Dong-Gyun You).
 - Python tools (same model, for research use): `run.py` (BRIR sets), `make_stimuli.py` (listening-test stimuli),
   `calibrate.py` (fit absorption to measured T30), `validate_bras.py` (diffraction check against BRAS),
   `obj_to_hall.py` (3D OBJ hall → drawn hall the page can open), `validate_fratoni.py` (room criteria against
-  two measured halls).
+  two measured halls), `validate_bras_cr.py` (room criteria and early reflections position by position against
+  measured RIRs of two real halls, BRAS CR3 / CR4).
 
 ## Accuracy and limits — read before using the results
 - **It does not claim to reproduce a real hall.** Room-acoustic simulation tools differ noticeably from
@@ -36,6 +37,11 @@ By LABO 1557 (Dong-Gyun You).
   at 125–250 Hz; elliptical domed hall (STC) T30 about 15 % too long at all bands (non-diffuse field; calibrate
   first in such halls). Receiver means only: early arrivals and PA paths are not tested by it.
   Details: `validation/fratoni_*`, `docs/MODEL_en.md`.
+- Position-by-position check against measured RIRs of two real halls (BRAS CR3 chamber music hall, CR4 auditorium;
+  3D models): with the BRAS coefficients T30 is 8–16 % too long (calibrate with measured T30 first), C80 / C50 / Ts
+  within about 1–1.4 JND. First-order reflections: right in time and level (+1.2 dB median) in CR3, about 6.5 dB too
+  strong in CR4. A drawn 2.5D version of a hall with balconies keeps reverberation and clarity roughly but **not its
+  individual early reflections**, so check ITDG-related results of such halls against a measurement.
 - Loudspeaker directivity files are approximations (see `NOTICE.md`).
 
 ## Python tools

@@ -8,8 +8,9 @@ measurements.csv (one row per position pair and octave band; EDT optional, used 
     label,src_x,src_y,src_z,rec_x,rec_y,rec_z,band_hz,T30_s,EDT_s
 
 Method: per octave band (125 Hz - 4 kHz), one factor k_b scales the absorption coefficients of the adjustable
-material groups (drawn hall: aud / stage / wall / ceil; shoebox: the uniform coefficient), so that the simulated
-T30, averaged over the calibration positions, matches the measured average. Sabine scaling is used as the update:
+material groups (drawn hall: aud / stage / wall / ceil; OBJ mesh hall: its material keys; shoebox: the uniform
+coefficient), so that the simulated T30, averaged over the calibration positions, matches the measured average.
+Sabine scaling is used as the update:
 k <- k * T_sim / T_meas (more absorption, shorter decay), until every band is within --tol (default 2 %, below the
 5 % just-noticeable difference of reverberation given in ISO 3382-1 Annex A) or --iter iterations. Coefficients are
 kept within 0.01 ... 0.95. Groups not listed in --adjust keep their values (e.g. a stage floor whose material is known).
@@ -58,6 +59,25 @@ def read_measurements(path):
 def simulate(cfg, pos, src_dir):
     """Simulated T30 and EDT per band for every calibration position (omni receiver, energy histogram)."""
     out = {}
+    if bp.is_mesh(cfg):
+        # OBJ mesh halls: one ray-tracing run per source position shared by all its receivers (energy_hists); a run
+        # per position pair would take minutes to hours each on a mesh of thousands of faces
+        c = copy.deepcopy(cfg)
+        srcs = {}
+        for lab, p in pos.items():
+            srcs.setdefault(tuple(p["src"]), []).append(lab)
+        c["sources"] = {f"CAL_S{i}": {"pos": list(s), **({"directivity": src_dir} if src_dir else {})}
+                        for i, s in enumerate(srcs)}
+        c["receivers"] = {f"CAL_R_{lab}": pos[lab]["rec"] for lab in pos}
+        for i, (s, labs) in enumerate(srcs.items()):
+            H, centers = bp.energy_hists(c, f"CAL_S{i}", [f"CAL_R_{lab}" for lab in labs])
+            for lab in labs:
+                t0 = np.linalg.norm(np.subtract(pos[lab]["src"], pos[lab]["rec"])) / c["c"]
+                out[lab] = {}
+                for b in BANDS:
+                    m = bp.iso3382_energy([(H[f"CAL_R_{lab}"], 0.0, 1.0)], t0, bands=(b,), centers=centers)
+                    out[lab][b] = (m["T30"], m["EDT"])
+        return out
     for lab, p in pos.items():
         c = copy.deepcopy(cfg)
         c["sources"] = {"CAL_S": {"pos": p["src"], **({"directivity": src_dir} if src_dir else {})}}

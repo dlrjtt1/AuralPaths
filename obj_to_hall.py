@@ -66,9 +66,13 @@ def _outline(mask, x0, y0, h, tol):
     import matplotlib.pyplot as plt
     m = np.pad(mask.astype(float), 1)
     cs = plt.contour(np.arange(-1, m.shape[1] - 1), np.arange(-1, m.shape[0] - 1), m, levels=[0.5])
-    paths = [p.vertices for p in cs.get_paths()] if hasattr(cs, "get_paths") else [p.vertices for c in cs.collections for p in c.get_paths()]
+    paths = cs.get_paths() if hasattr(cs, "get_paths") else [p for c in cs.collections for p in c.get_paths()]
     plt.close("all")
-    best = max(paths, key=lambda v: abs(np.sum(v[:-1, 0] * v[1:, 1] - v[1:, 0] * v[:-1, 1])))
+    # one Path can hold several closed pieces (separate rooms in the mask, holes around pillars): split it into its
+    # sub-polygons and keep the largest. (Taking path.vertices as one polygon joins the pieces into a
+    # self-intersecting outline; found on the BRAS CR4 auditorium.)
+    polys = [np.asarray(q) for p in paths for q in p.to_polygons(closed_only=False) if len(q) >= 3]
+    best = max(polys, key=lambda v: abs(np.sum(v[:-1, 0] * v[1:, 1] - v[1:, 0] * v[:-1, 1])))
     P = np.c_[x0 + (best[:, 0] + 0.5) * h, y0 + (best[:, 1] + 0.5) * h]   # columns = x, rows = y
     closed = np.vstack([P, P[:1]])
     Q = _dp(closed, tol)[:-1]

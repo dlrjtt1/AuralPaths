@@ -411,6 +411,86 @@ python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --no-3d --
 The converted halls (`validation/fratoni_*_2p5d_config.json`, CC BY 4.0 with the dataset's attribution) open in the
 page with **Load config…**. Run 2026-11-05 (ULH 3D mesh 64 min, STC 46 min on 2 CPU cores).
 
+## Position-by-position check against two real halls (`validate_bras_cr.py`)
+
+BRAS v3 (Aspöck et al. 2020, [doi:10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3),
+CC BY-SA 4.0) has measured RIRs of two real halls with their 3D models and surface descriptions: **CR3**, a chamber
+music hall (3331 m³, 342 seats, balconies) and **CR4**, a university auditorium (8657 m³, raked seating, balconies).
+Per hall: 2 dodecahedron positions × 5 microphone positions, RIRs in Pa (44.1 kHz), positions in the SOFA file.
+Unlike the Fratoni check, the values are per position and the RIRs are available, so early reflections can be
+tested too. Not bundled: download the two scene folders and `3_surface_descriptions`, export `Geometry/CRn.skp` as OBJ
+with the SketchUp materials as group names (the groups then carry the BRAS material names, `mat_CRn_…`).
+
+Inputs:
+- Geometry: the BRAS model as exported. The mesh reproduces the documented surface areas (CR3 2759 vs 2763 m²; CR4,
+  decimated to 3000 faces, 5750 vs 5851 m²) and volumes (voxel estimate CR3 3188 vs 3331 m³, CR4 8175 vs 8657 m³;
+  the voxel band shaves 4–6 %). CR4 needs 8 cm voxels (`--voxel 0.08`): at 5 cm the flood fill used more than 6 GB.
+- Materials: BRAS `fitted_estimates` (absorption adjusted by the BRAS authors so that Eyring's formula gives the
+  measured reverberation time), third-octave values averaged to octaves; scattering from the same files.
+- Direct sound: the measured onset is within −0.67 … +0.07 ms of distance / c at all 20 pairs, so the SOFA
+  positions and the OBJ share one coordinate frame.
+
+Three model runs: (a) 3D mesh, BRAS coefficients unchanged; (b) 3D mesh after a one-step calibration of this engine
+on the LS1 positions (each material's −ln(1 − α) scaled per band by mean T30 simulated / measured), judged on the
+LS2 positions it did not see; (c) the 2.5D hall from `obj_to_hall.py` (balconies lost; image sources order 2, no
+diffraction). 4000 rays. With 500 rays T30 came out 13–33 % long in CR3 (noisy late tail); use thousands of rays for
+reverberation criteria.
+
+Room criteria (simulated − measured in JND, mean absolute over the positions, 500 Hz–2 kHz; signed values and all
+bands in `validation/bras_CR3.md`, `bras_CR4.md`):
+
+| hall | model | EDT | T30 | C80 | C50 | Ts |
+|---|---|---|---|---|---|---|
+| CR3 | 3D mesh | 3.3 | 2.9 (all long, +9–16 %) | 1.1 | 1.0 | 1.2 |
+| | 3D calibrated, held-out LS2 | 1.6 | 3.7 | 0.8 | 0.9 | 0.8 |
+| | 2.5D | 4.3 | 2.9 | 1.6 | 2.3 | 2.0 |
+| CR4 | 3D mesh | 2.7 | 2.2 (all long, +8–16 %) | 1.0 | 1.0 | 1.4 |
+| | 3D calibrated, held-out LS2 | 1.4 | 0.7 | 1.8 | 1.8 | 1.7 |
+| | 2.5D | 1.9 | 1.2 | 0.8 | 1.3 | 1.3 |
+
+Early reflections (500 Hz–2 kHz): every first-order image source the engine predicts at ≥ −15 dB re direct, ≥ 2 ms
+after the direct sound and 1.5 ms away from other predicted ones, against the measured energy in a 1 ms window at
+its predicted time (dB re the same window on the direct sound). Controls: the same window 2 ms later, and random
+times 3–20 ms after the direct sound.
+
+| hall | model | n | predicted (median) | measured at predicted time | measured 2 ms later | measured at random times | predicted − measured (median, IQR) | r |
+|---|---|---|---|---|---|---|---|---|
+| CR3 | 3D mesh | 36 | −5.3 dB | −6.8 dB | −10.4 dB | −11.5 dB | +1.2 dB (+0.1 … +3.9) | 0.59 |
+| | 2.5D | 27 | −5.6 | −12.0 | −10.6 | −11.5 | +3.9 (+3.4 … +8.3) | 0.30 |
+| CR4 | 3D mesh | 35 | −6.7 | −13.7 | −14.3 | −21.0 | +6.5 (+2.6 … +8.9) | 0.30 |
+| | 2.5D | 29 | −6.7 | −14.2 | −14.1 | −21.0 | +6.9 (+1.5 … +9.2) | 0.34 |
+
+Reading:
+- Reverberation: with Eyring-fitted coefficients the ray tracer gives T30 8–16 % too long in both halls (2–3 JND). A
+  uniform-absorption test on the CR3 mesh (α = 0.2) also decays 24 % slower than Eyring, while the same pipeline on a
+  tiled shoebox follows Eyring (`validation/check_rt_eyring.py`, `validation/check_mesh_box.py`): the halls'
+  fields are not diffuse, so coefficients fitted with Eyring are too low for a ray tracer. Calibrating this engine on
+  measured T30 is therefore needed (`calibrate.py`). Calibrated on LS1, the held-out LS2 positions came within 0.7
+  JND in T30 in CR4 but stayed 3.7 JND long in CR3 (the calibration did not carry over: the model's LS2 positions decay more slowly than its LS1 positions);
+  EDT, C80 / C50 and Ts are within about 1–2 JND in both.
+- Clarity and Ts are within 1.0–1.4 JND (mean absolute) in the 3D runs before calibration.
+- Early reflections, 3D mesh: in CR3 the predicted reflections are real (at their predicted times the measured level is 4.7 dB
+  above random times and drops by 3.6 dB 2 ms later) and their levels are right to +1.2 dB (median). In CR4 the measured energy at
+  the predicted times is above random times but not above the same window 2 ms later, and the predicted levels are
+  6.5 dB too high (median): specular first-order reflections are overestimated in this hall. The cause is not
+  identified (candidates: surfaces modelled flat that scatter in reality, simplifications of the BRAS model, image
+  sources without scattering loss). For ITDG and level-ratio work in a real hall, check the early reflections of the
+  hall at hand against a measurement before relying on them.
+- 2.5D hall: reverberation and clarity stay within a few JND, but in CR3 its predicted reflections are not in the
+  measurement (the measured level at their times equals that at random times): with balconies and side galleries
+  reduced to a 2.5D plan × section, the individual early reflections, and so the ITDG of a seat, do not correspond
+  to the real hall. A drawn 2.5D hall is valid for halls that are close to 2.5D.
+- This check found a bug in `obj_to_hall.py`: a plan mask with several pieces (stage house, pillars) was joined into
+  one self-intersecting outline (CR4). Fixed (largest piece kept); the ULH, STC and CR3 conversions are unchanged.
+
+```bash
+python validate_bras_cr.py "CR3 medium room (chamber music hall)" "3 Surface descriptions" --obj CR3.obj --rays 4000 --out validation/bras_CR3
+python validate_bras_cr.py "CR4 large room (auditorium)" "3 Surface descriptions" --obj CR4.obj --rays 4000 --voxel 0.08 --out validation/bras_CR4
+```
+Run 2026-11-05 (CR3 about 50 min, CR4 about 75 min on 2 CPU cores). The 2.5D halls
+(`validation/bras_CR*_2p5d_config.json`, CC BY-SA 4.0) open in the page with **Load config…**. `calibrate.py` now
+traces once per source for mesh halls (all receivers of that source together).
+
 ## Seat dip
 
 Not modelled. A literature check found no closed-form or parametric model that predicts the seat-dip filter
@@ -501,6 +581,10 @@ For other loudspeakers, use manufacturer data or your own measurements.
 - Room-criteria check against measured halls: within about 1 JND at 500 Hz–4 kHz in a raked lecture hall (ULH),
   about 15 % too long in an elliptical domed hall (STC) with the dataset's Odeon-calibrated inputs (see *Room
   criteria against measured halls*)
+- Position-by-position check against two real halls (BRAS CR3 / CR4): T30 8–16 % long with Eyring-fitted
+  coefficients (calibrate first); first-order reflection levels right in CR3, about 6.5 dB high in CR4; a 2.5D
+  version of a hall with balconies does not reproduce its individual early reflections (see *Position-by-position
+  check*)
 - Drawn hall values come from ray tracing and carry random noise (see above); the shoebox ones do not
 - Shoebox: uniform absorption, no diffraction, diffuse late field. Both: scattering not modelled in the image sources
 - Diffraction: first order only, straight edges of the drawn surfaces; no seats, no edge end points (see above)
@@ -522,7 +606,7 @@ For other loudspeakers, use manufacturer data or your own measurements.
 
 ## Third-party
 
-- BRAS database (for `validate_bras.py` only; not bundled): CC BY-SA 4.0 per the repository page, doi:10.14279/depositonce-6726.3.
+- BRAS database (for `validate_bras.py` and `validate_bras_cr.py`; not bundled): CC BY-SA 4.0 per the repository page, doi:10.14279/depositonce-6726.3.
 - Fratoni dataset (for `validate_fratoni.py`; not bundled): CC BY 4.0, doi:10.17632/y7xnv6xg5s.1. Derived files in
   `validation/fratoni_*` carry its attribution.
 - fast-simplification (Python, MIT licence; optional): mesh decimation for large OBJ halls.

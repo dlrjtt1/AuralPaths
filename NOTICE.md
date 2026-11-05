@@ -22,7 +22,8 @@ loaded and keeps its own licence.
 ### BRAS-derived validation results (`validation/`)
 - Derived from: L. Aspöck, F. Brinkmann, D. Ackermann, S. Weinzierl, M. Vorländer (2020), *BRAS – Benchmark for
   Room Acoustical Simulation*, version 3, TU Berlin DepositOnce, https://doi.org/10.14279/depositonce-6726.3
-  (scene RS5). The measured data themselves are not included.
+  (scenes RS5, CR3, CR4; results `validation/bras_*` and the converted halls `validation/bras_CR*_2p5d_config.json`).
+  The measured data themselves are not included.
 - Licence of the derived files: Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0), as required by the
   source licence, https://creativecommons.org/licenses/by-sa/4.0/
 

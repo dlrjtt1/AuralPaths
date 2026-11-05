@@ -21,6 +21,7 @@
 | 1차 모서리 회절 | UTD: Kouyoumjian & Pathak 1974, Tsingos et al. 2001 | `diffraction.py`, `GEOM.diffract` |
 | 재료 보정 (실측 T30에 맞추기) | ISO 3382-1 Annex A (JND 5 %) | `calibrate.py` |
 | 회절 실측 검증 (RS5, 500 Hz–2 kHz 평균 1.8 dB 차) | BRAS RS5 (Aspöck et al. 2020) | `validate_bras.py`, `validation/` |
+| 실제 홀 위치별 검증 (CR3·CR4: T30 8–16% 김, C80·Ts 약 1 JND, 1차 반사 CR3 일치·CR4 6.5 dB 과대) | BRAS CR3·CR4 (Aspöck et al. 2020) | `validate_bras_cr.py`, `validation/bras_CR*` |
 | OBJ 3D 홀 계산·2.5D 변환 | 복셀 채우기 + 메시 Sabine 면적 → 2.5D Eyring 지수(자체 구현), fast-simplification(MIT) | `geometry.py`, `obj_to_hall.py` |
 | 실측 홀 지표 대조 (ULH 500 Hz–4 kHz 약 1 JND 이내, STC 약 15% 김) | Fratoni 데이터셋(CC BY 4.0), Fratoni 2022, Fratoni et al. 2023 | `validate_fratoni.py`, `validation/fratoni_*` |
 | 좌석 dip — **만들지 않음** | Meyer, Tahvanainen, Saarelma & Lokki 2023 (모델 부재 확인) | README "Seat dip" |
@@ -110,11 +111,12 @@
 
 ## 5. 검증·문헌 확인
 
-### 5.1 BRAS (회절 실측 비교용)
+### 5.1 BRAS (회절·실제 홀 실측 비교용)
 - **무엇:** Aspöck, L., Brinkmann, F., Ackermann, D., Weinzierl, S., & Vorländer, M. (2020). *BRAS – Benchmark for Room Acoustical Simulation* (v3). TU Berlin DepositOnce. [doi:10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3) · 관련 논문 doi:10.1016/j.apacoust.2020.107867 (저장소 페이지에 표기된 것)
 - **라이선스:** 저장소 페이지 기준 CC BY-SA 4.0. 예전에 CC BY-NC-ND라고 말했던 것은 틀렸다.
 - **어디:** `validate_bras.py`. RS5(무한 모서리: MDF 칸막이, 높이 2.07 m, 4×4 위치, Genelec 8020c, 44.1 kHz)의 게이트 IR을 UTD 예측과 1/3옥타브로 비교한다.
 - **상태 (2026-11-03 실행):** RS5의 16개 RIR을 UTD + 바닥 영상 모델과 비교했다. 500 Hz–2 kHz 평균 절대 차이는 그림자 위치 11개에서 2.2 dB, 전체 16개에서 1.8 dB다. 예측이 평균 0.1–1.9 dB 높은데, 스피커 응답·지향성, 칸막이 두께(25 mm), 공기흡음을 넣지 않은 영향이 포함된다. 음원이나 수음점이 바닥 높이인 3개는 칸막이 투과음으로 보이는 성분이 먼저 도달한다(모델 밖). 결과 파일: `validation/bras_RS5.png/.csv/.md`. RS6(유한 물체)와 RS7(좌석 dip)은 다중 회절이 필요해 이 모델의 범위 밖이다.
+- **CR3·CR4 (2026-11-05 실행, `validate_bras_cr.py`):** 실제 홀 두 곳(CR3 실내악 홀 3331 m³, CR4 대학 강당 8657 m³)의 12면체 RIR 각 10개를 3D 모델(SketchUp → Blender OBJ)과 BRAS `fitted_estimates` 재료로 위치별 비교했다. T30은 8–16% 길다(Eyring으로 맞춘 계수는 비확산 음장의 광선추적에는 작다, 슈박스·타일 메시 확인으로 엔진 경로 문제는 배제). C80·C50·Ts는 1.0–1.4 JND. LS1으로 한 번 보정하면 보정 밖 LS2의 T30이 CR4에서 0.7 JND, CR3에서는 3.7 JND로 남았다. 1차 반사는 CR3에서 시각·레벨이 맞고(+1.2 dB 중앙값) CR4에서는 약 6.5 dB 과대. 발코니가 있는 홀의 2.5D 버전은 잔향은 대체로 유지하지만 개별 초기 반사는 맞지 않는다. 이 과정에서 `obj_to_hall.py`의 평면 외곽선 버그(여러 조각이 하나로 이어짐)를 찾아 고쳤다. 결과: `validation/bras_CR3.*`, `bras_CR4.*`.
 
 ### 5.2 좌석 dip — 모델 부재 확인
 - **무엇:** Meyer, J., Tahvanainen, H., Saarelma, J., & Lokki, T. (2023). Investigation of the seat-dip effect using finite-difference time-domain simulations. *J. Acoust. Soc. Am.*, 154(3), 1628–1639. [doi:10.1121/10.0020826](https://doi.org/10.1121/10.0020826)
@@ -178,3 +180,4 @@
 | 보정 도구 | 실측 T30에 재료 맞춤 | ISO 3382-1 Annex A |
 | **v0.5** | 반자동 트레이스(축척 지정, 도면 선 스냅), UTD 1차 회절, 방향성 후기부, 공기흡음 버그 수정, Python 초기부 확산 에너지 추가, BRAS 스크립트, 좌석 dip 검토 | Kouyoumjian & Pathak 1974, Tsingos et al. 2001, Habets et al. 2008, Aspöck et al. 2020, Meyer et al. 2023 |
 | 2026-11-05 | OBJ 3D 홀(Python), OBJ → 2.5D 변환(체적 보존, 흡음은 메시 Sabine 면적 → 2.5D Eyring 지수), 실측 홀 2곳 지표 대조 | Fratoni 데이터셋, Fratoni 2022, Fratoni et al. 2023, Christensen & Rindel 2005, ISO 3382-1 Annex A |
+| 2026-11-05 | BRAS CR3·CR4 위치별 검증(지표·1차 반사), `obj_to_hall.py` 외곽선 버그 수정, `calibrate.py` 메시 홀 가속 | Aspöck et al. 2020 (BRAS v3) |
