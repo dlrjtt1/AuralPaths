@@ -2459,6 +2459,9 @@ function decayOf(h, t0) { // T30 and EDT (s) of one band histogram from the dire
     if (n < 5) return NaN; const k = (n * sxy - sx * sy) / (n * sxx - sx * sx); return k < 0 ? -60 / k : NaN; };
   return { T30: sch[sch.length - 1] < -40 ? fit(-5, -35) : NaN, EDT: fit(0, -10) };
 }
+// rays per source for calibration: at least 30 000 (BRAS CR3, 10 positions, 10 000 rays: T30 band means moved by up to
+// 6 % between ray seeds; the noise is in the late tail, a few rays in long specular paths)
+const CAL_RAYS = 30000;
 const calBands = () => D.praBands.slice(0, 6).map((f) => Math.round(f));
 async function calSimulate(pos) { // simulated T30 / EDT per position and band (omnidirectional source and receiver)
   const out = {}, labs = Object.keys(pos), toPage = (p) => (isMesh() ? meshToPage(HALL.mesh, p) : p.slice()), bands = calBands();
@@ -2466,7 +2469,8 @@ async function calSimulate(pos) { // simulated T30 / EDT per position and band (
     const groups = new Map(); for (const lab of labs) { const k = pos[lab].src.join(","); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(lab); }
     const srcs = [...groups.keys()].map((k, i) => ({ id: "cal" + i, kind: "cal", pos: toPage(k.split(",").map(Number)) }));
     const recs = labs.map((lab) => ({ id: lab, pos: toPage(pos[lab].rec) }));
-    const res = await geomCompute(srcs, recs, 50);
+    const r0 = HALL.rays; HALL.rays = Math.max(r0, CAL_RAYS);
+    let res; try { res = await geomCompute(srcs, recs, 50); } finally { HALL.rays = r0; }
     [...groups.values()].forEach((L, i) => L.forEach((lab) => {
       const k = labs.indexOf(lab), hist = geomHist(srcs[i], { list: res[i].ism[k], H: res[i].H[k] }).hist, t0 = dist(srcs[i].pos, recs[k].pos) / D.c;
       out[lab] = {}; bands.forEach((b, j) => (out[lab][b] = decayOf(hist[j], t0)));
@@ -2514,10 +2518,10 @@ async function calibrate(txt, fname) {
   const limit = groups.some((g) => (g === "__shoebox" ? HALL.alpha : HALL.mats[g].alpha).some((v) => v <= 0.01 || v >= 0.95));
   S.calibration = { date: new Date().toISOString(), engine: "browser (engine_geom.js / shoebox image sources), " + ENGINE_SHA.slice(0, 12), measurements: fname, measurements_sha256: sha256(txt),
     positions: fitL, positions_check: chkL, adjusted_groups: groups.map((g) => (g === "__shoebox" ? "room (uniform)" : g)), bands_hz: bands,
-    factors: k.map((x) => +x.toFixed(4)), iterations: it + 1, T30_measured_mean_s: meas.map(r3), T30_sim_before_s: mean(sim0, fitL), T30_sim_after_s: mean(sim, fitL),
+    factors: k.map((x) => +x.toFixed(4)), iterations: it + 1, ...(isDrawn() ? { rays_per_source: Math.max(HALL.rays, CAL_RAYS) } : {}), T30_measured_mean_s: meas.map(r3), T30_sim_before_s: mean(sim0, fitL), T30_sim_after_s: mean(sim, fitL),
     ...(chkL.length ? { check_T30_measured_mean_s: bands.map((b) => r3(meanOver(pos, null, chkL, "T30", b))), check_T30_sim_before_s: mean(sim0, chkL), check_T30_sim_after_s: mean(sim, chkL) } : {}),
     ...(limit ? { warning: "some coefficients hit the 0.01 / 0.95 limit: the geometry or the material groups may be wrong" } : {}),
-    note: "one absorption factor per octave band on the adjusted groups, as calibrate.py; browser and Python T30 differ by 2-6 % in measured halls, so recalibrate with calibrate.py for Python runs" };
+    note: "one absorption factor per octave band on the adjusted groups, as calibrate.py; browser and Python T30 agree within about 2 % in measured halls, plus ray noise; recalibrate with calibrate.py for Python runs" };
   S.calPrev = prev; HALL.matsSet = true;
   calReport(); if (isDrawn()) buildMatTable(); else fillHall();
   work(rebuildAll);
@@ -2527,7 +2531,7 @@ function calReport() {
   const nFit = Array.isArray(c.positions) ? c.positions.length : c.positions, chk = c.positions_check || [], bh = c.bands_hz || calBands();
   const pct = (a, b) => (a != null && b ? (100 * (a / b - 1) >= 0 ? "+" : "") + (100 * (a / b - 1)).toFixed(1) + " %" : "—");
   const row = (lab, m = [], x0 = [], x1 = []) => `<tr><td class="name">${lab}</td>` + bh.map((_, i) => `<td>${m[i] ?? "—"}</td><td>${pct(x0[i], m[i])} → ${pct(x1[i], m[i])}</td>`).join("") + "</tr>";
-  $("calNote").innerHTML = `<b>Calibrated</b> to ${esc(c.measurements)} (${nFit} fit position(s)${chk.length ? `, ${chk.length} check` : ", no check positions: mark some rows role=check to test the result"}); factors ${c.factors.join(" / ")} at ${bh.join(" / ")} Hz${c.iterations ? `, ${c.iterations} iteration(s)` : ""}${c.engine ? "" : " (done with calibrate.py, Python engine)"}.${c.warning ? " <b>" + c.warning + ".</b>" : ""} ` +
+  $("calNote").innerHTML = `<b>Calibrated</b> to ${esc(c.measurements)} (${nFit} fit position(s)${chk.length ? `, ${chk.length} check` : ", no check positions: mark some rows role=check to test the result"}); factors ${c.factors.join(" / ")} at ${bh.join(" / ")} Hz${c.iterations ? `, ${c.iterations} iteration(s)` : ""}${c.rays_per_source ? `, ${c.rays_per_source.toLocaleString("en")} rays per source` : ""}${c.engine ? "" : " (done with calibrate.py, Python engine)"}.${c.warning ? " <b>" + c.warning + ".</b>" : ""} ` +
     `<div class="tablewrap"><table class="layout"><thead><tr><th>T30</th>${bh.map((b) => `<th>${b} Hz meas. (s)</th><th>error before → after</th>`).join("")}</tr></thead><tbody>` +
     row("fit positions", c.T30_measured_mean_s, c.T30_sim_before_s, c.T30_sim_after_s) + (c.check_T30_measured_mean_s ? row("check positions", c.check_T30_measured_mean_s, c.check_T30_sim_before_s, c.check_T30_sim_after_s) : "") +
     `</tbody></table></div>JND of reverberation 5 % (ISO 3382-1 Annex A). One factor per band cannot tell which surface is wrong. ${S.calPrev ? '<button class="btn" id="bCalUndo">Undo calibration</button>' : ""}`;

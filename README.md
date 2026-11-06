@@ -29,8 +29,10 @@ By LABO 1557 (Dong-Gyun You).
 - **It does not claim to reproduce a real hall.** Room-acoustic simulation tools differ noticeably from
   measurements (Brinkmann et al. 2019, https://doi.org/10.1121/1.5096178). Calibrate the absorption with measured
   T30 (`calibrate.py`) and check against measurements before drawing conclusions about a real room.
+  Demo with a real hall and its measured T30 (BRAS CR3, 3D model, calibration file with fit and check
+  positions): `examples/bras_cr3/`.
 - Drawn halls are 2.5D (the cross-section is the same across the width); 3D models get first-order image sources
-  only and no diffraction (browser and Python ray tracers agree within 2–6 % in T30 on two real halls); first-order
+  only and no diffraction (browser and Python ray tracers agree within about 2 % in T30 on two real halls); first-order
   diffraction only; no seat-dip
   effect; scattering as a random (Lambert) model; nearest-direction HRIRs; non-individual (dummy-head) HRTFs.
 - Diffraction check against BRAS scene RS5 (a 2.07 m partition on a hard floor, 16 positions): mean absolute

@@ -542,6 +542,10 @@ const GEOM = (() => {
     let escaped = 0, hits = 0, leaked = 0;
     const tHit = new Float64Array(G.S.length);
     for (let k = 0; k < n; k++) {
+      // each ray has its own random stream (seed, ray index), so that a change of absorption, which ends some rays
+      // earlier, leaves the paths of all other rays unchanged (common random numbers: smooth calibration and
+      // like-for-like comparisons of materials)
+      st = (Math.imul((seed >>> 0) ^ 0x9e3779b9, 0x85ebca6b) ^ Math.imul(k + 1, 0xc2b2ae35)) >>> 0; st ^= st >>> 16; st = Math.imul(st, 0x27d4eb2f) >>> 0; st ^= st >>> 15; st = st >>> 0 || 1;
       // uniform direction (stratified in z)
       const zc = 1 - 2 * (k + rnd()) / n, ph = 2 * Math.PI * rnd(), sr = Math.sqrt(Math.max(0, 1 - zc * zc));
       let dx = sr * Math.cos(ph), dy = sr * Math.sin(ph), dz = zc;

@@ -10,8 +10,8 @@
 // (derived here; the g2 term makes the decay slower than Eyring's -13.82 (4V/S) / (c ln(1 - a))).
 //
 // Result on 2026-11-06 (20 000 rays, three receivers averaged, no air absorption):
-//   s = 1.0: mean free path 5.94 m (4V/S 5.93 m), g2 0.35, predicted 1.11 s, traced 1.12 s; Eyring 1.07 s
-//   s = 0.5: mean free path 6.36 m, g2 0.27, predicted 1.18 s, traced 1.16 s (the field is not diffuse)
+//   s = 1.0: mean free path 5.94 m (4V/S 5.93 m), g2 0.35, predicted 1.11 s, traced 1.11 s; Eyring 1.07 s
+//   s = 0.5: mean free path 6.36 m, g2 0.27, predicted 1.18 s, traced 1.15 s (the field is not diffuse)
 // pyroomacoustics on the same box (check_mesh_box.py 1.0) gave 1.03 s with energy_thres 1e-9, below Eyring: that
 // setting is also an absolute floor for its scattered ("diffuse rain") contributions and dropped them from about
 // 0.5 s on. With energy_thres 1e-20 (brir_proto.RT_ENERGY_THRES) Python gives the browser's values (s 0.5: 1.16 /

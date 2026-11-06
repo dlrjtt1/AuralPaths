@@ -127,8 +127,10 @@ The page rebuilds every BRIR itself, so these work without rerunning Python:
   from the measured-hall checks that applies to this model (BRAS CR3 / CR4, *Position-by-position check*).
   **Ray-tracing spread…** (drawn halls and 3D models) re-runs the ray tracing of the seat on display with three
   other seeds and shows the range of C80, D50, Ts, EDT and T30 of the amplified chain, also in JND (ISO 3382-1
-  Annex A). Example, fan hall at 50 000 rays, seat C: C80 0.6, D50 0.8, Ts 0.5, EDT 1.7, T30 1.0 JND, so seat-to-seat
-  or condition-to-condition differences below about 1–2 JND are within the ray-tracing noise there.
+  Annex A). Example, fan hall at 50 000 rays, seat C: C80 0.7, D50 1.1, Ts 0.4, EDT 1.1, T30 0.8 JND, so seat-to-seat
+  or condition-to-condition differences below about 1 JND are within the ray-tracing noise there. Each ray has its
+  own random stream (seed, ray index), so changing a material or a delay leaves the other rays' paths unchanged and
+  such like-for-like comparisons carry less noise than the spread shows.
 - **Load config…**: opens a config JSON (e.g. `my_hall/config.json`; dropping it on the plan works too)
   and switches the page to that hall, its materials, sources and seats. **Reset to config** goes back to
   the config the page was built from.
@@ -334,9 +336,10 @@ engine (omnidirectional source, all material groups the hall uses, or the shoebo
 iterations). An optional column `role` with the value `check` keeps a position out of the fit; its T30 error before
 and after is shown next to the fit positions. Materials are replaced, the record is saved in the config as
 `_calibration` (as calibrate.py writes it, plus `engine`) and shown in *How far to trust these values*; **Undo
-calibration** restores the previous materials. Browser and Python T30 differ by 2–6 % in measured halls, so a config
-for Python runs is better calibrated again with `calibrate.py`. Example (fan hall, synthetic template with P2 as
-check, 50 000 rays, 34 s): fit position within 2 %, check position 2–4 %.
+calibration** restores the previous materials. The calibration traces at least 30 000 rays per source (at 10 000
+rays the T30 band means of CR3 moved by up to 6 % between seeds). A config for Python runs is better calibrated
+again with `calibrate.py`. Demo with measured data: `examples/bras_cr3/` (BRAS CR3, LS1 × 5 positions fit, LS2 × 5
+check; about 8 min): fit within 2 %, check −1 … +7 % (T30 at 125 Hz – 4 kHz, before: +5 … +14 %).
 
 `python calibrate.py my_hall/config.json measurements.csv --source-directivity directivity/dodeca_NTi_DS3.csv`
 
@@ -449,26 +452,27 @@ energy difference 7 × 10⁻⁷).
 
   | | 500 Hz | 1 kHz | 2 kHz |
   |---|---|---|---|
-  | CR3 T30 (s) | 1.47 / 1.40 / 1.30 | 1.52 / 1.44 / 1.34 | 1.51 / 1.43 / 1.32 |
-  | CR3 C80 (dB) | 1.0 / 1.4 / 1.5 | 0.6 / 0.9 / 1.7 | 0.8 / 1.1 / 1.6 |
-  | CR4 T30 (s) | 2.24 / 2.28 / 2.07 | 2.29 / 2.30 / 2.10 | 2.03 / 2.05 / 1.84 |
-  | CR4 C80 (dB) | −1.1 / −0.8 / 0.2 | −1.1 / −0.8 / −0.7 | −0.5 / −0.3 / −0.1 |
+  | CR3 T30 (s) | 1.42 / 1.40 / 1.30 | 1.47 / 1.44 / 1.34 | 1.46 / 1.43 / 1.32 |
+  | CR3 C80 (dB) | 1.4 / 1.4 / 1.5 | 1.0 / 0.9 / 1.7 | 1.2 / 1.1 / 1.6 |
+  | CR4 T30 (s) | 2.25 / 2.28 / 2.07 | 2.27 / 2.30 / 2.10 | 2.02 / 2.05 / 1.84 |
+  | CR4 C80 (dB) | −0.8 / −0.8 / 0.2 | −0.8 / −0.8 / −0.7 | −0.1 / −0.3 / −0.1 |
 
-  T30: the browser is 5–6 % above Python in CR3 and within 2 % of it in CR4 (CR3 16 000 rays, CR4 8 000 rays per
-  source); the browser is 8–14 % and Python 7–11 % above the measured T30. C80: the browser is 0.2–0.4 dB below
-  Python in both halls; EDT 2–5 % below. Per position pair the two tracers scatter more (mean |T30 difference|
-  6–11 %), so use the band means or more rays.
+  T30: the browser is within −1.5 … +2 % of Python (CR3 16 000 rays, CR4 8 000 rays per source); both are 7–11 %
+  above the measured T30. C80 within 0.2 dB of Python, EDT −3 … +4 %. These are one ray realisation: with 10 000 rays
+  the browser's CR3 T30 band means moved by up to 6 % between seeds (an earlier realisation, before each ray got its
+  own random stream, gave +5–6 % against Python). Per position pair the scatter is larger still, so use band means
+  and many rays.
 - Shoebox written as an OBJ of 1 m tiles (α 0.2; `validation/check_box_lambert.js`, `validation/check_mesh_box.py`):
-  browser and Python give the same T30 (s = 1: 1.12 / 1.10 / 1.06–1.07 s at 125 / 500 / 2000 Hz; s = 0.5: 1.16 /
-  1.14 / 1.10 s; s = 0.1: 1.15 / 1.14 / 1.10 s), and the browser follows the prediction from its own free paths
+  browser and Python give the same T30 within 0.01 s (s = 1: 1.12 / 1.10 / 1.06–1.07 s at 125 / 500 / 2000 Hz; s = 0.5:
+  1.16 / 1.14 / 1.10 s; s = 0.1: 1.15 / 1.14 / 1.10 s), and the browser follows the prediction from its own free paths
   (mean 5.93 m = 4V/S, relative variance 0.35 at s = 1: 1.11 s; derived in the script: the number of reflections
   in time t is about normal, so the mean energy decays as exp((ct/m)(ln(1 − α) + γ²/2 · ln²(1 − α))), slower than
   Eyring 1.07 s). Before the energy-floor fix Python gave 1.03 s at s = 1, below Eyring; that difference was in the
   Python setting, not in the browser.
 - Diffuse rain in the browser: tried (the scattered share of each hit sent straight to the visible receivers, as
   pyroomacoustics does). It added about 45 % ray energy with the same decay on the box (T30 unchanged), raised C80 on
-  CR3 by 0.2–0.3 dB (to within 0.1 dB of the fixed Python) and made ray tracing 3–4 times slower; it was left out
-  for speed, so the browser's C80 stays 0.2–0.4 dB below Python's (below the 1 dB JND).
+  CR3 by 0.2–0.3 dB and made ray tracing 3–4 times slower; it did not reduce the seed-to-seed spread of T30. Left
+  out: without it the browser's C80 is within 0.2 dB of Python's (table).
 - Time: CR3 (2600 faces) builds in about 4 s; 10 000 rays per source take about 25 s. The worker rebuilds the room
   for every computation (no shared memory with the page).
 
@@ -721,8 +725,8 @@ For other loudspeakers, use manufacturer data or your own measurements.
 - OBJ mesh halls: image sources to order 1, no diffraction; the conversion to a drawn hall keeps the volume and
   maps the absorption so that T30 stays close to the mesh, not where absorption sits (see *3D OBJ halls*). In the
   browser, the plan and section are projections (balconies show only as the column's lowest floor and highest
-  ceiling), heights are above the lowest floor, and the ray tracer has no diffuse-rain term (T30 within 2–6 % of Python
-  on CR3 / CR4, same as Python on a tiled shoebox; C80 0.2–0.4 dB lower)
+  ceiling), heights are above the lowest floor, and the ray tracer has no diffuse-rain term (T30 within about 2 % of
+  Python on CR3 / CR4 and on a tiled shoebox, C80 within 0.2 dB; ray noise: up to 6 % between seeds at 10 000 rays)
 - Room-criteria check against measured halls: within about 1 JND at 500 Hz–4 kHz in a raked lecture hall (ULH),
   about 15 % too long in an elliptical domed hall (STC) with the dataset's Odeon-calibrated inputs (see *Room
   criteria against measured halls*)
