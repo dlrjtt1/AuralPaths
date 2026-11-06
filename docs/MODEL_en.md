@@ -451,7 +451,18 @@ energy difference 7 × 10⁻⁷).
   ceiling, or a material of its own. Plan and section show the room projected from the voxels (outline = x range
   of each 0.25 m row; floor / ceiling lines = lowest floor and highest ceiling of each row), with the model's wall
   faces drawn on the plan. Heights of sources and seats are above the lowest floor under each point.
-- Model: first-order image sources (with the specular reflection factors), no edge diffraction, ray tracing in a
+- Image sources to order 2 (default; order 1 selectable): every pair of room surfaces is tried and each path is
+  checked by back-tracing and occlusion, as for drawn halls. CR3 (2600 faces): order 1 takes 0.2 s, order 2 about 7 s
+  per source (the image sources of different sources run in different workers); order 3 would take about 2300 times
+  longer and is not offered. In CR3 the second-order paths carry 22–45 % of the specular energy in the first 100 ms
+  (1 kHz, five receivers). Room criteria hardly change (the ray tracing already carries that energy; CR3 / CR4 band
+  means within 0.1 dB / 1 %), the early arrival pattern does. Check against the measured RIRs
+  (`validation/check_reflections_js.py`, same window test as *Position-by-position check*): CR3 order 2, 11 isolated
+  reflections: predicted − measured median −0.5 dB (IQR −2.8 … +2.7), measured above the random-time median in 82 %
+  but above the window 2 ms later in only 45 % (timing not confirmed reflection by reflection); CR4, 6 reflections:
+  +6.4 dB, as its first-order reflections (+6.2 dB). The Python mesh path stays at order 1 (pyroomacoustics);
+  configs keep `ism_order: 1` for Python and the page's order as `geometry.mesh.page_ism_order`.
+- Model: specular reflection factors on every image source, no edge diffraction, ray tracing in a
   bounding-volume hierarchy. A ray's new direction after a hit is the normalised mix s·Lambert + (1 − s)·specular
   with s the mean over bands, as in the pyroomacoustics tracer that the Python mesh path uses (`libroom_src/room.cpp`
   in pyroomacoustics 0.10.1); the browser leaves out pyroomacoustics' extra "diffuse rain" term (scattered energy
@@ -735,7 +746,7 @@ For other loudspeakers, use manufacturer data or your own measurements.
 
 - Drawn hall is 2.5D: the cross-section along the depth is the same at every x (no side balconies,
   no boxes, no ceiling reflectors that vary across the width); four material groups only
-- OBJ mesh halls: image sources to order 1, no diffraction; the conversion to a drawn hall keeps the volume and
+- OBJ mesh halls: image sources to order 2 in the browser and 1 in Python, no diffraction; the conversion to a drawn hall keeps the volume and
   maps the absorption so that T30 stays close to the mesh, not where absorption sits (see *3D OBJ halls*). In the
   browser, the plan and section are projections (balconies show only as the column's lowest floor and highest
   ceiling), heights are above the lowest floor, and the ray tracer has no diffuse-rain term (T30 within about 2 % of

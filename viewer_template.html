@@ -796,12 +796,14 @@ const INIT = {
 if (INIT.hall.mesh) { // config positions are in the model frame; the page works in the turned and shifted frame
   for (const o of INIT.objs) o.pos = meshToPage(INIT.hall.mesh, o.pos);
   if (INIT.hall.seatMap) INIT.hall.seatMap = INIT.hall.seatMap.map((p) => meshToPage(INIT.hall.mesh, p));
-  INIT.hall.dims = INIT.hall.mesh.dims.slice(); INIT.hall.stage = 0; INIT.hall.order = 1; INIT.hall.diff = false;
+  INIT.hall.dims = INIT.hall.mesh.dims.slice(); INIT.hall.stage = 0; INIT.hall.order = +D.geometry.mesh.page_ism_order === 1 ? 1 : 2; INIT.hall.diff = false;
 }
 let HALL = deep(INIT.hall), OBJ = deep(INIT.objs);
 // ---- geometry helpers (shoebox: flat floor at 0, ceiling at the room height)
 let GM = null; // built mesh of the drawn hall
-const isMesh = () => !!HALL.mesh;                  // 3D model (OBJ): engine_geom.js buildMesh, as geometry.build_mesh
+const isMesh = () => !!HALL.mesh;
+// 3D models: image sources to order 1 or 2 (order 2: about 7 s per source in CR3, 2600 faces; order 3 would be ~2300 times more)
+function meshOrder() { return Math.max(1, Math.min(2, HALL.order || 2)); }                  // 3D model (OBJ): engine_geom.js buildMesh, as geometry.build_mesh
 const isDrawn = () => !!HALL.geom || isMesh();     // both use the image-source + ray-tracing engine in the worker
 const MESHC = { key: "", G: null, err: "" };       // the voxelised model, rebuilt only when the model or its settings change
 function meshSpec(m) { return { obj: GEOM.loadObj(m.text), groups: m.groups, default: m.def || "wall", axes: m.axes, rot: m.rot, shift: m.shift, voxel: m.voxel || 0 }; }
@@ -913,7 +915,7 @@ function provenance() {
   return { page: "AuralPaths web " + "v" + D.version, engine_geom_sha256: ENGINE_SHA, saved: new Date().toISOString(),
     model: mm ? "3D mesh (OBJ)" : d ? "drawn 2.5D hall" : "shoebox",
     ...(mm ? { obj_sha256: HALL.mesh.sha || (HALL.mesh.sha = sha256(HALL.mesh.text)), voxel_m: GM ? +GM.vox.h.toFixed(4) : null } : {}),
-    ...(d ? { page_rays_per_source: HALL.rays, page_ism_order: mm ? 1 : HALL.order, page_diffraction: !mm && !!HALL.diff,
+    ...(d ? { page_rays_per_source: HALL.rays, page_ism_order: mm ? meshOrder() : HALL.order, page_diffraction: !mm && !!HALL.diff,
       ray_seed: "1000 + 7919 x path index (amplified 0, PA L 1, PA R 2, unamplified 3...), the same every run" } : {}),
     materials: d ? (HALL.matsSet ? "edited or loaded" : "page defaults (placeholders)") : undefined,
     hrir: S.hrir ? S.hrir : KU100_NAME,
@@ -964,7 +966,7 @@ function geomCompute(srcs, seats, seedOff = 0) {
   const M = HALL.mesh, geom = isMesh() ? { mesh: { text: M.text, groups: M.groups, default: M.def || "wall", axes: M.axes, rot: M.rot, shift: M.shift, voxel: GM.vox.h, seed: GM.seed } }
     : { plan: HALL.geom.plan, floor: HALL.geom.floor, ceil: HALL.geom.ceil, stageY: HALL.dims[1] - HALL.stage };
   const msg = { job: ++jobId, geom,
-    mats: workerMats(), air: D.air, c: D.c, order: isMesh() ? 1 : HALL.order, rays: HALL.rays, tWin: 0.16, diff: !isMesh() && !!HALL.diff, bands: D.praBands, lateDir: !!D.lateDir, tEarly: D.earlyMs / 1000,
+    mats: workerMats(), air: D.air, c: D.c, order: isMesh() ? meshOrder() : HALL.order, rays: HALL.rays, tWin: 0.16, diff: !isMesh() && !!HALL.diff, bands: D.praBands, lateDir: !!D.lateDir, tEarly: D.earlyMs / 1000,
     srcs: srcs.map((o) => o.pos.slice()), seeds: srcs.map((o) => pathIndex(o) + seedOff), recs: seats.map((s) => s.pos.slice()) };
   const progress = (k) => { $("busy").textContent = `Computing hall ${k}/${srcs.length}`; };
   progress(0);
@@ -1576,7 +1578,7 @@ function loadObjFile(f) {
     const old = HALL.mesh; if (!isMesh()) { HALL.geomStash = HALL.geom || HALL.geomStash; HALL.boxStash = { dims: HALL.dims.slice(), stage: HALL.stage, order: HALL.order, diff: HALL.diff }; }
     if (old) for (const o of OBJ) o.pos = meshToModel(old, o.pos);              // keep positions in the model frame across a reload
     const place = !old;     // a fresh model: put the items into the room afterwards
-    HALL.geom = null; HALL.mesh = m; HALL.dims = m.dims.slice(); HALL.stage = 0; HALL.order = 1; HALL.diff = false;
+    HALL.geom = null; HALL.mesh = m; HALL.dims = m.dims.slice(); HALL.stage = 0; HALL.order = 2; HALL.diff = false;
     if (HALL.rays > 10000) HALL.rays = 10000;    // ray tracing in a mesh is slower; raise in the menu for final results
     if (!place) for (const o of OBJ) o.pos = meshToPage(m, o.pos); else placeInMesh(m, HALL.boxStash.dims);
     for (const o of OBJ) delete o.h;
@@ -1596,17 +1598,18 @@ $("selAxes").onchange = meshSetting("axes", String); $("selRot").onchange = mesh
 function shapeUI() {
   const d = isDrawn(), mm = isMesh();
   $("shoeboxMat").hidden = d; $("drawnCtl").hidden = !d; $("planTraceRow").hidden = !d || mm; $("sectTraceRow").hidden = !d || mm; $("meshCtl").hidden = !mm;
-  $("drawnCtl").querySelector("p.note").hidden = mm; $("selOrder").disabled = mm; $("selDiff").disabled = mm;
+  $("drawnCtl").querySelector("p.note").hidden = mm; $("selDiff").disabled = mm;
+  for (const o of $("selOrder").options) o.disabled = mm && +o.value > 2;   // 3D models: image sources to order 2 at most
   for (const id of ["hW", "hD", "hH", "hS"]) $(id).disabled = mm;
   if (mm) { $("selAxes").value = HALL.mesh.axes; $("selRot").value = String(HALL.mesh.rot); { const v = String(HALL.mesh.voxel || 0); if (![...$("selVox").options].some((o) => o.value === v)) $("selVox").add(new Option(`${(+v * 100).toFixed(1)} cm`, v)); $("selVox").value = v; } meshTable(); meshNote(); }
   $("modelBanner").textContent = mm
-    ? `Model: 3D model ${HALL.mesh.name} (voxel room, as the Python mesh path). First 100 ms: first-order image sources, checked for visibility, rendered with KU100 HRIRs; no edge diffraction. Diffuse energy from ray tracing (${HALL.rays.toLocaleString("en")} rays) fills the early window and shapes the late noise. The plan and section show the room projected from the model. Materials are placeholders until you enter real ones.`
+    ? `Model: 3D model ${HALL.mesh.name} (voxel room, as the Python mesh path). First 100 ms: image sources to order ${meshOrder()}, checked for visibility, rendered with KU100 HRIRs; no edge diffraction. Diffuse energy from ray tracing (${HALL.rays.toLocaleString("en")} rays) fills the early window and shapes the late noise. The plan and section show the room projected from the model. Materials are placeholders until you enter real ones.`
     : d
     ? `Model: drawn hall (plan outline, floor and ceiling lines). First 100 ms: image sources to order ${HALL.order}, checked for visibility, rendered with KU100 HRIRs${HALL.diff ? ", plus first-order edge diffraction (UTD)" : ""}. Diffuse energy from ray tracing (${HALL.rays.toLocaleString("en")} rays) fills the early window and shapes the late noise. Hall values are placeholders until you enter real ones.`
     : "Model: shoebox with uniform absorption. First 100 ms: image sources to order 12 with KU100 HRIRs. After that: noise shaped by the image-source energy envelope (order 60). Hall values are placeholders until you enter real ones.";
   $("hallSub").textContent = mm ? "3D model (OBJ): each name in the model mapped to a material." : d ? "Drawn hall: plan outline, floor and ceiling lines, four surface materials." : "Shoebox, uniform absorption on all surfaces.";
   syncSeg($("segShape"), ["box", "drawn", "mesh"], () => (mm ? "mesh" : d ? "drawn" : "box"));
-  if (d) { buildMatTable(); $("selOrder").value = String(mm ? 1 : HALL.order); $("selRays").value = String(HALL.rays); $("selDiff").value = HALL.diff ? "1" : "0"; }
+  if (d) { buildMatTable(); $("selOrder").value = String(mm ? meshOrder() : HALL.order); $("selRays").value = String(HALL.rays); $("selDiff").value = HALL.diff ? "1" : "0"; }
 }
 seg($("segShape"), ["box", "drawn", "mesh"], () => (isMesh() ? "mesh" : isDrawn() ? "drawn" : "box"), (v) => {
   const cur = isMesh() ? "mesh" : isDrawn() ? "drawn" : "box"; if (v === cur) return;
@@ -1614,7 +1617,7 @@ seg($("segShape"), ["box", "drawn", "mesh"], () => (isMesh() ? "mesh" : isDrawn(
     if (!HALL.meshStash) { $("fObj").click(); return; }
     HALL.boxStash = { dims: HALL.dims.slice(), stage: HALL.stage, order: HALL.order, diff: HALL.diff }; HALL.geomStash = HALL.geom || HALL.geomStash; HALL.geom = null;
     const from = HALL.dims.slice();
-    HALL.mesh = HALL.meshStash; HALL.meshStash = null; HALL.dims = HALL.mesh.dims.slice(); HALL.stage = 0; HALL.order = 1; HALL.diff = false;
+    HALL.mesh = HALL.meshStash; HALL.meshStash = null; HALL.dims = HALL.mesh.dims.slice(); HALL.stage = 0; HALL.order = 2; HALL.diff = false;
     placeInMesh(HALL.mesh, from); for (const o of OBJ) delete o.h;
     buildGeom(); shapeUI(); if (GM) { initHeights(OBJ); clampAll(); work(rebuildAll); } return;
   }
@@ -1631,7 +1634,7 @@ seg($("segShape"), ["box", "drawn", "mesh"], () => (isMesh() ? "mesh" : isDrawn(
   } else { HALL.geomStash = HALL.geom; HALL.geom = null; }
   shapeUI(); buildGeom(); initHeights(OBJ); clampAll(); work(rebuildAll);
 }, (v) => ({ box: "Shoebox", drawn: "Drawn hall", mesh: "3D model (OBJ)" })[v]);
-$("selOrder").onchange = (e) => { if (isMesh()) return; HALL.order = +e.target.value; if (isDrawn()) work(rebuildAll); };
+$("selOrder").onchange = (e) => { HALL.order = isMesh() ? Math.min(2, +e.target.value) : +e.target.value; if (isDrawn()) work(rebuildAll); };
 $("selRays").onchange = (e) => { HALL.rays = +e.target.value; if (isDrawn()) work(rebuildAll); };
 $("selDiff").onchange = (e) => { HALL.diff = e.target.value === "1"; shapeUI(); if (isDrawn()) work(rebuildAll); };
 function fillHall() {
@@ -2169,7 +2172,7 @@ function applyConfig(c, name) {
   HALL.alpha = alpha.map(Number); if (Array.isArray(r.absorption_octave?._bands_hz)) HALL.alphaBands = r.absorption_octave._bands_hz.slice();
   if (gm) {
     HALL.geom = null; HALL.mesh = mstate; HALL.mats = Object.assign(defaultMats(HALL.alpha, r.scattering ?? 0.1), g.materials ? deep(g.materials) : {}); HALL.matsSet = !!g.materials; HALL.matNames = {};
-    HALL.rays = +g.rays >= 50000 ? 50000 : +g.rays >= 30000 ? 30000 : 10000; HALL.order = 1; HALL.diff = false; HALL.stage = 0;
+    HALL.rays = +g.rays >= 50000 ? 50000 : +g.rays >= 30000 ? 30000 : 10000; HALL.order = +gm.page_ism_order === 1 ? 1 : 2; HALL.diff = false; HALL.stage = 0;
     if (mstate) HALL.dims = mstate.dims.slice();
   } else if (g) {
     HALL.mesh = null;
@@ -2339,6 +2342,7 @@ function currentConfig() {
     out.geometry = { mesh: { obj: m.name, axes: m.axes, groups: m.groups, default: m.def || "wall", voxel: m.voxel || (GM ? +GM.vox.h.toFixed(4) : 0.05), rotate_deg: m.rot, obj_text: m.text,
       _note: "obj_text: the OBJ itself (this page and geometry.load_obj read it instead of the obj file); rotate_deg: plan turn used by the page only; voxel: the page's voxel size, so that geometry.build_mesh builds the same room; positions are in model coordinates" },
       materials: HALL.mats, ism_order: 1, rays: Math.max(HALL.rays, 50000), diffraction: false };
+    out.geometry.mesh.page_ism_order = meshOrder();   // the page's order; the Python mesh path (pyroomacoustics) stays at order 1
     out.room = Object.assign(out.room, { dims_m: m.dims, stage_depth_m: 0 }); }
   else if (isDrawn()) out.geometry = Object.assign(base.geometry || {}, { plan: HALL.geom.plan, floor: HALL.geom.floor, ceiling: HALL.geom.ceil, materials: HALL.mats, ism_order: HALL.order, rays: Math.max(HALL.rays, 50000), diffraction: HALL.diff }); else delete out.geometry;
   if (S.calibration) out._calibration = S.calibration; else delete out._calibration;
@@ -2440,13 +2444,13 @@ const JND = { C80: [1, "abs"], D50: [0.05, "abs"], Ts_ms: [10, "abs"], EDT: [0.0
 const BRAS_URL = "https://doi.org/10.14279/depositonce-6726.3";
 function drawTrust() {
   const mm = isMesh(), d = isDrawn(), cal = !!S.calibration, items = [];
-  const model = mm ? `3D model (${HALL.mesh.name}): first-order image sources + ray tracing, no diffraction` : d ? `drawn 2.5D hall: image sources to order ${HALL.order}${HALL.diff ? " + edge diffraction" : ""} + ray tracing` : "shoebox: image sources only (no random part; same values every run)";
+  const model = mm ? `3D model (${HALL.mesh.name}): image sources to order ${meshOrder()} + ray tracing, no diffraction` : d ? `drawn 2.5D hall: image sources to order ${HALL.order}${HALL.diff ? " + edge diffraction" : ""} + ray tracing` : "shoebox: image sources only (no random part; same values every run)";
   items.push(["Model", model]);
   items.push(["Materials", cal ? `calibrated to measured T30 (${[].concat(S.calibration.positions).length} position(s)${S.calibration.engine ? "" : ", calibrate.py"})` : HALL.matsSet || S.loaded ? "from the config or edited, <b>not calibrated</b> to measurements" : "<b>page defaults (placeholders)</b>, not a real hall"]);
   if (d) items.push(["Ray tracing", `${HALL.rays.toLocaleString("en")} rays per source${LOST > 0.01 ? `, ${(LOST * 100).toFixed(1)} % left the model through gaps` : ""}; values carry random noise (use <i>Ray-tracing spread</i>)`]);
   const ev = [];
   if (d && !cal) ev.push(`uncalibrated, the 3D model of two measured halls gave T30 8–11 % (1.6–2.3 JND) long and C80 / C50 / Ts within 0.8–2.3 JND; calibrated on some positions, T30 at the others came within 0.8 JND (<a href="${BRAS_URL}" target="_blank" rel="noopener">BRAS CR3 / CR4</a>, see docs/MODEL_en.md)`);
-  if (mm) ev.push("first-order reflection levels: median +1.6 dB (CR3) and +4.6 dB (CR4) above the measurement, poor reflection by reflection in CR4");
+  if (mm) ev.push("first-order reflection levels: median +1.6 dB (CR3) and +4.6 dB (CR4) above the measurement, poor reflection by reflection in CR4" + (meshOrder() > 1 ? "; second-order reflections: CR3 median level within 0.5 dB of the measurement, but their timing was confirmed in only about half of the cases (measured level above the window 2 ms later); CR4 about +6 dB" : ""));
   if (d && !mm) ev.push("a 2.5D version of a hall with balconies kept reverberation but not its individual early reflections (CR3): ITDG values hold only for halls close to 2.5D");
   if (!d) ev.push("the shoebox has uniform absorption and an ideal diffuse late field; it has not been checked against a measured hall");
   items.push(["Evidence", ev.join("; ")]);

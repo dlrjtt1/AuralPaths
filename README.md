@@ -31,8 +31,8 @@ By LABO 1557 (Dong-Gyun You).
   T30 (`calibrate.py`) and check against measurements before drawing conclusions about a real room.
   Demo with a real hall and its measured T30 (BRAS CR3, 3D model, calibration file with fit and check
   positions): `examples/bras_cr3/`.
-- Drawn halls are 2.5D (the cross-section is the same across the width); 3D models get first-order image sources
-  only and no diffraction (browser and Python ray tracers agree within about 2 % in T30 on two real halls); first-order
+- Drawn halls are 2.5D (the cross-section is the same across the width); 3D models get image sources to order 2
+  (browser; order 1 in Python) and no diffraction (browser and Python ray tracers agree within about 2 % in T30 on two real halls); first-order
   diffraction only; no seat-dip
   effect; scattering as a random (Lambert) model; nearest-direction HRIRs; non-individual (dummy-head) HRTFs.
 - Diffraction check against BRAS scene RS5 (a 2.07 m partition on a hard floor, 16 positions): mean absolute

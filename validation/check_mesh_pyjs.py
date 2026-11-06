@@ -1,6 +1,6 @@
 """
 Browser engine (engine_geom.js) vs Python on a BRAS OBJ hall: room criteria from the browser mesh path (buildMesh,
-first-order image sources, ray tracing) against the Python 3D results in validation/bras_<hall>.csv and the measured
+image sources to order 1, or 2 with --order 2, ray tracing) against the Python 3D results in validation/bras_<hall>.csv and the measured
 values in the same file.
 
     python validation/check_mesh_pyjs.py <BRAS folder> CR3 [--voxel 0.05] [--rays 16000]   (needs node on the PATH)
@@ -33,7 +33,7 @@ from validate_fratoni import criteria, BANDS  # noqa: E402
 SCENES = {"CR3": "CR3 medium room (chamber music hall)", "CR4": "CR4 large room (auditorium)"}
 JS = """const fs=require('fs');const GEOM=eval(fs.readFileSync('engine_geom.js','utf8')+';GEOM');const j=JSON.parse(fs.readFileSync(0,'utf8'));
 const G=GEOM.buildMesh({obj:GEOM.loadObj(j.obj),groups:j.groups,voxel:j.voxel},Object.values(j.srcs)[0]);const out={};
-for(const [name,s] of Object.entries(j.srcs)){const I=GEOM.ism(G,s,j.recs,1,10,j.c,j.mats,j.air,j.bands);
+for(const [name,s] of Object.entries(j.srcs)){const I=GEOM.ism(G,s,j.recs,j.order,j.order>1?0.16:10,j.c,j.mats,j.air,j.bands);
 const R=GEOM.rays(G,s,j.recs,{n:j.n,c:j.c,tMax:3.0,bin:j.bin,seed:7},j.mats,j.air);
 out[name]={lost:R.escaped+R.leaked,H:R.H.map(h=>h.map(b=>Array.from(b))),I:I.map(L=>L.map(q=>[q.t,Array.from(q.g).map(v=>v*v)]))};}
 console.log(JSON.stringify(out));"""
@@ -43,6 +43,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("bras"); ap.add_argument("hall", choices=list(SCENES))
     ap.add_argument("--voxel", type=float, default=None); ap.add_argument("--rays", type=int, default=16000)
+    ap.add_argument("--order", type=int, default=1, help="image-source order of the browser run (1 or 2)")
     a = ap.parse_args()
     voxel = a.voxel or (0.05 if a.hall == "CR3" else 0.08)
     scene = os.path.join(a.bras, SCENES[a.hall])
@@ -54,7 +55,7 @@ def main():
     mj = {k: {"R": [float(np.sqrt(1 - v["alpha"][min(i, len(v["alpha"]) - 1)])) for i in range(len(cen))], "s": v["s_oct"]} for k, v in mats.items()}
     srcs = {f"LS{e}": list(map(float, E[i])) for i, e in enumerate(eid)}; recs = {f"MP{r}": list(map(float, R[i])) for i, r in enumerate(rid)}
     job = dict(obj=open(os.path.join(scene, "Geometry", a.hall + ".obj")).read(), groups={k: k for k in mats}, voxel=voxel, srcs=srcs,
-               recs=list(recs.values()), c=343.5, mats=mj, bands=cen, air=air, n=a.rays, bin=bp.HIST_BIN)
+               recs=list(recs.values()), order=a.order, c=343.5, mats=mj, bands=cen, air=air, n=a.rays, bin=bp.HIST_BIN)
     r = subprocess.run(["node", "--max-old-space-size=6000", "-e", JS], input=json.dumps(job), capture_output=True, text=True,
                        cwd=os.path.join(HERE, ".."))
     if r.returncode:
@@ -78,7 +79,7 @@ def main():
                     key = (f"{sn}-{rn}", c, b)
                     if key in py:
                         val.setdefault((c, b), []).append((cr[c][i], py[key], me[key]))
-    print(f"{a.hall}: voxel {voxel} m, {a.rays} rays per source; band means over position pairs (browser / Python / measured)")
+    print(f"{a.hall}: voxel {voxel} m, {a.rays} rays per source, image sources to order {a.order}; band means over position pairs (browser / Python / measured)")
     for c in ("T30", "EDT", "C80", "C50", "Ts"):
         print(f"  {c:4s} " + " | ".join(f"{b}: {np.mean([x[0] for x in val[(c, b)]]):.2f} / {np.mean([x[1] for x in val[(c, b)]]):.2f} / "
                                         f"{np.mean([x[2] for x in val[(c, b)]]):.2f}" for b in BANDS if (c, b) in val))
