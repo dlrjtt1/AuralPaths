@@ -22,7 +22,7 @@
 | 정반사 계수 (유한 반사판·산란 손실) | Rindel 2005 (Kirchhoff–Fresnel), Rindel 1992 | `reflections.py`, `GEOM.specFactor` |
 | 재료 보정 (실측 T30에 맞추기) | ISO 3382-1 Annex A (JND 5 %) | `calibrate.py` |
 | 회절 실측 검증 (RS5, 500 Hz–2 kHz 평균 1.8 dB 차) | BRAS RS5 (Aspöck et al. 2020) | `validate_bras.py`, `validation/` |
-| 실제 홀 위치별 검증 (CR3·CR4: T30 7–18% 김, C80·Ts 약 1 JND, 1차 반사 중앙값 CR3 +1.6 dB·CR4 +2.7 dB(보정 전 +6.5)) | BRAS CR3·CR4 (Aspöck et al. 2020) | `validate_bras_cr.py`, `validation/bras_CR*` |
+| 실제 홀 위치별 검증 (CR3·CR4: T30 8–11% 김, C80·Ts 0.8–2.3 JND, 1차 반사 중앙값 CR3 +1.6 dB·CR4 +2.7 dB(보정 전 +6.5)) | BRAS CR3·CR4 (Aspöck et al. 2020) | `validate_bras_cr.py`, `validation/bras_CR*` |
 | OBJ 3D 홀 계산·2.5D 변환 | 복셀 채우기 + 메시 Sabine 면적 → 2.5D Eyring 지수(자체 구현), fast-simplification(MIT) | `geometry.py`, `obj_to_hall.py` |
 | 실측 홀 지표 대조 (ULH 500 Hz–4 kHz 약 1 JND 이내, STC 약 15% 김) | Fratoni 데이터셋(CC BY 4.0), Fratoni 2022, Fratoni et al. 2023 | `validate_fratoni.py`, `validation/fratoni_*` |
 | 좌석 dip — **만들지 않음** | Meyer, Tahvanainen, Saarelma & Lokki 2023 (모델 부재 확인) | README "Seat dip" |

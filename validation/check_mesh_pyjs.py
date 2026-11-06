@@ -9,9 +9,10 @@ values in the same file.
 for validate_bras_cr.py. Materials: BRAS fitted estimates; positions: the measured ones (2 sources x 5 receivers).
 The early part is the image-source histogram plus the ray-traced remainder (as the page and brir_proto do).
 
-Result on 2026-11-06 (500 Hz - 2 kHz band means over the 10 position pairs, browser vs Python):
-    CR3 (voxel 5 cm, 16 000 rays): T30 1.47 / 1.52 / 1.51 s vs 1.46 / 1.49 / 1.47 s; C80 within 0.1 dB
-    CR4 (voxel 8 cm,  8 000 rays): T30 2.24 / 2.29 / 2.03 s vs 2.29 / 2.29 / 2.05 s; C80 0.5-0.7 dB lower
+Result on 2026-11-06 (500 Hz - 2 kHz band means over the 10 position pairs, browser vs Python with the fixed
+ray-tracing energy floor, brir_proto.RT_ENERGY_THRES):
+    CR3 (voxel 5 cm, 16 000 rays): T30 1.47 / 1.52 / 1.51 s vs 1.40 / 1.44 / 1.43 s; C80 0.3-0.4 dB lower
+    CR4 (voxel 8 cm,  8 000 rays): T30 2.24 / 2.29 / 2.03 s vs 2.28 / 2.30 / 2.05 s; C80 0.2-0.3 dB lower
 Per pair the browser and Python values scatter more (Monte-Carlo noise of both tracers; mean |T30 difference| 6-11 %).
 """
 import argparse

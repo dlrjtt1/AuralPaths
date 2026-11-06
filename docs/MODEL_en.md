@@ -364,14 +364,25 @@ are wanted.
   has less surface than the mesh (ULH 942 → 622 m²: no seat risers, no small faces), so keeping each group's
   absorption area A_g (`--preserve sabine`) raises the mean α, and the 2.5D hall then decays faster than the mesh.
   The default (`--preserve eyring`) sets α_g = 1 − exp(−A_g / S_g,2.5D): the 2.5D group's Eyring exponent equals the
-  mesh group's Sabine absorption area. Reason: the ray-traced T30 of both 3D meshes was close to Sabine (STC 1.47 s
-  vs 1.43 s; ULH 1 kHz 1.94 vs 1.95 s), while a simple 2.5D hall decays like Eyring (check below). In ULH the 2.5D
-  T30 is then 0.07–0.14 s below the mesh at 125 Hz–4 kHz; keeping A gives 0.17–0.28 s, and one factor per band that
-  keeps the room's Eyring exponent (`room-eyring`) 0.14–0.25 s (`validation/fratoni_ULH_preserve.md`). A
-  per-material Eyring sum (Millington's form) was also tried and was worse (it weights the absorbing seat faces up).
+  mesh group's Sabine absorption area. The ray-traced T30 of both 3D meshes is close to Sabine (STC 1 kHz 1.48 s vs
+  1.43 s; ULH 1 kHz 1.93 vs 1.95 s); the choice of mapping is empirical: in ULH the 2.5D T30 is 0.04–0.12 s below
+  the mesh at 125 Hz–4 kHz with `eyring`, 0.14–0.25 s with `sabine` (keeping A), and 0.11–0.21 s with one factor per
+  band that keeps the room's Eyring exponent (`room-eyring`) (`validation/fratoni_ULH_preserve.md`). A per-material
+  Eyring sum (Millington's form) was also tried and was worse (it weights the absorbing seat faces up). (Until
+  2026-11-06 this paragraph said that a simple 2.5D hall decays like Eyring; that came from the ray-tracing energy
+  floor described next.)
 - Check of the ray tracer itself (`validation/check_rt_eyring.py`, shoebox 12 × 9 × 7 m, uniform α): with
-  scattering 0.7 the ray-traced T30 is within 1–3 % of Eyring at α = 0.05–0.3; with scattering 0.1 it lies between
-  Eyring and Sabine (up to +12 % over Eyring at α = 0.3).
+  scattering 0.7 the ray-traced T30 is 7–12 % above Eyring at α = 0.05–0.3 (close to Sabine); with scattering 0.1,
+  −0.4 … +12 %. The spread of the free path lengths makes the mean decay slower than Eyring; the browser tracer gives
+  the same values on a tiled box and follows a prediction from its own free paths (`validation/check_box_lambert.js`).
+- Ray-tracing energy floor (fixed 2026-11-06): pyroomacoustics uses `energy_thres` both to end a ray (relative to
+  its start energy) and as an absolute floor for each scattered ("diffuse rain") contribution to a receiver
+  (`libroom_src/room.cpp`, `scat_ray`, pyroomacoustics 0.10.1), and a ray starts with 2 / n_rays. With the earlier
+  setting 1e-9 the scattered energy was dropped from about 0.5 s on, so T30 came out short and fell with the ray
+  count (tiled box, s = 1: 1.11 / 1.04 / 0.99 s at 2 000 / 20 000 / 100 000 rays). `brir_proto.RT_ENERGY_THRES` is
+  now 1e-20 (box: 1.12 s at any ray count, as the browser). All Python results in this document were re-run with
+  it; in the measured halls the changes were small for T30 (≤ 0.4 JND in ULH / STC, CR3 −3 … −4 %, CR4 unchanged) and
+  larger for EDT and clarity (CR4 EDT +10–12 %, C80 −0.3 … −0.4 dB; see the sections below).
 
 ```bash
 python obj_to_hall.py mesh_config.json --depth-axis y --stage-end min --stage-depth 2.4   # -> mesh_config_2p5d.json
@@ -406,23 +417,26 @@ energy difference 7 × 10⁻⁷).
 
   | | 500 Hz | 1 kHz | 2 kHz |
   |---|---|---|---|
-  | CR3 T30 (s) | 1.47 / 1.46 / 1.30 | 1.52 / 1.49 / 1.34 | 1.51 / 1.47 / 1.32 |
-  | CR3 C80 (dB) | 1.0 / 1.1 / 1.5 | 0.6 / 0.7 / 1.7 | 0.8 / 0.9 / 1.6 |
-  | CR4 T30 (s) | 2.24 / 2.29 / 2.07 | 2.29 / 2.29 / 2.10 | 2.03 / 2.05 / 1.84 |
-  | CR4 C80 (dB) | −1.1 / −0.4 / 0.2 | −1.1 / −0.5 / −0.7 | −0.5 / 0.0 / −0.1 |
+  | CR3 T30 (s) | 1.47 / 1.40 / 1.30 | 1.52 / 1.44 / 1.34 | 1.51 / 1.43 / 1.32 |
+  | CR3 C80 (dB) | 1.0 / 1.4 / 1.5 | 0.6 / 0.9 / 1.7 | 0.8 / 1.1 / 1.6 |
+  | CR4 T30 (s) | 2.24 / 2.28 / 2.07 | 2.29 / 2.30 / 2.10 | 2.03 / 2.05 / 1.84 |
+  | CR4 C80 (dB) | −1.1 / −0.8 / 0.2 | −1.1 / −0.8 / −0.7 | −0.5 / −0.3 / −0.1 |
 
-  The browser follows Python within 0–3 % in T30 (CR3 16 000 rays, CR4 8 000 rays per source); both are 8–14 % above
-  the measured T30, as in *Position-by-position check*. In CR4 the browser's C80 is 0.5–0.7 dB lower than Python's.
-  Per position pair the two tracers scatter more (mean |T30 difference| 6–11 %), so use the band means or more rays.
-- Known difference on a shoebox written as an OBJ of 1 m tiles (α 0.2; `validation/check_box_lambert.js`,
-  `validation/check_mesh_box.py`): with s = 1 (pure Lambert) the browser's T30 is 1.12 s, and its own free paths
-  (mean 5.93 m = 4V/S, relative variance 0.35) predict 1.11 s; Python (pyroomacoustics) gives 1.03 s, below Eyring
-  (1.07 s), which a tracer with this free-path spread should not give (the prediction, derived in the script: the
-  number of reflections in time t is about normal, so the mean energy decays as exp((ct/m)(ln(1 − α) + γ²/2 ·
-  ln²(1 − α))), slower than Eyring). With s = 0.5: browser 1.14 s, Python 1.07 s at 500 Hz. The cause in
-  pyroomacoustics was not located; on CR3 / CR4 the two agree within 3 % (table). Adding pyroomacoustics' diffuse-rain
-  term to the browser was tried: it added about 45 % ray energy with the same decay (T30 unchanged), raised C80 on
-  CR3 by 0.2–0.3 dB (to 0.2 dB above Python) and made ray tracing 3–4 times slower, so it was left out.
+  T30: the browser is 5–6 % above Python in CR3 and within 2 % of it in CR4 (CR3 16 000 rays, CR4 8 000 rays per
+  source); the browser is 8–14 % and Python 7–11 % above the measured T30. C80: the browser is 0.2–0.4 dB below
+  Python in both halls; EDT 2–5 % below. Per position pair the two tracers scatter more (mean |T30 difference|
+  6–11 %), so use the band means or more rays.
+- Shoebox written as an OBJ of 1 m tiles (α 0.2; `validation/check_box_lambert.js`, `validation/check_mesh_box.py`):
+  browser and Python give the same T30 (s = 1: 1.12 / 1.10 / 1.06–1.07 s at 125 / 500 / 2000 Hz; s = 0.5: 1.16 /
+  1.14 / 1.10 s; s = 0.1: 1.15 / 1.14 / 1.10 s), and the browser follows the prediction from its own free paths
+  (mean 5.93 m = 4V/S, relative variance 0.35 at s = 1: 1.11 s; derived in the script: the number of reflections
+  in time t is about normal, so the mean energy decays as exp((ct/m)(ln(1 − α) + γ²/2 · ln²(1 − α))), slower than
+  Eyring 1.07 s). Before the energy-floor fix Python gave 1.03 s at s = 1, below Eyring; that difference was in the
+  Python setting, not in the browser.
+- Diffuse rain in the browser: tried (the scattered share of each hit sent straight to the visible receivers, as
+  pyroomacoustics does). It added about 45 % ray energy with the same decay on the box (T30 unchanged), raised C80 on
+  CR3 by 0.2–0.3 dB (to within 0.1 dB of the fixed Python) and made ray tracing 3–4 times slower; it was left out
+  for speed, so the browser's C80 stays 0.2–0.4 dB below Python's (below the 1 dB JND).
 - Time: CR3 (2600 faces) builds in about 4 s; 10 000 rays per source take about 25 s. The worker rebuilds the room
   for every computation (no shared memory with the page).
 
@@ -441,7 +455,7 @@ Method:
   tags do not match the sheet's five materials one to one; assignment (AuralPaths' judgement): `shell_sidewalls`
   split by orientation into "Plasterboard (walls)" and "Ceiling", `crown` → Ceiling, `seat-cushion` → Seats,
   `seats-wood_stage` → Wood, `floor` → Wood (the sheet has no floor material), `doors_organ` → Furniture.
-  Swapping `doors_organ` to Wood changes T30 by 0.03–0.05 s (`validation/fratoni_STC_doors_*.md`).
+  Swapping `doors_organ` to Wood changes T30 by 0.02–0.06 s (`validation/fratoni_STC_doors_*.md`).
 - Absorption and scattering: the dataset's values for its geometrical-acoustics (GA) calibration, unchanged. These
   were tuned by the dataset's authors in Odeon (Fratoni, D'Orazio & Garai 2023, Forum Acusticum, Turin,
   [doi:10.61782/fa.2023.1114](https://doi.org/10.61782/fa.2023.1114), describe this calibration procedure for
@@ -460,12 +474,12 @@ Results (simulated − measured, in JND; full tables and figures in `validation/
 
 | hall, source | model | T30 125 / 250 / 500 / 1k / 2k / 4k Hz | EDT 500–4k | C50 / C80 500–4k | Ts 500–4k |
 |---|---|---|---|---|---|
-| ULH, S1 (26 receivers) | 3D mesh | −2.3 / −1.2 / +0.9 / +1.0 / +0.1 / −0.9 | −0.1 … +0.8 | −0.2 … +0.2 | −0.2 … +0.4 |
-| | 2.5D | −3.9 / −2.1 / −0.7 / +0.1 / −1.2 / −2.5 | −1.1 … +0.9 | −0.8 … +0.1 | −0.5 … +0.8 |
-| STC, S1 (10) | 3D mesh | +6.8 / +4.1 / +4.0 / +2.3 / +3.6 / +3.5 | +3.8 … +5.2 | −1.6 … −1.0 | +2.1 … +3.1 |
-| | 2.5D | +7.4 / +4.5 / +4.1 / +2.1 / +3.3 / +3.3 | +5.1 … +6.9 | −2.2 … −1.6 | +2.4 … +3.5 |
-| STC, S2 (4) | 3D mesh | +8.8 / +2.8 / +2.5 / +2.6 / +4.1 / +4.0 | +2.9 … +5.5 | −2.1 … −1.0 | +1.8 … +2.9 |
-| | 2.5D | +8.6 / +2.6 / +2.0 / +1.6 / +3.2 / +3.1 | +2.1 … +4.4 | −1.6 … −0.4 | +1.2 … +2.4 |
+| ULH, S1 (26 receivers) | 3D mesh | −2.4 / −1.3 / +0.5 / +0.9 / −0.0 / −0.9 | −0.1 … +0.7 | −0.3 … +0.1 | −0.1 … +0.5 |
+| | 2.5D | −3.8 / −2.0 / −0.5 / +0.4 / −0.9 / −2.4 | −1.2 … +1.0 | −0.8 … +0.1 | −0.5 … +0.8 |
+| STC, S1 (10) | 3D mesh | +7.0 / +4.4 / +4.1 / +2.4 / +3.6 / +3.4 | +3.8 … +5.0 | −2.0 … −1.4 | +2.3 … +3.3 |
+| | 2.5D | +7.6 / +4.7 / +4.3 / +2.2 / +3.5 / +3.4 | +5.1 … +7.0 | −2.2 … −1.6 | +2.4 … +3.5 |
+| STC, S2 (4) | 3D mesh | +8.9 / +2.8 / +2.5 / +2.3 / +4.1 / +4.0 | +2.5 … +4.8 | −2.2 … −1.1 | +1.9 … +2.9 |
+| | 2.5D | +8.9 / +2.7 / +2.2 / +1.8 / +3.4 / +3.3 | +2.2 … +4.4 | −1.6 … −0.4 | +1.3 … +2.5 |
 
 Reading:
 - ULH: from 500 Hz to 4 kHz all criteria of the 3D mesh are within about 1 JND of the measurement; at 125–250 Hz
@@ -473,7 +487,7 @@ Reading:
   (1.15 s vs 1.56 s measured at 125 Hz, mesh volume 742 m³), so the low-frequency gap is in the inputs (volume and
   coefficients as used here), not in the ray tracing. The 2.5D hall is within 0.15 s of the mesh from 250 Hz to
   2 kHz.
-- STC: both models are about 15 % long (1 kHz: 1.47 s vs 1.32 s measured), the 3D mesh and the 2.5D hall agree
+- STC: both models are about 15 % long (1 kHz: 1.48 s vs 1.32 s measured), the 3D mesh and the 2.5D hall agree
   with each other within 0.06 s in T30, and a Sabine estimate from the same inputs is also long (1.43 s). Eyring
   from the same inputs gives 1.32 s, the measured value, but the ray tracer does not reach it here: the absorption
   sits on the seats while the shell and the domes reflect almost everything (α ≈ 0.1, scattering 0.02–0.05), so the
@@ -494,8 +508,9 @@ python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --rays 600
 python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --no-3d --stc-doors Wood --out validation/fratoni_STC_doors_Wood
 ```
 The converted halls (`validation/fratoni_*_2p5d_config.json`, CC BY 4.0 with the dataset's attribution) open in the
-page with **Load config…**. Run 2026-11-05, re-run 2026-11-06 with the specular reflection factors (changes ≤ 0.2 JND;
-ULH 3D mesh about 65 min, STC 46 min on 2 CPU cores).
+page with **Load config…**. Run 2026-11-05, re-run 2026-11-06 with the specular reflection factors (changes ≤ 0.2 JND)
+and again with the ray-tracing energy floor fixed (changes ≤ 0.4 JND; ULH 3D mesh about 77 min, STC 38 min on 2 CPU
+cores).
 
 ## Position-by-position check against two real halls (`validate_bras_cr.py`)
 
@@ -523,17 +538,17 @@ diffraction). 4000 rays. With 500 rays T30 came out 13–33 % long in CR3 (noisy
 reverberation criteria.
 
 Room criteria (simulated − measured in JND, mean absolute over the positions, 500 Hz–2 kHz; signed values and all
-bands in `validation/bras_CR3.md`, `bras_CR4.md`). Current model, with the specular reflection factors (finite panel
-size, scattering loss; per-band scattering); in brackets the first run without them:
+bands in `validation/bras_CR3.md`, `bras_CR4.md`). Current model (specular reflection factors, ray-tracing energy
+floor fixed); in brackets the previous run with the old energy floor (see *3D OBJ halls*):
 
 | hall | model | EDT | T30 | C80 | C50 | Ts |
 |---|---|---|---|---|---|---|
-| CR3 | 3D mesh | 2.6 (3.3) | 2.7 (2.9), all long, +7–12 % | 1.0 (1.1) | 1.6 (1.0) | 1.2 (1.2) |
-| | 3D calibrated, held-out LS2 | 1.7 (1.6) | 1.6 (3.7) | 0.9 (0.8) | 1.3 (0.9) | 1.0 (0.8) |
-| | 2.5D | 4.4 (4.3) | 2.9 (2.9) | 1.7 (1.6) | 2.3 (2.3) | 2.1 (2.0) |
-| CR4 | 3D mesh | 2.3 (2.7) | 2.2 (2.2), all long, +10–18 % | 0.9 (1.0) | 1.2 (1.0) | 1.2 (1.4) |
-| | 3D calibrated, held-out LS2 | 2.7 (1.4) | 0.8 (0.7) | 0.9 (1.8) | 1.3 (1.8) | 1.3 (1.7) |
-| | 2.5D | 1.9 (1.9) | 1.1 (1.2) | 0.8 (0.8) | 1.4 (1.3) | 1.1 (1.3) |
+| CR3 | 3D mesh | 3.0 (2.6) | 1.8 (2.7), all long, +8 % | 0.8 (1.0) | 1.0 (1.6) | 1.0 (1.2) |
+| | 3D calibrated, held-out LS2 | 1.8 (1.7) | 0.8 (1.6) | 0.7 (0.9) | 0.9 (1.3) | 0.7 (1.0) |
+| | 2.5D | 4.4 (4.4) | 3.2 (2.9) | 2.3 (1.7) | 2.6 (2.3) | 2.4 (2.1) |
+| CR4 | 3D mesh | 3.7 (2.3) | 2.1 (2.2), all long, +10–11 % | 1.6 (0.9) | 1.8 (1.2) | 2.3 (1.2) |
+| | 3D calibrated, held-out LS2 | 2.2 (2.7) | 0.8 (0.8) | 1.3 (0.9) | 1.2 (1.3) | 2.2 (1.3) |
+| | 2.5D | 2.1 (1.9) | 1.3 (1.1) | 1.5 (0.8) | 1.4 (1.4) | 1.9 (1.1) |
 
 Early reflections (500 Hz–2 kHz): every first-order image source the engine predicts at ≥ −15 dB re direct, ≥ 2 ms
 after the direct sound and 1.5 ms away from other predicted ones, against the measured energy in a 1 ms window at
@@ -551,14 +566,15 @@ on the same set as the first run, see *Specular reflection factors*: CR3 +1.2 �
 | CR4 | 3D mesh | 35 | −6.7 | −13.7 | −14.3 | −21.0 | +6.5 (+2.6 … +8.9) | 0.30 |
 
 Reading:
-- Reverberation: with Eyring-fitted coefficients the ray tracer gives T30 7–18 % too long in both halls (1.4–3.6 JND).
-  A uniform-absorption test on the CR3 mesh (α = 0.2) also decays 24 % slower than Eyring, while the same pipeline on
-  a tiled shoebox follows Eyring (`validation/check_rt_eyring.py`, `validation/check_mesh_box.py`): the halls' fields
-  are not diffuse, so coefficients fitted with Eyring are too low for a ray tracer. Calibrating this engine on
-  measured T30 is therefore needed (`calibrate.py`). Calibrated on LS1, the held-out LS2 positions came within 0.8
-  JND (CR4) and 1.6 JND (CR3) in T30; EDT, C80 / C50 and Ts within about 1–3 JND.
-- Clarity and Ts are within 0.9–1.6 JND (mean absolute) in the 3D runs before calibration.
-- Effect of the specular reflection factors on the room criteria: EDT better (CR3 3.3 → 2.6, CR4 2.7 → 2.3 JND), T30
+- Reverberation: with Eyring-fitted coefficients the ray tracer gives T30 8–11 % too long in both halls (band means
+  500 Hz–2 kHz; 1.6–2.3 JND). A ray tracer decays slower than Eyring even in a diffuse box (7–12 % at scattering 0.7,
+  `validation/check_rt_eyring.py`, `validation/check_mesh_box.py`), so coefficients fitted with Eyring are too low
+  for it. Calibrating this engine on measured T30 is therefore needed (`calibrate.py`). Calibrated on LS1, the
+  held-out LS2 positions came within 0.8 JND in T30 in both halls; EDT, C80 / C50 and Ts within 0.7–2.2 JND.
+- Clarity and Ts are within 0.8–2.3 JND (mean absolute) in the 3D runs before calibration. In CR4 the fixed energy
+  floor made EDT 10–12 % longer and C80 0.3–0.4 dB lower (more late scattered energy), which moved EDT, C80 and Ts
+  away from the measurement (EDT 2.3 → 3.7 JND).
+- Effect of the specular reflection factors on the room criteria (runs with the old energy floor): EDT better (CR3 3.3 → 2.6, CR4 2.7 → 2.3 JND), T30
   of the held-out CR3 positions after calibration better (3.7 → 1.6), C50 worse (CR3 1.0 → 1.6, CR4 1.0 → 1.2), the
   rest within ±0.2 JND, except EDT of the held-out CR4 positions after calibration (1.4 → 2.7). The cause of the
   C50 change is not identified.
@@ -580,8 +596,8 @@ Reading:
 python validate_bras_cr.py "CR3 medium room (chamber music hall)" "3 Surface descriptions" --obj CR3.obj --rays 4000 --out validation/bras_CR3
 python validate_bras_cr.py "CR4 large room (auditorium)" "3 Surface descriptions" --obj CR4.obj --rays 4000 --voxel 0.08 --out validation/bras_CR4
 ```
-Run 2026-11-05, re-run 2026-11-06 with the specular reflection factors (CR3 about 50 min, CR4 about 75 min on 2 CPU
-cores). The 2.5D halls
+Run 2026-11-05, re-run 2026-11-06 with the specular reflection factors and again with the energy floor fixed (CR3
+about 25 min, CR4 about 40 min on 2 CPU cores). The 2.5D halls
 (`validation/bras_CR*_2p5d_config.json`, CC BY-SA 4.0) open in the page with **Load config…**. `calibrate.py` now
 traces once per source for mesh halls (all receivers of that source together).
 
@@ -673,13 +689,12 @@ For other loudspeakers, use manufacturer data or your own measurements.
 - OBJ mesh halls: image sources to order 1, no diffraction; the conversion to a drawn hall keeps the volume and
   maps the absorption so that T30 stays close to the mesh, not where absorption sits (see *3D OBJ halls*). In the
   browser, the plan and section are projections (balconies show only as the column's lowest floor and highest
-  ceiling), heights are above the lowest floor, and the ray tracer has no diffuse-rain term (T30 within 3 % of Python
-  on CR3 / CR4; on a tiled shoebox 6–9 % longer than Python, where the browser follows the prediction from its own
-  free paths and Python lies below Eyring)
+  ceiling), heights are above the lowest floor, and the ray tracer has no diffuse-rain term (T30 within 2–6 % of Python
+  on CR3 / CR4, same as Python on a tiled shoebox; C80 0.2–0.4 dB lower)
 - Room-criteria check against measured halls: within about 1 JND at 500 Hz–4 kHz in a raked lecture hall (ULH),
   about 15 % too long in an elliptical domed hall (STC) with the dataset's Odeon-calibrated inputs (see *Room
   criteria against measured halls*)
-- Position-by-position check against two real halls (BRAS CR3 / CR4): T30 7–18 % long with Eyring-fitted
+- Position-by-position check against two real halls (BRAS CR3 / CR4): T30 8–11 % long with Eyring-fitted
   coefficients (calibrate first); first-order reflection levels +1.6 dB (CR3) and +2.7 dB (CR4) median, reflection by
   reflection poor in CR4; a 2.5D
   version of a hall with balconies does not reproduce its individual early reflections (see *Position-by-position

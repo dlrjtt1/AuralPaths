@@ -1,16 +1,18 @@
 """
 Check of the OBJ mesh path (geometry.build_mesh: voxel flood fill, inward normals, back-facing twins, 1 mm overlap)
-on a shoebox written as an OBJ of 1 m tiles: the ray-traced T30 should follow Eyring as the plain shoebox does
-(validation/check_rt_eyring.py).
+on a shoebox written as an OBJ of 1 m tiles: the ray-traced T30 should match the plain shoebox
+(validation/check_rt_eyring.py) and the browser tracer.
 
     python validation/check_mesh_box.py [scattering]
 
-Result on 2026-11-05 (12 x 7 x 9 m, alpha 0.2, scattering 0.5, 20 000 rays, air absorption on):
-    T30 1.09 / 1.07 / 1.04 s at 125 / 500 / 2000 Hz; Eyring 1.07 s, Sabine 1.19 s (no air); voxel volume 731 m3 (756).
-With scattering 1.0 (pure Lambert): T30 1.03 / 1.02 / 0.99 s, below Eyring; with 0.1: 1.14 / 1.12 / 1.08 s
-(validation/check_box_lambert.js compares the browser tracer on the same box).
+Result on 2026-11-06 (12 x 7 x 9 m, alpha 0.2, 20 000 rays, air absorption on, energy_thres 1e-20, see
+brir_proto.RT_ENERGY_THRES), T30 at 125 / 500 / 2000 Hz; Eyring 1.07 s, Sabine 1.19 s (no air); voxel volume 731 m3 (756):
+    scattering 1.0: 1.12 / 1.10 / 1.07 s;  0.5: 1.16 / 1.14 / 1.10 s;  0.1: 1.15 / 1.14 / 1.10 s
+The browser tracer gives the same values on this box (validation/check_box_lambert.js: 1.12 / 1.10 / 1.06, 1.16 / 1.14 /
+1.10 and 1.15 / 1.14 / 1.10 s). The earlier result here (1.09 / 1.07 / 1.04 s at s 0.5, "follows Eyring") came from
+energy_thres 1e-9, which dropped the scattered energy from about 0.5 s on.
 The same test on the BRAS CR3 mesh (alpha 0.2 everywhere, scattering 0.5) gave T30 about 1.03 s against Eyring
-0.83 s and Sabine 0.93 s: the hall decays slower than diffuse-field theory; the mesh path itself does not.
+0.83 s and Sabine 0.93 s (with energy_thres 1e-9, not repeated): the hall decays slower than diffuse-field theory.
 """
 import os
 import sys
