@@ -105,6 +105,15 @@ python test_signals/make_sines.py
   광선 수·허상 차수·회절 여부, 고정된 광선 seed, 날짜). 같은 페이지·엔진으로 저장한 config를 다시 열면 결과가 그대로
   재현된다(seed가 고정됨: 부채꼴 홀에서 두 번 계산해 히스토그램이 동일함을 확인). 다른 버전이면 결과가 다를 수 있다고
   알린다. Python은 이 블록을 무시하고 자체 `out/manifest.json`을 쓴다.
+- **Export BRIRs (SOFA)…**: 현재 홀의 좌석 × 음원 전체를 SOFA 파일 하나로 내려받는다(AES69-2022, 규약 SingleRoomSRIR 1.0).
+  좌석·음원 쌍마다 측정 하나, 수음기 둘(왼쪽·오른쪽 귀), 경로별 원본 BRIR(시간 0 = 음원에서 소리가 나간 순간, 전파 지연
+  포함, PA 지연·게인 없음), 길이 1.6초. 위치는 config 좌표(3D 모델은 모델 좌표), ListenerView는 좌석이 향한 방향(페이지의
+  +y)이다. 측정 순서("좌석 | 음원"), 시간 기준, `_provenance` 기록은 파일의 `Comment` 속성에, KU100 HRIR 라이선스(CC BY 3.0)는
+  `License`에 들어 있다. h5wasm으로 netCDF-4 구조로 쓰며 `sofar.read_sofa(verify=True)`(sofar 1.3)로 확인했다(값은 페이지의
+  BRIR과 동일). h5wasm을 처음 한 번 인터넷에서 불러온다.
+- **Export WAV…**: 지금 보고 있는 좌석의 현재 조건(공칭 ITDG, 레벨 비, Mix / Direct only / PA only)을 플레이어에서 듣는
+  그대로 내려받는다. 증폭 음원과 그 지연, PA 쌍과 PA 지연·게인을 합친 것이다. 스테레오, 32-bit float, 정규화하지 않음,
+  시간 0 = 증폭 음원에서 소리가 나간 순간.
 - **Load config…**: config JSON을 연다(예: `my_hall/config.json`. 평면 위에 끌어다 놓아도 된다). 페이지가 그 홀,
   재료, 음원, 좌석으로 바뀐다. **Reset to config**는 페이지가 만들어진 config로 되돌린다.
 
@@ -658,7 +667,7 @@ C80 / D50 / EDT / T30 / IACC가 일반 모델과 0.04 dB / 0.005 / 0.003 s / 0.0
 - Fratoni 데이터셋(`validate_fratoni.py`용, 포함되지 않음): CC BY 4.0, doi:10.17632/y7xnv6xg5s.1. `validation/fratoni_*`의
   파생 파일에 출처를 표기했다.
 - fast-simplification(Python, MIT 라이선스, 선택): 큰 OBJ 홀의 메시 간략화.
-- h5wasm 0.10.3(NIST 소프트웨어 라이선스, HDF5 라이브러리 포함): SOFA 지향성 파일을 열 때만 jsDelivr에서 불러오며
+- h5wasm 0.10.3(NIST 소프트웨어 라이선스, HDF5 라이브러리 포함): SOFA 지향성 파일을 열거나 BRIR을 SOFA로 내보낼 때만 jsDelivr에서 불러오며
   포함되지 않는다. 뷰어를 배포하기 전에 라이선스 문구를 확인할 것.
 - 지향성 데이터베이스(포함되지 않음, 각 라이선스 확인): TU Berlin 악기와 소프라노(Ackermann, Brinkmann & Weinzierl;
   CC BY-SA 4.0), TH Köln 음성 지향성(Pörschmann & Arend; CC BY 4.0), IEM DirPat 스피커(Brandner; public domain mark).

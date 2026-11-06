@@ -202,7 +202,7 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
       <button class="btn" id="bLoadPlan">Load plan drawing…</button>
       <button class="btn" id="bUnderlay" aria-pressed="false">Show drawing</button>
       <button class="btn" id="bCopy">Copy config</button>
-      <button class="btn" id="bLoadCfg">Load config…</button><button class="btn" id="bSaveCfg">Save config…</button><input type="file" id="fCfg" accept=".json,application/json" hidden>
+      <button class="btn" id="bLoadCfg">Load config…</button><button class="btn" id="bSaveCfg">Save config…</button><button class="btn" id="bSofa" title="All seats × sources as one SOFA file (AES69 SingleRoomSRIR): raw path BRIRs, time zero = emission at the source">Export BRIRs (SOFA)…</button><button class="btn" id="bWav" title="This seat, this condition (ITDG, level ratio, Mix / Direct / PA) as a 32-bit float stereo WAV">Export WAV…</button><input type="file" id="fCfg" accept=".json,application/json" hidden>
     </div>
     <div class="row" id="planTraceRow" hidden>
       <button class="btn" id="bTracePlan">Trace outline</button>
@@ -2944,6 +2944,105 @@ function loadConfigFile(f) {
 }
 $("bLoadCfg").onclick = () => $("fCfg").click();
 // Save config…: download the complete current config as a .json file (artifact pages: the downloads capability)
+// hand a file to the viewer: the artifact downloads capability when the page runs inside Claude, else a download link
+async function saveBlob(name, blob) {
+  try {
+    const dl = window.claude && window.claude.use ? await window.claude.use("downloads") : null;
+    if (dl) { await dl.save({ filename: name, data: blob }); return "saved"; }
+  } catch (e) { if (e && e.code && e.code !== "unavailable") return `not saved (${e.message || e.code})`; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  return "download";
+}
+const fileStem = () => (((S.loadedName || S.loaded || D.name || "hall") + "").split(",")[0].replace(/\.json$/i, "").trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "") || "hall");
+// ---- BRIR export
+// SOFA (AES69-2022) SingleRoomSRIR 1.0: one measurement per seat x source, two receivers (ears), written with h5wasm in
+// the netCDF-4 layout (dimension scales, _Netcdf4Coordinates) so that netCDF / SOFA readers open it; checked with
+// sofar.read_sofa(verify=True). Time zero = emission at the source; no PA delay or gain applied (raw path BRIRs).
+async function exportSofa() {
+  const seats = SEATS(), srcs = sourcesAll(), miss = [];
+  for (const st of seats) for (const o of srcs) if (!BR[st.id + "|" + o.id]) miss.push(st.id + "|" + o.id);
+  if (miss.length) { $("posNote").textContent = `BRIRs not ready yet (${miss.length} missing); wait for the computation to finish.`; return; }
+  $("posNote").textContent = "Writing SOFA…";
+  let H, FS;
+  try { H = await ensureH5(); ({ FS } = await H.ready); } catch (e) { $("posNote").textContent = `SOFA export needs the h5wasm library from jsDelivr (internet): ${e.message || e}`; return; }
+  const M = seats.length * srcs.length, N = ENG.NL, ir = new Float64Array(M * 2 * N), lis = [], src = [], names = [];
+  const toCfg = (p) => (isMesh() ? meshToModel(HALL.mesh, p) : p.slice());
+  let m = 0;
+  for (const st of seats) for (const o of srcs) {
+    const b = BR[st.id + "|" + o.id]; ir.set(b[0], (m * 2) * N); ir.set(b[1], (m * 2 + 1) * N);
+    lis.push(toCfg(st.pos)); src.push(toCfg(o.pos)); names.push(`${st.id} | ${o.id} (${labelOf(o)})`); m++;
+  }
+  // listeners face +y in the page frame (as the HRIR directions); a 3D model's page frame is turned by rot degrees
+  const a = isMesh() ? -HALL.mesh.rot * Math.PI / 180 : 0, view = [-Math.sin(a), Math.cos(a), 0].map((v) => +v.toFixed(6));
+  const prov = provenance();
+  const comment = JSON.stringify({ measurements: names, time_zero: "emission at the source (propagation delay included); no PA delay or gain applied",
+    coordinates: isMesh() ? "model coordinates of the config (z up)" : "config coordinates (x width, y depth towards the stage, z up)",
+    receivers: "left ear, right ear; ReceiverPosition +/-0.09 m is nominal (the HRIRs carry the real ear geometry)", provenance: prov });
+  const path = "/brir_" + Date.now() + ".sofa";
+  try {
+    const f = new H.File(path, "w"), enc = new TextEncoder();
+    const str = (obj, k, v) => { const t = String(v ?? ""); obj.create_attribute(k, t, null, "A" + Math.max(1, enc.encode(t).length)); };
+    const now = new Date().toISOString().replace("T", " ").slice(0, 19);
+    const glob = { Conventions: "SOFA", Version: "2.1", SOFAConventions: "SingleRoomSRIR", SOFAConventionsVersion: "1.0", DataType: "FIR", RoomType: "reverberant",
+      Title: `AuralPaths BRIRs, ${S.loadedName || S.loaded || D.name || "hall"}`, DateCreated: now, DateModified: now, APIName: "AuralPaths web (h5wasm)", APIVersion: "AES69-2022, SOFA conventions 2.1",
+      AuthorContact: "", Organization: "", License: "BRIRs computed with AuralPaths (MIT). Rendered with Neumann KU100 HRIRs, B. Bernschuetz, Zenodo record 3928297, CC BY 3.0: credit it when you use these BRIRs.",
+      ApplicationName: "AuralPaths web", ApplicationVersion: `v${D.version}, engine ${ENGINE_SHA.slice(0, 12)}`, Comment: comment, History: "", References: "https://doi.org/10.5281/zenodo.3928297 (HRIRs)",
+      Origin: "simulation", DatabaseName: "", RoomShortName: fileStem(), RoomDescription: prov.model, RoomLocation: "", RoomGeometry: "",
+      ListenerShortName: "KU100 (simulated)", ListenerDescription: "", ReceiverShortName: "ears", ReceiverDescription: "left, right", SourceShortName: "", SourceDescription: names.join("; "),
+      EmitterShortName: "", EmitterDescription: "" };
+    for (const [k, v] of Object.entries(glob)) str(f, k, v);
+    const dims = { E: 1, M, R: 2, N, C: 3, I: 1, S: 0 }, ids = {}; let id = 0;
+    for (const [k, n] of Object.entries(dims)) {
+      const ds = f.create_dataset({ name: k, data: new Float32Array(n), shape: [n], dtype: "<f4" });
+      ds.make_scale("This is a netCDF dimension but not a netCDF variable." + String(n).padStart(10));
+      ds.create_attribute("_Netcdf4Dimid", new Int32Array([id]), [], "<i4"); ids[k] = id++;
+    }
+    const v = (name, data, dn, attrs) => {
+      const ds = f.create_dataset({ name, data: data instanceof Float64Array ? data : Float64Array.from(data), shape: dn.map((k) => dims[k]), dtype: "<f8" });
+      dn.forEach((k, i) => ds.attach_scale(i, k));
+      ds.create_attribute("_Netcdf4Coordinates", Int32Array.from(dn.map((k) => ids[k])), [dn.length], "<i4");
+      for (const [x, y] of Object.entries(attrs || {})) str(ds, x, y);
+    };
+    v("RoomTemperature", [293.15], ["I"], { Units: "kelvin" });
+    v("RoomVolume", [GM ? GM.V : HALL.dims[0] * HALL.dims[1] * HALL.dims[2]], ["I"], { Units: "cubic metre" });
+    v("RoomCornerA", [0, 0, 0], ["I", "C"]); v("RoomCornerB", isMesh() ? [0, 0, 0] : HALL.dims, ["I", "C"]);
+    v("RoomCorners", [0], ["I", "I"], { Type: "cartesian", Units: "metre" });
+    v("ListenerPosition", lis.flat(), ["M", "C"], { Type: "cartesian", Units: "metre" });
+    v("ListenerView", view, ["I", "C"], { Type: "cartesian", Units: "metre" }); v("ListenerUp", [0, 0, 1], ["I", "C"]);
+    v("ReceiverPosition", [0, 0.09, 0, 0, -0.09, 0], ["R", "C", "I"], { Type: "cartesian", Units: "metre" });
+    v("ReceiverView", [1, 0, 0, 1, 0, 0], ["R", "C", "I"], { Type: "cartesian", Units: "metre" }); v("ReceiverUp", [0, 0, 1, 0, 0, 1], ["R", "C", "I"]);
+    v("SourcePosition", src.flat(), ["M", "C"], { Type: "cartesian", Units: "metre" });
+    v("SourceView", [0, -1, 0], ["I", "C"], { Type: "cartesian", Units: "metre" }); v("SourceUp", [0, 0, 1], ["I", "C"]);
+    v("EmitterPosition", [0, 0, 0], ["E", "C", "I"], { Type: "cartesian", Units: "metre" });
+    v("EmitterView", [1, 0, 0], ["E", "C", "I"], { Type: "cartesian", Units: "metre" }); v("EmitterUp", [0, 0, 1], ["E", "C", "I"]);
+    v("MeasurementDate", new Array(M).fill(Date.now() / 1000), ["M"]);
+    v("Data.IR", ir, ["M", "R", "N"]);
+    v("Data.SamplingRate", [D.fs], ["I"], { Units: "hertz" }); v("Data.Delay", [0, 0], ["I", "R"]);
+    f.flush(); f.close();
+    const bytes = FS.readFile(path); FS.unlink(path);
+    const name = `${fileStem()}_brirs.sofa`, r = await saveBlob(name, new Blob([bytes], { type: "application/x-netcdf" }));
+    $("posNote").textContent = r.startsWith("not") ? `SOFA ${r}.` : `Saved ${name}: ${M} BRIRs (${seats.length} seats × ${srcs.length} sources), ${D.fs} Hz, ${(N / D.fs).toFixed(2)} s, time zero = emission at the source; measurement order in the file's Comment.`;
+  } catch (e) { try { FS.unlink(path); } catch (_) {} $("posNote").textContent = `SOFA export failed: ${e.message || e}`; }
+}
+// WAV (32-bit float, stereo) of this seat and this condition: amplified source delayed by its condition delay plus the
+// PA pair with the PA delay and gain, as heard in the player (Mix / Direct only / PA only); no normalisation
+function exportWav() {
+  const st = S.seat, A = BR[st + "|" + AMP().id], P = BR[st + "|B_L"] && BR[st + "|B_R"] ? paSum(st) : null;
+  if (!A || !P || !C) { $("posNote").textContent = "BRIRs not ready yet; wait for the computation to finish."; return; }
+  const nA = Math.round(C.dA * D.fs), nB = Math.round(C.dB * D.fs), N = ENG.NL + Math.max(nA, nB), out = [new Float32Array(N), new Float32Array(N)];
+  const wD = S.mode === "pa" ? 0 : 1, wP = S.mode === "direct" ? 0 : C.gain;
+  for (let e = 0; e < 2; e++) for (let i = 0; i < ENG.NL; i++) { out[e][i + nA] += wD * A[e][i]; out[e][i + nB] += wP * P[e][i]; }
+  const buf = new ArrayBuffer(58 + N * 8), dv = new DataView(buf), w4 = (o, t) => { for (let i = 0; i < 4; i++) dv.setUint8(o + i, t.charCodeAt(i)); };
+  w4(0, "RIFF"); dv.setUint32(4, 50 + N * 8, true); w4(8, "WAVE"); w4(12, "fmt "); dv.setUint32(16, 18, true); dv.setUint16(20, 3, true); dv.setUint16(22, 2, true);
+  dv.setUint32(24, D.fs, true); dv.setUint32(28, D.fs * 8, true); dv.setUint16(32, 8, true); dv.setUint16(34, 32, true); dv.setUint16(36, 0, true);
+  w4(38, "fact"); dv.setUint32(42, 4, true); dv.setUint32(46, N, true); w4(50, "data"); dv.setUint32(54, N * 8, true);
+  for (let i = 0, o = 58; i < N; i++, o += 8) { dv.setFloat32(o, out[0][i], true); dv.setFloat32(o + 4, out[1][i], true); }
+  const mode = { mix: "mix", direct: "direct", pa: "pa" }[S.mode] || "mix", name = `${fileStem()}_${st}_itdg${S.itdg}ms_lr${S.lr}dB_${mode}.wav`;
+  saveBlob(name, new Blob([buf], { type: "audio/wav" })).then((r) => ($("posNote").textContent = r.startsWith("not") ? `WAV ${r}.` :
+    `Saved ${name}: seat ${st}, nominal ITDG ${S.itdg} ms, level ratio ${S.lr} dB (${mode}); 32-bit float, ${D.fs} Hz, not normalised; time zero = emission of the amplified source${nA ? ` (its delay ${(C.dA * 1000).toFixed(1)} ms included)` : ""}.`));
+}
+$("bSofa").onclick = exportSofa; $("bWav").onclick = exportWav;
 async function saveConfig() {
   const cfg = currentConfig(), txt = JSON.stringify(cfg, null, 1);
   const hallStem = ((cfg.name || "").split(",")[0].trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "") || "config");

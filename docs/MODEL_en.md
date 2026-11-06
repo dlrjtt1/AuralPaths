@@ -111,6 +111,17 @@ The page rebuilds every BRIR itself, so these work without rerunning Python:
   config saved with the same page and engine reproduces its results exactly (the seeds are fixed: checked on the fan
   hall, identical histograms in two runs); with another version the page says that results may differ. The Python
   side ignores the block and writes its own `out/manifest.json`.
+- **Export BRIRs (SOFA)…**: all seats × sources of the current hall in one SOFA file (AES69-2022, convention
+  SingleRoomSRIR 1.0): one measurement per seat and source, two receivers (left, right ear), the raw path BRIRs
+  (time zero = emission at the source, propagation delay included, no PA delay or gain), 1.6 s at the page's
+  sampling rate. Positions are in the config's coordinates (model coordinates for a 3D model), ListenerView is the
+  direction the seats face (+y in the page). The measurement order ("seat | source"), the time reference and the
+  `_provenance` record are in the file's `Comment` attribute; the KU100 HRIR licence (CC BY 3.0) is in `License`.
+  Written with h5wasm in the netCDF-4 layout and checked with `sofar.read_sofa(verify=True)` (sofar 1.3; values
+  identical to the page's BRIRs). Needs the internet once for h5wasm.
+- **Export WAV…**: the seat on display under the current condition (nominal ITDG, level ratio, Mix / Direct only /
+  PA only) as heard in the player: amplified source with its delay plus the PA pair with the PA delay and gain;
+  stereo, 32-bit float, not normalised, time zero = emission of the amplified source.
 - **Load config…**: opens a config JSON (e.g. `my_hall/config.json`; dropping it on the plan works too)
   and switches the page to that hall, its materials, sources and seats. **Reset to config** goes back to
   the config the page was built from.
@@ -732,7 +743,7 @@ For other loudspeakers, use manufacturer data or your own measurements.
 - fast-simplification (Python, MIT licence; optional): mesh decimation for large OBJ halls.
 
 - h5wasm 0.10.3 (NIST software licence; includes the HDF5 library), loaded from jsDelivr only when a
-  SOFA directivity file is opened; not bundled. Check the licence text before distributing the viewer.
+  SOFA directivity file is opened or BRIRs are exported as SOFA; not bundled. Check the licence text before distributing the viewer.
 - Directivity databases (not bundled, check each licence): TU Berlin musical instruments and a soprano
   (Ackermann, Brinkmann & Weinzierl; CC BY-SA 4.0), TH Köln voice directivity (Pörschmann & Arend; CC BY 4.0),
   IEM DirPat loudspeakers (Brandner; public domain mark).

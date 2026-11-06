@@ -106,6 +106,15 @@ python test_signals/make_sines.py
   ページの音線数・虚像次数・回折の有無、固定された音線 seed、日付)。同じページ・エンジンで保存した config を開き直すと結果が
   そのまま再現される(seed が固定: 扇形ホールで 2 回計算しヒストグラムが同一であることを確認)。別のバージョンでは結果が
   異なりうると表示する。Python はこのブロックを無視し、独自の `out/manifest.json` を書く。
+- **Export BRIRs (SOFA)…**: 現在のホールの座席 × 音源すべてを 1 つの SOFA ファイルとして保存する(AES69-2022、規約
+  SingleRoomSRIR 1.0)。座席・音源の組ごとに測定 1 つ、受音器 2 つ(左耳・右耳)、経路ごとの元の BRIR(時刻 0 = 音源から音が
+  出た瞬間、伝搬遅延を含む、PA の遅延・ゲインなし)、長さ 1.6 秒。位置は config の座標(3D モデルではモデル座標)、
+  ListenerView は座席の向き(ページの +y)である。測定の順序(「座席 | 音源」)、時刻の基準、`_provenance` の記録はファイルの
+  `Comment` 属性に、KU100 HRIR のライセンス(CC BY 3.0)は `License` に入る。h5wasm で netCDF-4 の構造で書き、
+  `sofar.read_sofa(verify=True)`(sofar 1.3)で確認した(値はページの BRIR と同一)。h5wasm を最初に一度インターネットから読み込む。
+- **Export WAV…**: 表示中の座席の現在の条件(公称 ITDG、レベル比、Mix / Direct only / PA only)をプレーヤーで聴く通りに保存する。
+  増幅音源とその遅延、PA の組と PA の遅延・ゲインを合わせたもの。ステレオ、32-bit float、正規化なし、時刻 0 = 増幅音源から音が
+  出た瞬間。
 - **Load config…**: config JSON を開く(例: `my_hall/config.json`。平面上へのドロップでもよい)。ページがそのホール、
   材料、音源、座席に切り替わる。**Reset to config** はページの生成元の config に戻る。
 
@@ -671,7 +680,7 @@ CSV の列 `band_hz, plane, angle_deg, level_db`: plane `h` = 水平極座標(+ 
 - Fratoni データセット(`validate_fratoni.py` 用、同梱しない): CC BY 4.0、doi:10.17632/y7xnv6xg5s.1。`validation/fratoni_*`
   の派生ファイルに出典を表示している。
 - fast-simplification(Python、MIT ライセンス、任意): 大きな OBJ ホールのメッシュ簡略化。
-- h5wasm 0.10.3(NIST ソフトウェアライセンス、HDF5 ライブラリを含む): SOFA 指向性ファイルを開く際にのみ jsDelivr から
+- h5wasm 0.10.3(NIST ソフトウェアライセンス、HDF5 ライブラリを含む): SOFA 指向性ファイルを開く際、または BRIR を SOFA で保存する際にのみ jsDelivr から
   読み込み、同梱しない。ビューアを配布する前にライセンス文を確認すること。
 - 指向性データベース(同梱しない、各ライセンスを確認すること): TU Berlin の楽器とソプラノ(Ackermann, Brinkmann &
   Weinzierl; CC BY-SA 4.0)、TH Köln の音声指向性(Pörschmann & Arend; CC BY 4.0)、IEM DirPat のスピーカー(Brandner;
