@@ -176,6 +176,27 @@ table.layout tr.sel td { background: var(--panel); }
 input[type="file"] { font: 13px var(--f-ui); color: var(--grid-text); }
 input[type="file"]::file-selector-button { font: 500 13px var(--f-ui); color: var(--text); background: var(--bg); border: 1px solid var(--control); border-radius: var(--r); padding: 4px 10px; margin-right: 8px; cursor: pointer; }
 input[type="file"]::file-selector-button:hover { background: var(--panel); }
+/* quick guide: shown once at start (dismissable), reopened from the toolbar */
+.guide { width: min(760px, 100%); gap: 14px; }
+.guide .ghead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.guide .ghead h2 { margin-right: auto; }
+.guide .gsub { font-size: 13px; color: var(--text-dim); margin: -6px 0 0; line-height: 1.55; }
+.guide ol.gsteps { margin: 0; padding: 0; list-style: none; counter-reset: gs; display: grid; gap: 10px; }
+.guide ol.gsteps li { counter-increment: gs; display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 2px 10px; font-size: 13px; line-height: 1.55; color: var(--text-dim); }
+.guide ol.gsteps li::before { content: counter(gs); grid-row: 1 / span 2; width: 22px; height: 22px; border-radius: 50%; background: var(--ink); color: var(--bg); font: 600 12px/22px var(--f-ui); text-align: center; margin-top: 1px; }
+.guide ol.gsteps b { color: var(--text); font-weight: 600; }
+.guide .gcap { font: 600 10px var(--f-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--grid-text); margin: 4px 0 0; padding-top: 12px; border-top: 1px solid var(--grid); }
+.guide dl.gbtns { margin: 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; font-size: 13px; line-height: 1.5; }
+.guide dl.gbtns dt { font-weight: 500; color: var(--text); white-space: nowrap; }
+.guide dl.gbtns dt span { display: inline-block; border: 1px solid var(--control); border-radius: 6px; padding: 0 7px; background: var(--bg); }
+.guide dl.gbtns dd { margin: 0; color: var(--text-dim); min-width: 0; }
+.guide .gnote { font-size: 12px; color: var(--grid-text); margin: 0; line-height: 1.55; }
+.guide .gfoot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding-top: 12px; border-top: 1px solid var(--grid); }
+.guide .gfoot .lock { margin-right: auto; font-size: 13px; color: var(--text-dim); }
+.guide :lang(ko) { word-break: keep-all; overflow-wrap: anywhere; }
+.guide :lang(ja) { line-break: strict; }
+@media (max-width: 520px) { .guide dl.gbtns { grid-template-columns: minmax(0, 1fr); gap: 2px; } .guide dl.gbtns dd { margin-bottom: 6px; } }
+#credits { text-align: center; text-wrap: balance; max-width: 120ch; margin-inline: auto; padding-bottom: 20px; line-height: 1.6; }
 </style>
 
 <header class="toolbar">
@@ -185,6 +206,7 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
     <div class="ctl"><label for="rItdg">Nominal ITDG</label><input type="range" class="cr" id="rItdg" min="0" max="60" step="1"><input class="cn" type="number" id="nItdg" min="0" max="60" step="1" aria-label="Nominal ITDG in ms"><span class="cu">ms</span></div>
     <div class="ctl"><label for="rLr" title="Level ratio, PA / amplified direct sound">Level ratio PA / direct</label><input type="range" class="cr" id="rLr" min="-9" max="6" step="0.5"><input class="cn" type="number" id="nLr" min="-9" max="6" step="0.5" aria-label="Level ratio in dB"><span class="cu">dB</span></div>
     <div class="grow"></div>
+    <button class="btn" id="bGuide" aria-haspopup="dialog">Guide</button>
     <span class="status busy" id="busy" hidden>Computing</span>
     <span class="status" id="realize"></span>
   </div>
@@ -392,6 +414,13 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
   </div></div>
 </footer>
 <div class="wrap"><p class="note" id="credits">HRIRs and headphone filter: B. Bernschütz, <i>Spherical Far-Field HRIR Compilation of the Neumann KU100</i> (TH Köln), Zenodo 3928297, licensed CC BY 3.0 (creativecommons.org/licenses/by/3.0) — resampled to 48 kHz, about 4° direction spacing, 16-bit. AuralPaths code: MIT licence, LABO 1557. Simulation results are model estimates, not a reproduction of any real hall; see README and NOTICE in the repository.</p></div>
+<div class="overlay" id="guideOverlay" hidden>
+  <div class="dialog guide" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+    <div class="ghead"><h2 id="guideTitle">Quick guide</h2><div class="seg" id="segGuideLang" role="group" aria-label="Language"><button type="button" data-l="ko" aria-pressed="false">한국어</button><button type="button" data-l="ja" aria-pressed="false">日本語</button><button type="button" data-l="en" aria-pressed="true">English</button></div></div>
+    <div id="guideBody"></div>
+    <div class="gfoot"><label class="lock"><input type="checkbox" id="guideHide"> <span id="guideHideTxt">Don't show at start</span></label><button class="btn primary" id="guideStart">Start</button></div>
+  </div>
+</div>
 <div class="overlay" id="alignOverlay" hidden>
   <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="alignTitle">
     <h2 id="alignTitle">Align drawing</h2>
@@ -2837,7 +2866,7 @@ function titleBlock() {
   $("tbHall").textContent = (S.loaded ? (S.loadedName || S.loaded) : D.name) || (isDrawn() ? "Drawn hall" : "Shoebox");
   $("tbSeat").textContent = `${S.seat}  (${seatObj(S.seat).pos.map((v) => v.toFixed(2)).join(", ")} m)`;
   $("tbCond").textContent = `ITDG ${S.itdg} ms · LR ${f(S.lr)} dB`;
-  $("tbModel").textContent = `${isDrawn() ? "drawn" : "shoebox"} ${HALL.dims.map((v) => +(+v).toFixed(2)).join(" × ")} m`;
+  $("tbModel").textContent = `${isMesh() ? "3D model" : isDrawn() ? "drawn" : "shoebox"} ${HALL.dims.map((v) => +(+v).toFixed(2)).join(" × ")} m`;
   const d = new Date(); $("tbDate").textContent = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 document.querySelectorAll(".ph").forEach((ph) => { const p = ph.querySelector("p.expl"); if (!p) return;
@@ -3267,4 +3296,85 @@ setTimeout(async () => { ENG.buildBank(); clampAll(); await rebuildAll(); buildF
 // Auto-trace needs Claude (the artifact's sample capability); outside Claude the button stays hidden
 $("bAuto").hidden = true;
 atSample().then((s) => { if (s) $("bAuto").hidden = false; }).catch(() => {});
+// ---- quick guide (KO / JA / EN): shown at start until dismissed; the choice is a per-browser convenience only
+const GUIDE = {
+  en: { title: "Quick guide", sub: "AuralPaths computes binaural room impulse responses for a direct sound plus delayed PA, and lets you listen to them. Five steps:",
+    steps: [
+      ["Choose the hall", "In <b>Hall</b>: Shoebox, Drawn hall (plan outline and section, can be traced from PDF drawings) or 3D model (OBJ). Enter sizes and materials, then <b>Apply</b>."],
+      ["Place sources and seats", "In <b>Plan</b> and <b>Section</b>, drag the amplified source (Amp), the PAs and the seats, or type positions in <b>Layout</b>. The plan colour shows the effective ITDG at every point."],
+      ["Set the condition", "In the top bar: <b>Seat</b>, <b>Nominal ITDG</b> (PA delay re the direct sound) and <b>Level ratio PA / direct</b>."],
+      ["Read the results", "<b>Echogram</b>, <b>Arrivals</b> and <b>Current condition</b> (timing, level, room-acoustic parameters and how far they have been checked against measured halls); <b>Level-ratio trend</b> across conditions."],
+      ["Listen and keep", "In <b>Listen</b>, choose dry files and press Play (headphones). <b>A/B</b> switches between two conditions at the same seat. <b>Save config…</b> keeps the whole setup."]],
+    cap: "What the buttons do",
+    btns: [
+      ["Load / Save config…", "Open or save the whole setup as JSON, with calibration and a record of versions and settings (for reproducibility)."],
+      ["Calibrate…", "Scale the absorption per octave band so that simulated T30 matches a CSV of measured T30 at given positions."],
+      ["Export WAV… / BRIRs (SOFA)…", "This seat and condition as a stereo WAV; all seats and sources as one SOFA file."],
+      ["Ray-tracing spread…", "Re-run with other random seeds to see how much the values move."],
+      ["HRIR set…", "Render with another HRIR set (SOFA), e.g. an individual one, instead of the KU100."],
+      ["Load plan drawing… / Auto-trace", "Put a PDF or image under the plan or section and trace the hall outline from it."],
+      ["Lock all / Reset layout", "Stop accidental dragging / go back to the positions of the config."],
+      ["?", "On each panel: notes on what it shows."]],
+    note: "Results are model estimates, not a reproduction of a real hall. For research use, calibrate with measured T30 and check early reflections against a measurement.",
+    hide: "Don't show at start", start: "Start" },
+  ko: { title: "간단 사용 안내", sub: "AuralPaths는 직접음과 지연된 PA음이 섞인 바이노럴 실내 임펄스 응답(BRIR)을 계산하고 들어 볼 수 있게 하는 도구입니다. 다섯 단계로 씁니다.",
+    steps: [
+      ["홀 고르기", "<b>Hall</b>에서 Shoebox(직육면체), Drawn hall(평면 외곽선과 단면; PDF 도면에서 따라 그릴 수 있음), 3D model(OBJ) 중 하나를 고릅니다. 크기와 재료를 넣고 <b>Apply</b>를 누릅니다."],
+      ["음원과 좌석 배치", "<b>Plan</b>과 <b>Section</b>에서 확성 음원(Amp), PA, 좌석을 끌어 옮기거나 <b>Layout</b> 표에 좌표를 입력합니다. 평면의 색은 각 지점의 실효 ITDG(초기 반사음 지연 시간)를 나타냅니다."],
+      ["조건 정하기", "위쪽 막대에서 <b>Seat</b>(좌석), <b>Nominal ITDG</b>(직접음 대비 PA 지연), <b>Level ratio PA / direct</b>(PA와 직접음의 레벨비)를 정합니다."],
+      ["결과 보기", "<b>Echogram</b>, <b>Arrivals</b>(도달음), <b>Current condition</b>(시간·레벨, 실내음향 지표, 실측 홀과 얼마나 대조됐는지), <b>Level-ratio trend</b>(조건별 변화)를 봅니다."],
+      ["듣고 저장하기", "<b>Listen</b>에서 드라이 음원 파일을 고르고 Play를 누릅니다(헤드폰 사용). <b>A/B</b>는 같은 좌석에서 두 조건을 끊김 없이 바꿔 듣습니다. <b>Save config…</b>로 설정 전체를 저장합니다."]],
+    cap: "버튼별 용도",
+    btns: [
+      ["Load / Save config…", "설정 전체를 JSON으로 열고 저장합니다. 보정 결과와 버전·설정 기록(재현성)도 함께 들어갑니다."],
+      ["Calibrate…", "위치별 실측 T30 표(CSV)에 맞도록 옥타브 대역별 흡음을 조정합니다."],
+      ["Export WAV… / BRIRs (SOFA)…", "현재 좌석·조건을 스테레오 WAV로, 모든 좌석·음원을 SOFA 파일 하나로 내보냅니다."],
+      ["Ray-tracing spread…", "난수 시드만 바꿔 다시 계산해 지표가 얼마나 흔들리는지 보여 줍니다."],
+      ["HRIR set…", "KU100 대신 다른 HRIR 세트(SOFA, 예: 개인 측정 세트)로 렌더링합니다."],
+      ["Load plan drawing… / Auto-trace", "PDF나 이미지 도면을 평면·단면 밑에 깔고 홀 외곽선을 따라 그립니다."],
+      ["Lock all / Reset layout", "실수로 끌어 옮기지 않게 고정 / config의 위치로 되돌리기."],
+      ["?", "각 패널의 설명을 펼칩니다."]],
+    note: "결과는 모델 추정치이며 실제 홀을 재현한 것이 아닙니다. 연구에 쓸 때는 실측 T30으로 보정하고, 초기 반사를 실측과 대조해 보세요.",
+    hide: "시작할 때 다시 보지 않기", start: "시작" },
+  ja: { title: "簡易ガイド", sub: "AuralPaths は、直接音と遅延した PA 音を含むバイノーラル室内インパルス応答(BRIR)を計算し、試聴できるツールです。5 つの手順で使います。",
+    steps: [
+      ["ホールを選ぶ", "<b>Hall</b> で Shoebox(直方体)、Drawn hall(平面の外形と断面。PDF 図面からトレース可能)、3D model(OBJ)のいずれかを選び、寸法と材料を入力して <b>Apply</b> を押します。"],
+      ["音源と座席を配置する", "<b>Plan</b> と <b>Section</b> で拡声音源(Amp)、PA、座席をドラッグするか、<b>Layout</b> の表に座標を入力します。平面の色は各点の実効 ITDG(初期反射音遅延時間)を示します。"],
+      ["条件を決める", "上部のバーで <b>Seat</b>(座席)、<b>Nominal ITDG</b>(直接音に対する PA の遅延)、<b>Level ratio PA / direct</b>(PA と直接音のレベル比)を設定します。"],
+      ["結果を見る", "<b>Echogram</b>、<b>Arrivals</b>(到来音)、<b>Current condition</b>(時間・レベル、室内音響指標、実測ホールとの照合の程度)、<b>Level-ratio trend</b>(条件ごとの変化)を確認します。"],
+      ["試聴して保存する", "<b>Listen</b> でドライ音源ファイルを選び、Play を押します(ヘッドホン使用)。<b>A/B</b> は同じ座席で二つの条件を途切れなく切り替えます。<b>Save config…</b> で設定全体を保存します。"]],
+    cap: "各ボタンの用途",
+    btns: [
+      ["Load / Save config…", "設定全体を JSON で開く・保存する。校正結果とバージョン・設定の記録(再現性)も含まれます。"],
+      ["Calibrate…", "位置ごとの実測 T30 の表(CSV)に合うよう、オクターブ帯域ごとの吸音を調整します。"],
+      ["Export WAV… / BRIRs (SOFA)…", "現在の座席・条件をステレオ WAV で、全座席・全音源を一つの SOFA ファイルで書き出します。"],
+      ["Ray-tracing spread…", "乱数シードだけを変えて再計算し、指標のばらつきを示します。"],
+      ["HRIR set…", "KU100 の代わりに別の HRIR セット(SOFA、例: 個人測定のセット)でレンダリングします。"],
+      ["Load plan drawing… / Auto-trace", "PDF や画像の図面を平面・断面の下に敷き、ホールの外形をトレースします。"],
+      ["Lock all / Reset layout", "誤ってドラッグしないよう固定 / config の位置に戻す。"],
+      ["?", "各パネルの説明を開きます。"]],
+    note: "結果はモデルによる推定値であり、実在のホールを再現したものではありません。研究に用いる際は実測 T30 で校正し、初期反射を実測と照合してください。",
+    hide: "起動時に表示しない", start: "始める" } };
+const GUIDE_KEY = "auralpaths.guide";
+function guideStore(v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(GUIDE_KEY) || "{}"); localStorage.setItem(GUIDE_KEY, JSON.stringify(v)); } catch (e) { return {}; } }
+function guideLang() { const st = guideStore(); if (GUIDE[st.lang]) return st.lang; const n = (navigator.language || "en").slice(0, 2); return GUIDE[n] ? n : "en"; }
+function renderGuide(l) {
+  const g = GUIDE[l], b = $("guideBody");
+  b.lang = l; $("guideTitle").textContent = g.title; $("guideHideTxt").textContent = g.hide; $("guideStart").textContent = g.start;
+  b.innerHTML = `<p class="gsub">${g.sub}</p><ol class="gsteps">${g.steps.map(([h, t]) => `<li><b>${h}</b><span>${t}</span></li>`).join("")}</ol>` +
+    `<p class="gcap">${g.cap}</p><dl class="gbtns">${g.btns.map(([k, v]) => `<dt><span>${k}</span></dt><dd>${v}</dd>`).join("")}</dl><p class="gnote">${g.note}</p>`;
+  b.style.display = "grid"; b.style.gap = "12px";
+  for (const x of $("segGuideLang").querySelectorAll("button")) x.setAttribute("aria-pressed", String(x.dataset.l === l));
+}
+function openGuide() { renderGuide(guideLang()); $("guideHide").checked = !!guideStore().hide; $("guideOverlay").hidden = false; $("guideOverlay").querySelector(".dialog").scrollTop = 0; $("guideStart").focus({ preventScroll: true }); }
+function closeGuide() { const st = guideStore(); st.hide = $("guideHide").checked; guideStore(st); $("guideOverlay").hidden = true; }
+$("segGuideLang").onclick = (e) => { const l = e.target.closest("button")?.dataset.l; if (!l) return; const st = guideStore(); st.lang = l; guideStore(st); renderGuide(l); };
+$("bGuide").onclick = openGuide; $("guideStart").onclick = closeGuide;
+$("guideOverlay").addEventListener("click", (e) => { if (e.target === $("guideOverlay")) closeGuide(); });
+addEventListener("keydown", (e) => { // while the guide is open, page shortcuts (Space = A/B) stay off; Escape closes it
+  if ($("guideOverlay").hidden) return;
+  if (e.key === "Escape") { closeGuide(); e.preventDefault(); }
+  if (!["BUTTON", "INPUT"].includes(e.target.tagName) || e.key === "Escape") e.stopImmediatePropagation();
+}, true);
+if (!guideStore().hide) openGuide();
 </script>
