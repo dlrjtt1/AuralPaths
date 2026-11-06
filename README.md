@@ -15,7 +15,7 @@ By LABO 1557 (Dong-Gyun You).
   exported from SketchUp or Blender) with each surface name mapped to a material.
 - Acoustics: image sources (early part; each reflection weighted for finite panel size, Kirchhoff–Fresnel after
   Rindel, and for scattering loss) + ray tracing (diffuse part) + first-order edge diffraction (UTD);
-  binaural rendering with KU100 HRIRs; late reverberation with the ear energies and interaural coherence of the
+  binaural rendering with KU100 HRIRs (or an HRIR set of your own, SOFA); late reverberation with the ear energies and interaural coherence of the
   ray-traced arrival directions.
 - Output: echogram, arrivals by direction, C80 / D50 / Ts / EDT / T30 / IACC, seat maps of effective ITDG and
   level ratio, A/B listening with your own dry recordings (optional headphone EQ for Sennheiser HD600).

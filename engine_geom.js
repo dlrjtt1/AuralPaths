@@ -532,7 +532,9 @@ const GEOM = (() => {
   const FIB = (() => { const a = [], N = 64; for (let i = 0; i < N; i++) { const z = 1 - 2 * (i + 0.5) / N, ph = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5), r = Math.sqrt(1 - z * z); a.push([r * Math.cos(ph), r * Math.sin(ph), z]); } return a; })();
   // ---------- ray tracing: returns per receiver [NB][nBins] energy histogram
   function rays(G, src, recs, opts, mats, air) {
-    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null } = opts, NB = air.length;
+    // k0 / k1: trace only rays k0 ... k1 - 1 of the n (each ray has its own random stream and the directions are
+    // stratified over all n, so the parts of several workers add up to exactly the single-run result)
+    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null, k0 = 0, k1 = n } = opts, NB = air.length;
     const nBins = Math.round(tMax / bin), H = recs.map(() => Array.from({ length: NB }, () => new Float64Array(nBins)));
     // late-field arrival directions (as dirrays.py): energy per Fibonacci bin (head frame) and band after tLate[m]
     const W = tLate ? recs.map(() => new Float64Array(FIB.length * NB)) : null, RW = 1.0, VW = 4 / 3 * Math.PI * RW ** 3;   // incoming direction -d, head frame [-dy, dx, -dz]
@@ -541,7 +543,7 @@ const GEOM = (() => {
     const Rpow = {}; for (const m in mats) Rpow[m] = mats[m].R.map((r) => r * r);
     let escaped = 0, hits = 0, leaked = 0;
     const tHit = new Float64Array(G.S.length);
-    for (let k = 0; k < n; k++) {
+    for (let k = k0; k < Math.min(k1, n); k++) {
       // each ray has its own random stream (seed, ray index), so that a change of absorption, which ends some rays
       // earlier, leaves the paths of all other rays unchanged (common random numbers: smooth calibration and
       // like-for-like comparisons of materials)

@@ -122,6 +122,19 @@ The page rebuilds every BRIR itself, so these work without rerunning Python:
 - **Export WAV…**: the seat on display under the current condition (nominal ITDG, level ratio, Mix / Direct only /
   PA only) as heard in the player: amplified source with its delay plus the PA pair with the PA delay and gain;
   stereo, 32-bit float, not normalised, time zero = emission of the amplified source.
+- **HRIR set…** (Listening): renders with another HRIR set from a SOFA file (2 receivers, source directions per
+  measurement, e.g. SimpleFreeFieldHRIR; a measured individual set or another dummy head). Directions are read as SOFA
+  spherical (azimuth counter-clockwise from the front, elevation up) or cartesian; other sampling rates are resampled
+  by the browser; at most 896 taps are kept (the note shows how much energy is cut). The diffuse-field band energies
+  and the interaural coherence of the late field are computed from the loaded set as `brir_proto.load_hrir` does
+  (cos-elevation weights); the late field then has no arrival directions (the directional tables are made from the
+  KU100 set in Python). Check: loading the full KU100 SOFA gives the same diffuse-field energies as the embedded
+  set (0.00 dB in all bands) and an interaural coherence within 0.005. The headphone filter stays the one measured
+  on the KU100. **Back to KU100** restores the embedded set; the set's name and SHA-256 go into `_provenance`, and
+  SOFA exports carry its name instead of the KU100 licence.
+- Ray tracing runs in several workers in parallel (cores − 1, at most 8; 4 for 3D models, which build their room in
+  each worker). Every ray has its own random stream, so the result does not depend on the number of workers (fan
+  hall: identical histograms with 1, 2 and 3 workers; 2 workers on 2 cores: 8.6 s → 4.4 s).
 - **How far to trust these values** (under the room-acoustic parameters): model type, whether the materials are
   placeholders, loaded / edited or calibrated, the ray count and the share of rays lost through gaps, and the evidence
   from the measured-hall checks that applies to this model (BRAS CR3 / CR4, *Position-by-position check*).

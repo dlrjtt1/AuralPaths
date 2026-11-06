@@ -358,7 +358,9 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
         <button class="btn" id="bStop" disabled>Stop</button>
       </div>
       <div class="vol"><label for="vol">Volume</label><input type="range" id="vol" min="-40" max="12" step="1" value="-6"><span id="volV"></span>
-        <label class="lock" id="hpWrap" hidden><input type="checkbox" id="hpEq" checked> <span id="hpName">Headphone</span> compensation</label></div>
+        <label class="lock" id="hpWrap" hidden><input type="checkbox" id="hpEq" checked> <span id="hpName">Headphone</span> compensation</label>
+        <button class="btn" id="bHrir" title="Render with another HRIR set (SOFA SimpleFreeFieldHRIR), e.g. a measured individual set">HRIR set…</button><button class="btn" id="bHrirReset" hidden>Back to KU100</button><input type="file" id="fHrir" accept=".sofa" hidden></div>
+      <p class="note" id="hrirNote">HRIRs: Neumann KU100 (B. Bernschütz 2013, Zenodo 3928297, CC BY 3.0).</p>
       <p class="note" id="lNote">Choose a file for the amplified source to enable playback.</p>
       <p class="cap">A/B compare · same seat, two conditions, switched without a gap</p>
       <div class="abgrid">
@@ -978,7 +980,9 @@ const GEOM = (() => {
   const FIB = (() => { const a = [], N = 64; for (let i = 0; i < N; i++) { const z = 1 - 2 * (i + 0.5) / N, ph = Math.PI * (1 + Math.sqrt(5)) * (i + 0.5), r = Math.sqrt(1 - z * z); a.push([r * Math.cos(ph), r * Math.sin(ph), z]); } return a; })();
   // ---------- ray tracing: returns per receiver [NB][nBins] energy histogram
   function rays(G, src, recs, opts, mats, air) {
-    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null } = opts, NB = air.length;
+    // k0 / k1: trace only rays k0 ... k1 - 1 of the n (each ray has its own random stream and the directions are
+    // stratified over all n, so the parts of several workers add up to exactly the single-run result)
+    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null, k0 = 0, k1 = n } = opts, NB = air.length;
     const nBins = Math.round(tMax / bin), H = recs.map(() => Array.from({ length: NB }, () => new Float64Array(nBins)));
     // late-field arrival directions (as dirrays.py): energy per Fibonacci bin (head frame) and band after tLate[m]
     const W = tLate ? recs.map(() => new Float64Array(FIB.length * NB)) : null, RW = 1.0, VW = 4 / 3 * Math.PI * RW ** 3;   // incoming direction -d, head frame [-dy, dx, -dz]
@@ -987,7 +991,7 @@ const GEOM = (() => {
     const Rpow = {}; for (const m in mats) Rpow[m] = mats[m].R.map((r) => r * r);
     let escaped = 0, hits = 0, leaked = 0;
     const tHit = new Float64Array(G.S.length);
-    for (let k = 0; k < n; k++) {
+    for (let k = k0; k < Math.min(k1, n); k++) {
       // each ray has its own random stream (seed, ray index), so that a change of absorption, which ends some rays
       // earlier, leaves the paths of all other rays unchanged (common random numbers: smooth calibration and
       // like-for-like comparisons of materials)
@@ -1239,7 +1243,8 @@ const ENG = (() => {
     for (let i = 0; i < n; i++) { let v = bin.charCodeAt(2 * i) | (bin.charCodeAt(2 * i + 1) << 8); if (v > 32767) v -= 65536; out[i] = v * k; }
     return out;
   }
-  const H = D.hrir, hir = i16(H.d, H.s), hdirs = H.dirs, taps = H.taps;
+  const H = D.hrir; let hir = i16(H.d, H.s), hdirs = H.dirs, taps = H.taps;
+  const HR0 = { hir, hdirs, taps, df: JSON.parse(JSON.stringify(D.df)), coh: D.coh ? JSON.parse(JSON.stringify(D.coh)) : null };   // the embedded set (KU100)
   // radix-2 complex FFT, in place
   const rev = new Uint32Array(NFFT); { const b = Math.log2(NFFT); for (let i = 0; i < NFFT; i++) { let r = 0; for (let j = 0; j < b; j++) r |= ((i >> j) & 1) << (b - 1 - j); rev[i] = r; } }
   const cosT = new Float64Array(NFFT / 2), sinT = new Float64Array(NFFT / 2);
@@ -1284,6 +1289,12 @@ const ENG = (() => {
   }
   function nearest(x, y, z) { let best = 0, bd = -2; for (let i = 0, n = hdirs.length / 3; i < n; i++) { const d = x * hdirs[3 * i] + y * hdirs[3 * i + 1] + z * hdirs[3 * i + 2]; if (d > bd) { bd = d; best = i; } } return best; }
 
+  // ---- HRIR set: the embedded KU100, or one the viewer loads (SOFA). The directional late field uses tables made
+  // from the KU100 set in Python, so a loaded set renders the late field with its own diffuse-field energies and
+  // interaural coherence instead (as the shoebox path), without arrival directions.
+  let useLD = true;
+  function setHrir(o) { hir = o.ir; hdirs = o.dirs; taps = o.taps; Hc.clear(); D.df = o.df; D.coh = o.coh; setCoh(); buildBank(); useLD = false; }
+  function resetHrir() { hir = HR0.hir; hdirs = HR0.hdirs; taps = HR0.taps; Hc.clear(); D.df = JSON.parse(JSON.stringify(HR0.df)); D.coh = HR0.coh; setCoh(); buildBank(); useLD = true; }
   // ---- hall state
   let room = null;
   function setHall(h) {
@@ -1389,14 +1400,15 @@ const ENG = (() => {
   // brir_proto.coherent_pair): L = cos(a) n1 + sin(a) n2, R = cos(a) n1 - sin(a) n2, a = acos(Gamma(f)) / 2
   const NP = 1 << Math.ceil(Math.log2(NL));
   const COS_A = new Float64Array(NP / 2 + 1), SIN_A = new Float64Array(NP / 2 + 1);
-  (function () {
+  function setCoh() {
     const cf = D.coh ? D.coh.f : null, cg = D.coh ? D.coh.g : null;
     for (let k = 0; k <= NP / 2; k++) {
       let g = 0;
       if (cf) { const f = k * fs / NP; if (f >= cf[cf.length - 1]) g = cg[cg.length - 1]; else { let j = 0; while (cf[j + 1] < f) j++; g = cg[j] + (cg[j + 1] - cg[j]) * (f - cf[j]) / (cf[j + 1] - cf[j]); } }
       const a = Math.acos(Math.max(-1, Math.min(1, g))) / 2; COS_A[k] = Math.cos(a); SIN_A[k] = Math.sin(a);
     }
-  })();
+  }
+  setCoh();
   function coherentPair() {
     const re = new Float64Array(NP), im = new Float64Array(NP);
     for (let i = 0; i < NP; i++) { re[i] = gauss(); im[i] = gauss(); }     // z = n1 + i n2
@@ -1415,6 +1427,7 @@ const ENG = (() => {
     return [L, R];
   }
   function buildBank() {
+    BANK.length = 0; seed = 12345;
     for (let k = 0; k < K; k++) {
       const ears = [[], []];
       for (const [lo, hi] of edges) {
@@ -1529,7 +1542,7 @@ const ENG = (() => {
     return list.map((q) => { const a = bandAmps(q, dm), rms = Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length);
       return { t: q.t, o: q.o, az: Math.atan2(q.h[1], q.h[0]) * 180 / Math.PI, el: Math.asin(Math.max(-1, Math.min(1, q.h[2]))) * 180 / Math.PI, lev: 20 * Math.log10(rms + 1e-12) }; });
   }
-  return { fs, NL, K, HB, HN, i16, setHall, early, renderList, compose, lateDir, lateField, hasLateDir: !!LD, fullHist, arrivals, arrivalsFromList, buildBank, bandFilter, fftAny, get room() { return room; } };
+  return { fs, NL, K, HB, HN, i16, setHall, early, renderList, compose, lateDir, lateField, get hasLateDir() { return !!LD && useLD; }, setHrir, resetHrir, fullHist, arrivals, arrivalsFromList, buildBank, bandFilter, fftAny, get room() { return room; } };
 })();
 </script>
 <script>
@@ -1655,12 +1668,12 @@ function rebuildAll() {
 // ---- drawn hall: image sources + ray tracing in a Web Worker (engine_geom.js), rendering on the main thread
 const GEOM_SRC = document.getElementById("geomScript").textContent;
 // ---- reproducibility: SHA-256 (FIPS 180-4) of the engine and of a 3D model, written into saved configs
-function sha256(str) {
+function sha256(str) {   // string (UTF-8) or Uint8Array
   const K = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
     0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
     0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
     0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
-  const b = new TextEncoder().encode(str), n = ((b.length + 9 + 63) >> 6) << 6, m = new Uint8Array(n); m.set(b); m[b.length] = 0x80;
+  const b = str instanceof Uint8Array ? str : new TextEncoder().encode(str), n = ((b.length + 9 + 63) >> 6) << 6, m = new Uint8Array(n); m.set(b); m[b.length] = 0x80;
   const bits = b.length * 8, dv = new DataView(m.buffer); dv.setUint32(n - 4, bits >>> 0); dv.setUint32(n - 8, Math.floor(bits / 4294967296));
   const H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19], W = new Uint32Array(64), rr = (x, k) => (x >>> k) | (x << (32 - k));
   for (let o = 0; o < n; o += 64) {
@@ -1683,6 +1696,7 @@ function provenance() {
     ...(d ? { page_rays_per_source: HALL.rays, page_ism_order: mm ? 1 : HALL.order, page_diffraction: !mm && !!HALL.diff,
       ray_seed: "1000 + 7919 x path index (amplified 0, PA L 1, PA R 2, unamplified 3...), the same every run" } : {}),
     materials: d ? (HALL.matsSet ? "edited or loaded" : "page defaults (placeholders)") : undefined,
+    hrir: S.hrir ? S.hrir : KU100_NAME,
     ...(S.calibration ? { calibration: S.calibration } : {}),
     _note: "written by the page on Save config; the Python run.py ignores keys starting with _ and writes its own out/manifest.json" };
 }
@@ -1706,16 +1720,20 @@ function tLateOf(src, m) { return m.lateDir ? m.recs.map((r) => Math.hypot(src[0
 function slim(q) { const o = { t: q.t, d: q.d, o: q.o, h: q.h, e: q.e, g: Array.from(q.g) }; if (q.dif) Object.assign(o, { dif: 1, ga: q.ga, eb: q.eb, dr: q.dr, di: q.di }); return o; }
 const WORKER_SRC = GEOM_SRC + withDiffraction.toString() + tLateOf.toString() + slim.toString() + `
 self.onmessage = (e) => {
+  // m.tasks: [{ i: source index, k0, k1: ray range, ism: also the image sources of this source }] (one worker of a pool)
   const m = e.data, G = m.geom.mesh ? GEOM.buildMesh(Object.assign({}, m.geom.mesh, { obj: GEOM.loadObj(m.geom.mesh.text) }), m.geom.mesh.seed) : GEOM.build(m.geom), E = m.diff ? GEOM.edges(G) : null;
-  m.srcs.forEach((src, i) => {
-    const I = withDiffraction(G, E, src, m, GEOM.ism(G, src, m.recs, m.order, m.tWin, m.c, m.mats, m.air, m.bands));
-    const RT = GEOM.rays(G, src, m.recs, { n: m.rays, c: m.c, seed: 1000 + 7919 * m.seeds[i], tLate: tLateOf(src, m) }, m.mats, m.air);
-    const ism = I.map((L) => L.map(slim));
-    const H = RT.H.map((bands) => bands.map((a) => Float32Array.from(a)));
-    self.postMessage({ job: m.job, i, ism, H, W: RT.W, escaped: RT.escaped, n: RT.n }, H.flat().map((a) => a.buffer));
-  });
+  for (const t of m.tasks) {
+    const src = m.srcs[t.i], ism = t.ism ? withDiffraction(G, E, src, m, GEOM.ism(G, src, m.recs, m.order, m.tWin, m.c, m.mats, m.air, m.bands)).map((L) => L.map(slim)) : null;
+    const RT = GEOM.rays(G, src, m.recs, { n: m.rays, c: m.c, seed: 1000 + 7919 * m.seeds[t.i], tLate: tLateOf(src, m), k0: t.k0, k1: t.k1 }, m.mats, m.air);
+    self.postMessage({ job: m.job, i: t.i, ism, H: RT.H, W: RT.W, escaped: RT.escaped, n: RT.n }, RT.H.flat().map((a) => a.buffer).concat(RT.W ? RT.W.map((a) => a.buffer) : []));
+  }
   self.postMessage({ job: m.job, done: true });
 };`;
+// parallel ray tracing: a pool of workers, each tracing a share of the rays of every source (results identical to one
+// worker: each ray has its own random stream). 3D models build their room in every worker, so the pool is smaller there.
+let POOL_N = 0;   // > 0: fixed pool size (tests)
+const POOL = () => POOL_N || Math.max(1, Math.min((navigator.hardwareConcurrency || 2) - 1, isMesh() ? 4 : 8));
+let pool = [];
 let worker = null, jobId = 0, workerOK = true, LOST = 0;
 function workerMats() {
   const out = {};
@@ -1732,13 +1750,25 @@ function geomCompute(srcs, seats, seedOff = 0) {
   progress(0);
   if (workerOK) {
     try {
-      if (worker) worker.terminate();
-      worker = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: "text/javascript" })));
+      for (const w of pool) w.terminate();
+      const P = Math.min(POOL(), Math.max(1, Math.floor(msg.rays / 500))), url = URL.createObjectURL(new Blob([WORKER_SRC], { type: "text/javascript" }));
+      pool = Array.from({ length: P }, () => new Worker(url));
+      const nTask = srcs.length * P; let nDone = 0;
+      $("busy").textContent = `Computing hall 0/${srcs.length}` + (P > 1 ? ` (${P} workers)` : "");
       return new Promise((ok, no) => {
-        const res = [];
-        worker.onmessage = (e) => { const m = e.data; if (m.job !== msg.job) return; if (m.done) ok(res); else { res[m.i] = m; progress(res.filter(Boolean).length); } };
-        worker.onerror = (err) => { workerOK = false; no(err); };
-        worker.postMessage(msg);
+        const res = srcs.map(() => ({ ism: null, H: null, W: null, escaped: 0, n: msg.rays, parts: 0 })); let finished = 0;
+        pool.forEach((w, p) => {
+          const tasks = srcs.map((_, i) => ({ i, k0: Math.floor(msg.rays * p / P), k1: Math.floor(msg.rays * (p + 1) / P), ism: i % P === p }));
+          w.onmessage = (e) => { const m = e.data; if (m.job !== msg.job) return;
+            if (m.done) { if (++finished === P) { URL.revokeObjectURL(url); ok(res); } return; }
+            const r = res[m.i]; if (m.ism) r.ism = m.ism; r.escaped += m.escaped; r.parts++;
+            if (!r.H) { r.H = m.H; r.W = m.W; } else { m.H.forEach((bs, k) => bs.forEach((a, b) => { const t = r.H[k][b]; for (let j = 0; j < a.length; j++) t[j] += a[j]; }));
+              if (m.W) m.W.forEach((a, k) => { const t = r.W[k]; for (let j = 0; j < a.length; j++) t[j] += a[j]; }); }
+            nDone++; $("busy").textContent = `Computing hall ${res.filter((x) => x.parts === P).length}/${srcs.length}` + (P > 1 ? ` (${P} workers, ${Math.round(100 * nDone / nTask)} %)` : "");
+          };
+          w.onerror = (err) => { workerOK = false; no(err); };
+          w.postMessage(Object.assign({}, msg, { tasks }));
+        });
       }).catch(() => inline(msg, progress));
     } catch (e) { workerOK = false; }
   }
@@ -2999,10 +3029,10 @@ async function exportSofa() {
     const now = new Date().toISOString().replace("T", " ").slice(0, 19);
     const glob = { Conventions: "SOFA", Version: "2.1", SOFAConventions: "SingleRoomSRIR", SOFAConventionsVersion: "1.0", DataType: "FIR", RoomType: "reverberant",
       Title: `AuralPaths BRIRs, ${S.loadedName || S.loaded || D.name || "hall"}`, DateCreated: now, DateModified: now, APIName: "AuralPaths web (h5wasm)", APIVersion: "AES69-2022, SOFA conventions 2.1",
-      AuthorContact: "", Organization: "", License: "BRIRs computed with AuralPaths (MIT). Rendered with Neumann KU100 HRIRs, B. Bernschuetz, Zenodo record 3928297, CC BY 3.0: credit it when you use these BRIRs.",
-      ApplicationName: "AuralPaths web", ApplicationVersion: `v${D.version}, engine ${ENGINE_SHA.slice(0, 12)}`, Comment: comment, History: "", References: "https://doi.org/10.5281/zenodo.3928297 (HRIRs)",
+      AuthorContact: "", Organization: "", License: S.hrir ? `BRIRs computed with AuralPaths (MIT). Rendered with the HRIR set ${S.hrir.name} loaded by the user: check its licence before sharing.` : "BRIRs computed with AuralPaths (MIT). Rendered with Neumann KU100 HRIRs, B. Bernschuetz, Zenodo record 3928297, CC BY 3.0: credit it when you use these BRIRs.",
+      ApplicationName: "AuralPaths web", ApplicationVersion: `v${D.version}, engine ${ENGINE_SHA.slice(0, 12)}`, Comment: comment, History: "", References: S.hrir ? "" : "https://doi.org/10.5281/zenodo.3928297 (HRIRs)",
       Origin: "simulation", DatabaseName: "", RoomShortName: fileStem(), RoomDescription: prov.model, RoomLocation: "", RoomGeometry: "",
-      ListenerShortName: "KU100 (simulated)", ListenerDescription: "", ReceiverShortName: "ears", ReceiverDescription: "left, right", SourceShortName: "", SourceDescription: names.join("; "),
+      ListenerShortName: S.hrir ? S.hrir.name : "KU100 (simulated)", ListenerDescription: "", ReceiverShortName: "ears", ReceiverDescription: "left, right", SourceShortName: "", SourceDescription: names.join("; "),
       EmitterShortName: "", EmitterDescription: "" };
     for (const [k, v] of Object.entries(glob)) str(f, k, v);
     const dims = { E: 1, M, R: 2, N, C: 3, I: 1, S: 0 }, ids = {}; let id = 0;
@@ -3212,6 +3242,69 @@ function drawTrust() {
     return `${MET[k][0]} ${f(k, lo)}–${f(k, hi)}${MET[k][1] ? " " + MET[k][1] : ""} (${wJ.toFixed(1)} JND)`;
   }).join(", ") + ". Spread of 1 JND or more: raise the ray count before comparing seats or conditions.";
 }
+// ---- HRIR set from a SOFA file (SimpleFreeFieldHRIR or any set with 2 receivers and source directions)
+const KU100_NAME = "Neumann KU100 (B. Bernschuetz 2013, Zenodo 3928297, CC BY 3.0)";
+async function resampleIR(ir, M, N, fsIn, fsOut) { // all IRs in one channel with gaps, resampled by the browser
+  const gap = 256, seg = N + gap, src = new Float32Array(M * 2 * seg); for (let m = 0; m < M * 2; m++) src.set(ir.subarray(m * N, (m + 1) * N), m * seg);
+  const len = Math.ceil(src.length * fsOut / fsIn), ctx = new OfflineAudioContext(1, len, fsOut), buf = ctx.createBuffer(1, src.length, fsIn);
+  buf.copyToChannel(src, 0); const bs = ctx.createBufferSource(); bs.buffer = buf; bs.connect(ctx.destination); bs.start();
+  const out = (await ctx.startRendering()).getChannelData(0), N2 = Math.round(N * fsOut / fsIn), seg2 = seg * fsOut / fsIn, r = new Float32Array(M * 2 * N2);
+  for (let m = 0; m < M * 2; m++) { const o = Math.round(m * seg2); r.set(out.subarray(o, o + N2), m * N2); }
+  return { ir: r, N: N2 };
+}
+async function loadHrirSofa(file) {
+  $("hrirNote").textContent = `Reading ${file.name}…`;
+  let H5, FS; try { H5 = await ensureH5(); ({ FS } = await H5.ready); } catch (e) { $("hrirNote").textContent = `Reading SOFA needs the h5wasm library from jsDelivr (internet): ${e.message || e}`; return; }
+  const bytes = new Uint8Array(await file.arrayBuffer()), path = "/hrir_" + Date.now() + ".sofa"; FS.writeFile(path, bytes);
+  let M, R, N, fs0, pos, ptype, ir, conv;
+  try {
+    const f = new H5.File(path, "r"), ds = (k) => f.get(k);
+    const d = ds("Data.IR"); [M, R, N] = d.shape; ir = Float32Array.from(d.value); fs0 = +ds("Data.SamplingRate").value[0];
+    const sp = ds("SourcePosition"); pos = Array.from(sp.value); ptype = (() => { try { return String(sp.attrs.Type.value).toLowerCase(); } catch (e) { return "spherical"; } })();
+    try { conv = String(f.attrs.SOFAConventions.value); } catch (e) { conv = "?"; }
+    if (sp.shape[0] === 1 && M > 1) throw new Error("SourcePosition must be given per measurement");
+    f.close();
+  } catch (e) { $("hrirNote").textContent = `${file.name}: ${e.message || e}`; try { FS.unlink(path); } catch (_) {} return; }
+  FS.unlink(path);
+  if (R !== 2) { $("hrirNote").textContent = `${file.name}: needs 2 receivers (left, right ear), has ${R}.`; return; }
+  if (M < 100) { $("hrirNote").textContent = `${file.name}: only ${M} directions; at least 100 are needed for the image sources and the diffuse-field average.`; return; }
+  // directions in the head frame: x front, y left, z up (SOFA spherical: azimuth counter-clockwise from the front, elevation up)
+  const dirs = new Array(M * 3);
+  for (let m = 0; m < M; m++) { let x, y, z; const a = pos[3 * m], b = pos[3 * m + 1], c = pos[3 * m + 2];
+    if (ptype.includes("cart")) { const l = Math.hypot(a, b, c) || 1; x = a / l; y = b / l; z = c / l; } else { const az = a * Math.PI / 180, el = b * Math.PI / 180; x = Math.cos(el) * Math.cos(az); y = Math.cos(el) * Math.sin(az); z = Math.sin(el); }
+    dirs[3 * m] = +x.toFixed(5); dirs[3 * m + 1] = +y.toFixed(5); dirs[3 * m + 2] = +z.toFixed(5); }
+  if (fs0 !== D.fs) { $("hrirNote").textContent = `Resampling ${file.name} from ${fs0} to ${D.fs} Hz…`; ({ ir, N } = await resampleIR(ir, M, N, fs0, D.fs)); }
+  // diffuse-field band energies and interaural coherence, area-weighted by cos(elevation) (as brir_proto.load_hrir)
+  const w = new Float64Array(M); let ws = 0; for (let m = 0; m < M; m++) { w[m] = Math.sqrt(Math.max(0, 1 - dirs[3 * m + 2] ** 2)) + 1e-6; ws += w[m]; } for (let m = 0; m < M; m++) w[m] /= ws;
+  const OC = [125, 250, 500, 1000, 2000, 4000, 8000], fsh = D.fs / 2, edges = OC.map((fc, i) => [i ? fc / Math.SQRT2 : 0, i < OC.length - 1 ? fc * Math.SQRT2 : fsh]);
+  const spec = (m, e, nf) => { const re = new Float64Array(nf), im = new Float64Array(nf), x = ir.subarray((2 * m + e) * N, (2 * m + e + 1) * N); for (let i = 0; i < Math.min(N, nf); i++) re[i] = x[i]; ENG.fftAny(re, im, false); return [re, im]; };
+  const df = [new Array(7).fill(0), new Array(7).fill(0)], NF1 = 4096, NF2 = 512, nb2 = NF2 / 2 + 1, cr = new Float64Array(nb2), pl = new Float64Array(nb2), pr = new Float64Array(nb2);
+  for (let m = 0; m < M; m++) {
+    for (let e = 0; e < 2; e++) { const [re, im] = spec(m, e, NF1);
+      edges.forEach(([lo, hi], b) => { let s = 0, n = 0; for (let k = 0; k <= NF1 / 2; k++) { const f = k * D.fs / NF1; if (f >= lo && f < hi) { s += re[k] * re[k] + im[k] * im[k]; n++; } } df[e][b] += w[m] * (n ? s / n : 0); }); }
+    const [lr, li] = spec(m, 0, NF2), [rr, ri] = spec(m, 1, NF2);
+    for (let k = 0; k < nb2; k++) { cr[k] += w[m] * (lr[k] * rr[k] + li[k] * ri[k]); pl[k] += w[m] * (lr[k] * lr[k] + li[k] * li[k]); pr[k] += w[m] * (rr[k] * rr[k] + ri[k] * ri[k]); }
+  }
+  const coh = { f: Array.from({ length: nb2 }, (_, k) => k * D.fs / NF2), g: Array.from({ length: nb2 }, (_, k) => +Math.max(-1, Math.min(1, cr[k] / Math.sqrt(pl[k] * pr[k] + 1e-30))).toFixed(4)) };
+  // early part: at most NFFT - PRE = 896 taps per IR (the page's convolution block); report what is cut
+  const T = Math.min(N, 896), irT = new Float32Array(M * 2 * T); let eAll = 0, eCut = 0;
+  for (let m = 0; m < M * 2; m++) for (let i = 0; i < N; i++) { const v = ir[m * N + i]; eAll += v * v; if (i < T) irT[m * T + i] = v; else eCut += v * v; }
+  ENG.setHrir({ ir: irT, dirs, taps: T, df: df.map((a) => a.map((v) => +v.toPrecision(6))), coh });
+  S.hrir = { name: file.name, sha256: sha256(bytes), convention: conv, directions: M, taps: T, fs_file: fs0 };
+  $("hrirNote").innerHTML = `HRIRs: <b>${esc(file.name)}</b> (${conv}, ${M} directions, ${T} taps at ${D.fs} Hz${fs0 !== D.fs ? `, resampled from ${fs0} Hz` : ""}${eCut > 1e-6 * eAll ? `, ${(100 * eCut / eAll).toFixed(2)} % of the energy after ${T} taps cut` : ""}). Late field: this set's diffuse-field energies and interaural coherence, no arrival directions. Check the set's licence before sharing BRIRs made with it.`;
+  $("bHrirReset").hidden = false;
+  rerenderAll();
+}
+// re-render every BRIR from the stored hall results (drawn / 3D) or recompute (shoebox, fast) after an HRIR change
+function rerenderAll() {
+  for (const k in BR) delete BR[k];
+  if (isDrawn()) { for (const k in GC) delete GC[k].late; for (const o of sourcesAll()) for (const st of SEATS()) renderGeom(o, st); }
+  else for (const st of SEATS()) rebuildSeat(st);
+  refresh();
+}
+$("bHrir").onclick = () => $("fHrir").click();
+$("fHrir").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (f) loadHrirSofa(f); };
+$("bHrirReset").onclick = () => { ENG.resetHrir(); S.hrir = null; $("bHrirReset").hidden = true; $("hrirNote").textContent = "HRIRs: Neumann KU100 (B. Bernschütz 2013, Zenodo 3928297, CC BY 3.0)."; rerenderAll(); };
 // ---- calibration to measured T30 (same method as calibrate.py): per octave band one factor k_b scales the absorption
 // of all material groups in use (shoebox: its uniform absorption); k <- k * T_sim / T_meas (Sabine scaling) until the
 // mean T30 over the calibration positions is within 2 % in every band or 6 iterations; coefficients kept in 0.01 ... 0.95.
