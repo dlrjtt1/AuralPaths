@@ -102,6 +102,10 @@ python test_signals/make_sines.py
 - **Save config…**(Load config の隣): 現在の config 全体をダウンロードする(`<hall>_config_edited.json`)。ページの
   生成元の config(または読み込んだ config)に、現在のホール、音源、向き、指向性データ、座席を反映したものである。
   AuralPaths フォルダに置き、`python run.py <ファイル>` を実行する。**Copy config** は同じ JSON をコピーする。
+  保存した config には `_provenance` ブロックも入る(ページのバージョン、ブラウザエンジンと 3D モデルの SHA-256、モデルの種類、
+  ページの音線数・虚像次数・回折の有無、固定された音線 seed、日付)。同じページ・エンジンで保存した config を開き直すと結果が
+  そのまま再現される(seed が固定: 扇形ホールで 2 回計算しヒストグラムが同一であることを確認)。別のバージョンでは結果が
+  異なりうると表示する。Python はこのブロックを無視し、独自の `out/manifest.json` を書く。
 - **Load config…**: config JSON を開く(例: `my_hall/config.json`。平面上へのドロップでもよい)。ページがそのホール、
   材料、音源、座席に切り替わる。**Reset to config** はページの生成元の config に戻る。
 

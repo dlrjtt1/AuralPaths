@@ -106,6 +106,11 @@ The page rebuilds every BRIR itself, so these work without rerunning Python:
 - **Save config…** (next to Load config): downloads the complete current config (`<hall>_config_edited.json`):
   the config the page was built from (or the one loaded) with the current hall, sources, aims, directivity data
   and seats. Put it in the AuralPaths folder and run `python run.py <file>`. **Copy config** copies the same JSON.
+  The saved config also carries a `_provenance` block (page version, SHA-256 of the browser engine and of a 3D
+  model, model type, the page's ray count / image-source order / diffraction, the fixed ray seeds, date). Loading a
+  config saved with the same page and engine reproduces its results exactly (the seeds are fixed: checked on the fan
+  hall, identical histograms in two runs); with another version the page says that results may differ. The Python
+  side ignores the block and writes its own `out/manifest.json`.
 - **Load config…**: opens a config JSON (e.g. `my_hall/config.json`; dropping it on the plan works too)
   and switches the page to that hall, its materials, sources and seats. **Reset to config** goes back to
   the config the page was built from.

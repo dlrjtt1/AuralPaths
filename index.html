@@ -1647,6 +1647,47 @@ function rebuildAll() {
 }
 // ---- drawn hall: image sources + ray tracing in a Web Worker (engine_geom.js), rendering on the main thread
 const GEOM_SRC = document.getElementById("geomScript").textContent;
+// ---- reproducibility: SHA-256 (FIPS 180-4) of the engine and of a 3D model, written into saved configs
+function sha256(str) {
+  const K = [0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da, 0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2];
+  const b = new TextEncoder().encode(str), n = ((b.length + 9 + 63) >> 6) << 6, m = new Uint8Array(n); m.set(b); m[b.length] = 0x80;
+  const bits = b.length * 8, dv = new DataView(m.buffer); dv.setUint32(n - 4, bits >>> 0); dv.setUint32(n - 8, Math.floor(bits / 4294967296));
+  const H = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19], W = new Uint32Array(64), rr = (x, k) => (x >>> k) | (x << (32 - k));
+  for (let o = 0; o < n; o += 64) {
+    for (let t = 0; t < 16; t++) W[t] = dv.getUint32(o + 4 * t);
+    for (let t = 16; t < 64; t++) { const s0 = rr(W[t - 15], 7) ^ rr(W[t - 15], 18) ^ (W[t - 15] >>> 3), s1 = rr(W[t - 2], 17) ^ rr(W[t - 2], 19) ^ (W[t - 2] >>> 10); W[t] = (W[t - 16] + s0 + W[t - 7] + s1) | 0; }
+    let [a, bb, c, d, e, f, g, h] = H;
+    for (let t = 0; t < 64; t++) { const t1 = (h + (rr(e, 6) ^ rr(e, 11) ^ rr(e, 25)) + ((e & f) ^ (~e & g)) + K[t] + W[t]) | 0, t2 = ((rr(a, 2) ^ rr(a, 13) ^ rr(a, 22)) + ((a & bb) ^ (a & c) ^ (bb & c))) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = bb; bb = a; a = (t1 + t2) | 0; }
+    H[0] = (H[0] + a) | 0; H[1] = (H[1] + bb) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0; H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+  }
+  return H.map((x) => (x >>> 0).toString(16).padStart(8, "0")).join("");
+}
+const ENGINE_SHA = sha256(GEOM_SRC);
+// what produced a saved config: page version, engine hash, model hash, the page's computation settings and seeds
+function provenance() {
+  const mm = isMesh(), d = isDrawn();
+  return { page: "AuralPaths web " + "v" + D.version, engine_geom_sha256: ENGINE_SHA, saved: new Date().toISOString(),
+    model: mm ? "3D mesh (OBJ)" : d ? "drawn 2.5D hall" : "shoebox",
+    ...(mm ? { obj_sha256: HALL.mesh.sha || (HALL.mesh.sha = sha256(HALL.mesh.text)), voxel_m: GM ? +GM.vox.h.toFixed(4) : null } : {}),
+    ...(d ? { page_rays_per_source: HALL.rays, page_ism_order: mm ? 1 : HALL.order, page_diffraction: !mm && !!HALL.diff,
+      ray_seed: "1000 + 7919 x path index (amplified 0, PA L 1, PA R 2, unamplified 3...), the same every run" } : {}),
+    materials: d ? (HALL.matsSet ? "edited or loaded" : "page defaults (placeholders)") : undefined,
+    ...(S.calibration ? { calibration: S.calibration } : {}),
+    _note: "written by the page on Save config; the Python run.py ignores keys starting with _ and writes its own out/manifest.json" };
+}
+// on load: tell when a config was saved by another page version or engine (results can differ)
+function provenanceNote(c) {
+  const p = c && c._provenance; if (!p) return "";
+  const diff = [];
+  if (p.page && p.page !== "AuralPaths web v" + D.version) diff.push(`saved with ${p.page}`);
+  if (p.engine_geom_sha256 && p.engine_geom_sha256 !== ENGINE_SHA) diff.push("a different engine version");
+  if (p.obj_sha256 && HALL.mesh && sha256(HALL.mesh.text) !== p.obj_sha256) diff.push("a different OBJ file");
+  return diff.length ? ` Note: this config was ${diff.join(", ")}; results may differ from when it was saved.` : ` Saved ${String(p.saved || "").slice(0, 10)} with this page and engine version: results reproduce.`;
+}
 // image-source arrivals plus first-order edge diffraction (GEOM.diffract) per receiver; shared by the worker and the inline fallback
 function withDiffraction(G, E, src, m, I) {
   if (!E) return I;
@@ -2938,6 +2979,7 @@ function currentConfig() {
       materials: HALL.mats, ism_order: 1, rays: Math.max(HALL.rays, 50000), diffraction: false };
     out.room = Object.assign(out.room, { dims_m: m.dims, stage_depth_m: 0 }); }
   else if (isDrawn()) out.geometry = Object.assign(base.geometry || {}, { plan: HALL.geom.plan, floor: HALL.geom.floor, ceiling: HALL.geom.ceil, materials: HALL.mats, ism_order: HALL.order, rays: Math.max(HALL.rays, 50000), diffraction: HALL.diff }); else delete out.geometry;
+  out._provenance = provenance();
   return out;
 }
 $("bCopy").onclick = () => {
@@ -3226,7 +3268,7 @@ function refreshPlots() { C = cond(S.itdg, S.lr); drawMap(); drawSection(); draw
 function refresh() {
   TREND.key = null; buildPaTable(); buildSeatRow(); refreshPlots();
   if (player) { if (player.seat !== S.seat) restartPlayer(); else if (player.type === "single") applyLive(); }
-  $("posNote").textContent = matchesConfig() ? "" : S.loaded ? `Showing ${S.loaded}. Python reference values appear only for the config this page was built from; run run.py with ${S.loaded} (or open its own out/viewer.html) for them.`
+  $("posNote").textContent = matchesConfig() ? "" : S.loaded ? `Showing ${S.loaded}. Python reference values appear only for the config this page was built from; run run.py with ${S.loaded} (or open its own out/viewer.html) for them.${provenanceNote(S.loadedCfg)}`
     : "Geometry differs from config.json. The Python reference values are hidden; Copy config and rerun run.py to refresh them.";
 }
 let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(refresh, 120); });

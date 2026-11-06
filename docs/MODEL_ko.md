@@ -101,6 +101,10 @@ python test_signals/make_sines.py
 - **Save config…** (Load config 옆): 현재 config 전체를 내려받는다(`<hall>_config_edited.json`). 페이지가 만들어진
   config(또는 불러온 config)에 현재의 홀, 음원, 조준, 지향성 데이터, 좌석을 반영한 것이다. AuralPaths 폴더에 넣고
   `python run.py <파일>`을 실행한다. **Copy config**는 같은 JSON을 복사한다.
+  저장한 config에는 `_provenance` 블록도 들어간다(페이지 버전, 브라우저 엔진과 3D 모델의 SHA-256, 모델 종류, 페이지의
+  광선 수·허상 차수·회절 여부, 고정된 광선 seed, 날짜). 같은 페이지·엔진으로 저장한 config를 다시 열면 결과가 그대로
+  재현된다(seed가 고정됨: 부채꼴 홀에서 두 번 계산해 히스토그램이 동일함을 확인). 다른 버전이면 결과가 다를 수 있다고
+  알린다. Python은 이 블록을 무시하고 자체 `out/manifest.json`을 쓴다.
 - **Load config…**: config JSON을 연다(예: `my_hall/config.json`. 평면 위에 끌어다 놓아도 된다). 페이지가 그 홀,
   재료, 음원, 좌석으로 바뀐다. **Reset to config**는 페이지가 만들어진 config로 되돌린다.
 
