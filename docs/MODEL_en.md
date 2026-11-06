@@ -329,6 +329,15 @@ Playback level calibration, presentation, randomisation and responses belong to 
 
 ## Calibration from measurements (`calibrate.py`)
 
+In the page: **Calibrate…** (next to Save config) takes the same CSV and runs the same method with the browser
+engine (omnidirectional source, all material groups the hall uses, or the shoebox's uniform absorption; at most 6
+iterations). An optional column `role` with the value `check` keeps a position out of the fit; its T30 error before
+and after is shown next to the fit positions. Materials are replaced, the record is saved in the config as
+`_calibration` (as calibrate.py writes it, plus `engine`) and shown in *How far to trust these values*; **Undo
+calibration** restores the previous materials. Browser and Python T30 differ by 2–6 % in measured halls, so a config
+for Python runs is better calibrated again with `calibrate.py`. Example (fan hall, synthetic template with P2 as
+check, 50 000 rays, 34 s): fit position within 2 %, check position 2–4 %.
+
 `python calibrate.py my_hall/config.json measurements.csv --source-directivity directivity/dodeca_NTi_DS3.csv`
 
 - `measurements.csv`: `label, src_x, src_y, src_z, rec_x, rec_y, rec_z, band_hz, T30_s, EDT_s` (one row per position

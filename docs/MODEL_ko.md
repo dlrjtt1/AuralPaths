@@ -302,6 +302,13 @@ doi:10.1121/1.2987429의 2채널 경우).
 
 ## 실측 기반 보정 (`calibrate.py`)
 
+페이지에서는 **Calibrate…**(Save config 옆)가 같은 CSV를 받아 같은 방법을 브라우저 엔진으로 실행한다(무지향 음원, 홀이 쓰는
+모든 재료 그룹 또는 슈박스의 균일 흡음률, 최대 6회 반복). 선택 열 `role`에 `check`를 적은 위치는 맞춤에서 빠지고, 보정 전후
+T30 오차를 맞춤 위치와 나란히 보여 준다. 재료가 바뀌고, 기록은 config에 `_calibration`(calibrate.py와 같은 형식에 `engine`
+추가)으로 저장되며 *How far to trust these values*에 표시된다. **Undo calibration**으로 이전 재료로 되돌린다. 실측 홀에서
+브라우저와 Python의 T30은 2–6% 다르므로, Python으로 돌릴 config는 `calibrate.py`로 다시 보정하는 편이 낫다. 예(부채꼴 홀,
+P2를 check로 둔 합성 양식, 광선 50 000개, 34초): 맞춤 위치 2% 이내, 확인 위치 2–4%.
+
 `python calibrate.py my_hall/config.json measurements.csv --source-directivity directivity/dodeca_NTi_DS3.csv`
 
 - `measurements.csv`: `label, src_x, src_y, src_z, rec_x, rec_y, rec_z, band_hz, T30_s, EDT_s`(위치와 옥타브 대역

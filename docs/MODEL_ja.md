@@ -308,6 +308,13 @@ JASA 124(5), doi:10.1121/1.2987429 の 2 チャンネルの場合)。
 
 ## 実測に基づく校正(`calibrate.py`)
 
+ページでは **Calibrate…**(Save config の隣)が同じ CSV を受け取り、同じ方法をブラウザのエンジンで実行する(無指向性音源、
+ホールが使うすべての材料グループまたはシューボックスの一様な吸音率、最大 6 回の反復)。任意の列 `role` に `check` と書いた
+位置はフィットから外れ、校正前後の T30 誤差をフィット位置と並べて示す。材料が置き換わり、記録は config に `_calibration`
+(calibrate.py と同じ形式に `engine` を追加)として保存され、*How far to trust these values* に表示される。**Undo calibration**
+で元の材料に戻す。実測ホールではブラウザと Python の T30 は 2–6% 異なるため、Python で計算する config は `calibrate.py` で
+校正し直す方がよい。例(扇形ホール、P2 を check にした合成の雛形、音線 50 000 本、34 秒): フィット位置 2% 以内、確認位置 2–4%。
+
 `python calibrate.py my_hall/config.json measurements.csv --source-directivity directivity/dodeca_NTi_DS3.csv`
 
 - `measurements.csv`: `label, src_x, src_y, src_z, rec_x, rec_y, rec_z, band_hz, T30_s, EDT_s`(位置とオクターブ帯域

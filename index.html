@@ -202,7 +202,7 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
       <button class="btn" id="bLoadPlan">Load plan drawing…</button>
       <button class="btn" id="bUnderlay" aria-pressed="false">Show drawing</button>
       <button class="btn" id="bCopy">Copy config</button>
-      <button class="btn" id="bLoadCfg">Load config…</button><button class="btn" id="bSaveCfg">Save config…</button><button class="btn" id="bSofa" title="All seats × sources as one SOFA file (AES69 SingleRoomSRIR): raw path BRIRs, time zero = emission at the source">Export BRIRs (SOFA)…</button><button class="btn" id="bWav" title="This seat, this condition (ITDG, level ratio, Mix / Direct / PA) as a 32-bit float stereo WAV">Export WAV…</button><input type="file" id="fCfg" accept=".json,application/json" hidden>
+      <button class="btn" id="bLoadCfg">Load config…</button><button class="btn" id="bSaveCfg">Save config…</button><button class="btn" id="bCal" title="Scale the absorption per octave band so that the simulated T30 matches measured T30 at given positions (as calibrate.py)">Calibrate…</button><input type="file" id="fCal" accept=".csv,text/csv,text/plain" hidden><button class="btn" id="bSofa" title="All seats × sources as one SOFA file (AES69 SingleRoomSRIR): raw path BRIRs, time zero = emission at the source">Export BRIRs (SOFA)…</button><button class="btn" id="bWav" title="This seat, this condition (ITDG, level ratio, Mix / Direct / PA) as a 32-bit float stereo WAV">Export WAV…</button><input type="file" id="fCfg" accept=".json,application/json" hidden>
     </div>
     <div class="row" id="planTraceRow" hidden>
       <button class="btn" id="bTracePlan">Trace outline</button>
@@ -337,6 +337,7 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
       <dl class="kv" id="kvMet"></dl>
       <p class="note" id="mNote"></p>
       <div class="note" id="trustBox"></div>
+      <div class="note" id="calNote"></div>
       <div class="row" id="spreadRow"><button class="btn" id="bSpread" title="Re-run the ray tracing for this seat with 3 other random seeds and show how much the values move">Ray-tracing spread…</button><span class="note" id="spreadNote"></span></div>
     </section>
   </div>
@@ -2940,6 +2941,7 @@ function applyConfig(c, name) {
   if (!byId(D.ref)) D.ref = seats.find(([k]) => k === "C")?.[0] || seats[0][0];
   if (!byId(S.seat)) S.seat = D.ref;
   const dirFiles = Object.keys(src).filter((k) => !k.startsWith("_") && src[k] && typeof src[k].directivity === "string");
+  S.calibration = c._calibration && c._calibration.factors ? deep(c._calibration) : null; S.calPrev = null; if (typeof calReport === "function") calReport();
   S.loadedCfg = deep(c); S.loadedFile = name; S.loaded = name; S.loadedName = typeof c.name === "string" && c.name ? c.name : "";
   $("posNote").textContent = `Loaded ${name}: ${isMesh() ? "3D model " + HALL.mesh.name : isDrawn() ? "drawn hall" : "shoebox"} ${HALL.dims.join(" × ")} m, ${OBJ.length - seats.length} sources, ${seats.length} listening positions${HALL.seatMap ? `, ${HALL.seatMap.length} traced seats` : ""}. Python reference values show only for the config this page was built from; run run.py with ${name} for its own.${dirFiles.length ? ` Directivity files (${dirFiles.join(", ")}) cannot be read here: those sources are omni / generic until you open the viewer export_viewer.py builds for this config.` : ""}`;
   shapeUI(); buildFiles(); work(rebuildAll);
@@ -3085,6 +3087,7 @@ function currentConfig() {
       materials: HALL.mats, ism_order: 1, rays: Math.max(HALL.rays, 50000), diffraction: false };
     out.room = Object.assign(out.room, { dims_m: m.dims, stage_depth_m: 0 }); }
   else if (isDrawn()) out.geometry = Object.assign(base.geometry || {}, { plan: HALL.geom.plan, floor: HALL.geom.floor, ceiling: HALL.geom.ceil, materials: HALL.mats, ism_order: HALL.order, rays: Math.max(HALL.rays, 50000), diffraction: HALL.diff }); else delete out.geometry;
+  if (S.calibration) out._calibration = S.calibration; else delete out._calibration;
   out._provenance = provenance();
   return out;
 }
@@ -3185,7 +3188,7 @@ function drawTrust() {
   const mm = isMesh(), d = isDrawn(), cal = !!S.calibration, items = [];
   const model = mm ? `3D model (${HALL.mesh.name}): first-order image sources + ray tracing, no diffraction` : d ? `drawn 2.5D hall: image sources to order ${HALL.order}${HALL.diff ? " + edge diffraction" : ""} + ray tracing` : "shoebox: image sources only (no random part; same values every run)";
   items.push(["Model", model]);
-  items.push(["Materials", cal ? `calibrated to measured T30 (${S.calibration.positions} positions)` : HALL.matsSet || S.loaded ? "from the config or edited, <b>not calibrated</b> to measurements" : "<b>page defaults (placeholders)</b>, not a real hall"]);
+  items.push(["Materials", cal ? `calibrated to measured T30 (${[].concat(S.calibration.positions).length} position(s)${S.calibration.engine ? "" : ", calibrate.py"})` : HALL.matsSet || S.loaded ? "from the config or edited, <b>not calibrated</b> to measurements" : "<b>page defaults (placeholders)</b>, not a real hall"]);
   if (d) items.push(["Ray tracing", `${HALL.rays.toLocaleString("en")} rays per source${LOST > 0.01 ? `, ${(LOST * 100).toFixed(1)} % left the model through gaps` : ""}; values carry random noise (use <i>Ray-tracing spread</i>)`]);
   const ev = [];
   if (d && !cal) ev.push(`uncalibrated, the 3D model of two measured halls gave T30 8–11 % (1.6–2.3 JND) long and C80 / C50 / Ts within 0.8–2.3 JND; calibrated on some positions, T30 at the others came within 0.8 JND (<a href="${BRAS_URL}" target="_blank" rel="noopener">BRAS CR3 / CR4</a>, see docs/MODEL_en.md)`);
@@ -3205,6 +3208,107 @@ function drawTrust() {
     return `${MET[k][0]} ${f(k, lo)}–${f(k, hi)}${MET[k][1] ? " " + MET[k][1] : ""} (${wJ.toFixed(1)} JND)`;
   }).join(", ") + ". Spread of 1 JND or more: raise the ray count before comparing seats or conditions.";
 }
+// ---- calibration to measured T30 (same method as calibrate.py): per octave band one factor k_b scales the absorption
+// of all material groups in use (shoebox: its uniform absorption); k <- k * T_sim / T_meas (Sabine scaling) until the
+// mean T30 over the calibration positions is within 2 % in every band or 6 iterations; coefficients kept in 0.01 ... 0.95.
+// CSV as for calibrate.py: label,src_x,src_y,src_z,rec_x,rec_y,rec_z,band_hz,T30_s[,EDT_s][,role]; role "check" keeps a
+// position out of the fit and reports it separately. Positions in config coordinates (model coordinates for a 3D model).
+function readCalCsv(txt) {
+  const lines = txt.split(/\r?\n/).filter((l) => l.trim() && !l.trim().startsWith("#")); if (lines.length < 2) throw new Error("no rows");
+  const hd = lines[0].split(",").map((x) => x.trim()), col = (k) => hd.indexOf(k);
+  for (const k of ["label", "src_x", "src_y", "src_z", "rec_x", "rec_y", "rec_z", "band_hz", "T30_s"]) if (col(k) < 0) throw new Error(`column ${k} missing`);
+  const pos = {};
+  for (const l of lines.slice(1)) {
+    const c = l.split(",").map((x) => x.trim()), g = (k) => (col(k) >= 0 ? c[col(k)] : ""), lab = g("label");
+    const P = pos[lab] || (pos[lab] = { src: ["src_x", "src_y", "src_z"].map((k) => +g(k)), rec: ["rec_x", "rec_y", "rec_z"].map((k) => +g(k)), T30: {}, EDT: {}, check: /^check/i.test(g("role")) });
+    if (P.src.concat(P.rec).some((v) => !Number.isFinite(v))) throw new Error(`position ${lab}: coordinates`);
+    const b = Math.round(+g("band_hz")); if (g("T30_s") !== "" && +g("T30_s") > 0) P.T30[b] = +g("T30_s"); if (g("EDT_s") !== "" && +g("EDT_s") > 0) P.EDT[b] = +g("EDT_s");
+  }
+  return pos;
+}
+function decayOf(h, t0) { // T30 and EDT (s) of one band histogram from the direct arrival, as metrics()
+  const i0 = Math.floor(t0 / BIN), e = h.subarray(i0); let tot = 0; for (let i = 0; i < e.length; i++) tot += e[i];
+  const sch = new Float64Array(e.length); let acc = 0; for (let i = e.length - 1; i >= 0; i--) { acc += e[i]; sch[i] = 10 * Math.log10(acc / tot + 1e-30); }
+  const fit = (hi, lo) => { let n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0; for (let i = 0; i < sch.length; i++) if (sch[i] <= hi && sch[i] >= lo) { const x = i * BIN; n++; sx += x; sy += sch[i]; sxx += x * x; sxy += x * sch[i]; }
+    if (n < 5) return NaN; const k = (n * sxy - sx * sy) / (n * sxx - sx * sx); return k < 0 ? -60 / k : NaN; };
+  return { T30: sch[sch.length - 1] < -40 ? fit(-5, -35) : NaN, EDT: fit(0, -10) };
+}
+const calBands = () => D.praBands.slice(0, 6).map((f) => Math.round(f));
+async function calSimulate(pos) { // simulated T30 / EDT per position and band (omnidirectional source and receiver)
+  const out = {}, labs = Object.keys(pos), toPage = (p) => (isMesh() ? meshToPage(HALL.mesh, p) : p.slice()), bands = calBands();
+  if (isDrawn()) {
+    const groups = new Map(); for (const lab of labs) { const k = pos[lab].src.join(","); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(lab); }
+    const srcs = [...groups.keys()].map((k, i) => ({ id: "cal" + i, kind: "cal", pos: toPage(k.split(",").map(Number)) }));
+    const recs = labs.map((lab) => ({ id: lab, pos: toPage(pos[lab].rec) }));
+    const res = await geomCompute(srcs, recs, 50);
+    [...groups.values()].forEach((L, i) => L.forEach((lab) => {
+      const k = labs.indexOf(lab), hist = geomHist(srcs[i], { list: res[i].ism[k], H: res[i].H[k] }).hist, t0 = dist(srcs[i].pos, recs[k].pos) / D.c;
+      out[lab] = {}; bands.forEach((b, j) => (out[lab][b] = decayOf(hist[j], t0)));
+    }));
+  } else {
+    ENG.setHall(HALL);
+    for (const lab of labs) { const sp = toPage(pos[lab].src), rp = toPage(pos[lab].rec), hist = ENG.fullHist(sp, rp, null), t0 = dist(sp, rp) / D.c; out[lab] = {}; bands.forEach((b, j) => (out[lab][b] = decayOf(hist[j], t0))); }
+  }
+  return out;
+}
+const meanOver = (pos, sim, labs, key, b) => { const v = labs.map((l) => (sim ? sim[l][b][key] : pos[l][key][b])).filter((x) => Number.isFinite(x)); return v.length ? v.reduce((a, c) => a + c, 0) / v.length : NaN; };
+function calGroups() { // material groups to scale: those the hall uses
+  if (!isDrawn()) return ["__shoebox"];
+  return isMesh() ? [...new Set(Object.values(HALL.mesh.groups).concat([HALL.mesh.def || "wall"]))].filter((g) => HALL.mats[g]) : GROUPS.map(([g]) => g);
+}
+function calApply(base, k) {
+  const sc = (a) => a.map((v, i) => Math.round(Math.min(0.95, Math.max(0.01, v * (k[i] ?? 1))) * 10000) / 10000);
+  if (!isDrawn()) { HALL.alpha = sc(base.__shoebox); return; }
+  for (const g in base) HALL.mats[g] = Object.assign({}, HALL.mats[g], { alpha: sc(base[g]) });
+}
+async function calibrate(txt, fname) {
+  let pos; try { pos = readCalCsv(txt); } catch (e) { $("calNote").textContent = `${fname}: ${e.message}. Expected the columns of calibrate.py (see examples/calibration_measurements_example.csv).`; return; }
+  if (!$("busy").hidden) { $("calNote").textContent = "Wait until the hall is computed, then calibrate."; return; }
+  const all = Object.keys(pos), fitL = all.filter((l) => !pos[l].check), chkL = all.filter((l) => pos[l].check), bands = calBands();
+  if (!fitL.length) { $("calNote").textContent = "All positions are marked check; mark at least one for the fit."; return; }
+  const meas = bands.map((b) => meanOver(pos, null, fitL, "T30", b));
+  if (meas.every((x) => !Number.isFinite(x))) { $("calNote").textContent = "No T30 values for 125 Hz – 4 kHz in the file."; return; }
+  const groups = calGroups(), base = {}; for (const g of groups) base[g] = (g === "__shoebox" ? HALL.alpha : HALL.mats[g].alpha).slice(0, 6);
+  const prev = { mats: deep(HALL.mats), alpha: HALL.alpha.slice(), matsSet: HALL.matsSet, calibration: S.calibration || null };
+  let k = bands.map(() => 1), sim0 = null, sim = null, it = 0;
+  $("bCal").disabled = true;
+  try {
+    for (; it < 6; it++) {
+      $("calNote").textContent = `Calibrating on ${fitL.length} position(s): iteration ${it + 1}…`; $("busy").hidden = false;
+      calApply(base, k); sim = await calSimulate(pos); if (!sim0) sim0 = sim;
+      const T = bands.map((b) => meanOver(pos, sim, fitL, "T30", b)), err = T.map((t, i) => t / meas[i] - 1);
+      const ok = err.map((e) => !Number.isFinite(e) || Math.abs(e) <= 0.02);
+      if (ok.every(Boolean)) break;
+      k = k.map((x, i) => (ok[i] ? x : x * T[i] / meas[i]));
+      if (it === 5) { calApply(base, k); sim = await calSimulate(pos); }
+    }
+  } catch (e) { HALL.mats = prev.mats; HALL.alpha = prev.alpha; $("calNote").textContent = `Calibration failed: ${e.message || e}`; $("bCal").disabled = false; $("busy").hidden = true; return; }
+  $("busy").hidden = true; $("bCal").disabled = false;
+  const r3 = (v) => (Number.isFinite(v) ? +v.toFixed(3) : null), mean = (sm, L) => bands.map((b) => r3(meanOver(pos, sm, L, "T30", b)));
+  const limit = groups.some((g) => (g === "__shoebox" ? HALL.alpha : HALL.mats[g].alpha).some((v) => v <= 0.01 || v >= 0.95));
+  S.calibration = { date: new Date().toISOString(), engine: "browser (engine_geom.js / shoebox image sources), " + ENGINE_SHA.slice(0, 12), measurements: fname, measurements_sha256: sha256(txt),
+    positions: fitL, positions_check: chkL, adjusted_groups: groups.map((g) => (g === "__shoebox" ? "room (uniform)" : g)), bands_hz: bands,
+    factors: k.map((x) => +x.toFixed(4)), iterations: it + 1, T30_measured_mean_s: meas.map(r3), T30_sim_before_s: mean(sim0, fitL), T30_sim_after_s: mean(sim, fitL),
+    ...(chkL.length ? { check_T30_measured_mean_s: bands.map((b) => r3(meanOver(pos, null, chkL, "T30", b))), check_T30_sim_before_s: mean(sim0, chkL), check_T30_sim_after_s: mean(sim, chkL) } : {}),
+    ...(limit ? { warning: "some coefficients hit the 0.01 / 0.95 limit: the geometry or the material groups may be wrong" } : {}),
+    note: "one absorption factor per octave band on the adjusted groups, as calibrate.py; browser and Python T30 differ by 2-6 % in measured halls, so recalibrate with calibrate.py for Python runs" };
+  S.calPrev = prev; HALL.matsSet = true;
+  calReport(); if (isDrawn()) buildMatTable(); else fillHall();
+  work(rebuildAll);
+}
+function calReport() {
+  const c = S.calibration; if (!c) { $("calNote").innerHTML = ""; return; }
+  const nFit = Array.isArray(c.positions) ? c.positions.length : c.positions, chk = c.positions_check || [], bh = c.bands_hz || calBands();
+  const pct = (a, b) => (a != null && b ? (100 * (a / b - 1) >= 0 ? "+" : "") + (100 * (a / b - 1)).toFixed(1) + " %" : "—");
+  const row = (lab, m = [], x0 = [], x1 = []) => `<tr><td class="name">${lab}</td>` + bh.map((_, i) => `<td>${m[i] ?? "—"}</td><td>${pct(x0[i], m[i])} → ${pct(x1[i], m[i])}</td>`).join("") + "</tr>";
+  $("calNote").innerHTML = `<b>Calibrated</b> to ${esc(c.measurements)} (${nFit} fit position(s)${chk.length ? `, ${chk.length} check` : ", no check positions: mark some rows role=check to test the result"}); factors ${c.factors.join(" / ")} at ${bh.join(" / ")} Hz${c.iterations ? `, ${c.iterations} iteration(s)` : ""}${c.engine ? "" : " (done with calibrate.py, Python engine)"}.${c.warning ? " <b>" + c.warning + ".</b>" : ""} ` +
+    `<div class="tablewrap"><table class="layout"><thead><tr><th>T30</th>${bh.map((b) => `<th>${b} Hz meas. (s)</th><th>error before → after</th>`).join("")}</tr></thead><tbody>` +
+    row("fit positions", c.T30_measured_mean_s, c.T30_sim_before_s, c.T30_sim_after_s) + (c.check_T30_measured_mean_s ? row("check positions", c.check_T30_measured_mean_s, c.check_T30_sim_before_s, c.check_T30_sim_after_s) : "") +
+    `</tbody></table></div>JND of reverberation 5 % (ISO 3382-1 Annex A). One factor per band cannot tell which surface is wrong. ${S.calPrev ? '<button class="btn" id="bCalUndo">Undo calibration</button>' : ""}`;
+  const u = $("bCalUndo"); if (u) u.onclick = () => { const p = S.calPrev; HALL.mats = p.mats; HALL.alpha = p.alpha; HALL.matsSet = p.matsSet; S.calibration = p.calibration; S.calPrev = null; calReport(); if (isDrawn()) buildMatTable(); else fillHall(); work(rebuildAll); };
+}
+$("bCal").onclick = () => $("fCal").click();
+$("fCal").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; const r = new FileReader(); r.onload = () => calibrate(String(r.result), f.name); r.readAsText(f); };
 const spreadSig = () => JSON.stringify([OBJ.map((o) => o.pos), HALL.rays, HALL.order, HALL.diff, HALL.mats, isMesh() ? HALL.mesh.text.length : HALL.geom]);
 $("bSpread").onclick = async () => {
   if (!isDrawn() || !$("busy").hidden) { $("spreadNote").textContent = "Wait until the hall is computed."; return; }
