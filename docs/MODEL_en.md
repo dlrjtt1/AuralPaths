@@ -122,6 +122,13 @@ The page rebuilds every BRIR itself, so these work without rerunning Python:
 - **Export WAV…**: the seat on display under the current condition (nominal ITDG, level ratio, Mix / Direct only /
   PA only) as heard in the player: amplified source with its delay plus the PA pair with the PA delay and gain;
   stereo, 32-bit float, not normalised, time zero = emission of the amplified source.
+- **How far to trust these values** (under the room-acoustic parameters): model type, whether the materials are
+  placeholders, loaded / edited or calibrated, the ray count and the share of rays lost through gaps, and the evidence
+  from the measured-hall checks that applies to this model (BRAS CR3 / CR4, *Position-by-position check*).
+  **Ray-tracing spread…** (drawn halls and 3D models) re-runs the ray tracing of the seat on display with three
+  other seeds and shows the range of C80, D50, Ts, EDT and T30 of the amplified chain, also in JND (ISO 3382-1
+  Annex A). Example, fan hall at 50 000 rays, seat C: C80 0.6, D50 0.8, Ts 0.5, EDT 1.7, T30 1.0 JND, so seat-to-seat
+  or condition-to-condition differences below about 1–2 JND are within the ray-tracing noise there.
 - **Load config…**: opens a config JSON (e.g. `my_hall/config.json`; dropping it on the plan works too)
   and switches the page to that hall, its materials, sources and seats. **Reset to config** goes back to
   the config the page was built from.

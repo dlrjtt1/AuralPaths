@@ -114,6 +114,11 @@ python test_signals/make_sines.py
 - **Export WAV…**: 지금 보고 있는 좌석의 현재 조건(공칭 ITDG, 레벨 비, Mix / Direct only / PA only)을 플레이어에서 듣는
   그대로 내려받는다. 증폭 음원과 그 지연, PA 쌍과 PA 지연·게인을 합친 것이다. 스테레오, 32-bit float, 정규화하지 않음,
   시간 0 = 증폭 음원에서 소리가 나간 순간.
+- **How far to trust these values**(실내음향 지표 아래): 모델 종류, 재료가 임시값인지·불러오거나 고친 값인지·보정된 값인지,
+  광선 수와 틈으로 빠져나간 광선 비율, 그리고 이 모델에 해당하는 실측 홀 대조 결과(BRAS CR3 / CR4, *위치별 대조*)를 보여 준다.
+  **Ray-tracing spread…**(그린 홀과 3D 모델)는 지금 보이는 좌석의 광선추적을 다른 seed 세 개로 다시 계산해 증폭 체인의 C80,
+  D50, Ts, EDT, T30 범위를 JND 단위(ISO 3382-1 Annex A)로도 보여 준다. 예: 부채꼴 홀, 광선 50 000개, 좌석 C에서 C80 0.6,
+  D50 0.8, Ts 0.5, EDT 1.7, T30 1.0 JND. 즉 이 경우 약 1–2 JND보다 작은 좌석 간·조건 간 차이는 광선추적 잡음 안에 있다.
 - **Load config…**: config JSON을 연다(예: `my_hall/config.json`. 평면 위에 끌어다 놓아도 된다). 페이지가 그 홀,
   재료, 음원, 좌석으로 바뀐다. **Reset to config**는 페이지가 만들어진 config로 되돌린다.
 

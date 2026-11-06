@@ -115,6 +115,11 @@ python test_signals/make_sines.py
 - **Export WAV…**: 表示中の座席の現在の条件(公称 ITDG、レベル比、Mix / Direct only / PA only)をプレーヤーで聴く通りに保存する。
   増幅音源とその遅延、PA の組と PA の遅延・ゲインを合わせたもの。ステレオ、32-bit float、正規化なし、時刻 0 = 増幅音源から音が
   出た瞬間。
+- **How far to trust these values**(室内音響指標の下): モデルの種類、材料が仮の値か・読み込んだか編集した値か・校正済みか、音線数と
+  隙間から抜けた音線の割合、そしてこのモデルに当てはまる実測ホールとの照合結果(BRAS CR3 / CR4、*位置ごとの照合*)を示す。
+  **Ray-tracing spread…**(描画ホールと 3D モデル)は、表示中の座席の音線追跡を別の seed 3 つで計算し直し、増幅チェーンの C80、
+  D50、Ts、EDT、T30 の範囲を JND 単位(ISO 3382-1 Annex A)でも示す。例: 扇形ホール、音線 50 000 本、座席 C で C80 0.6、
+  D50 0.8、Ts 0.5、EDT 1.7、T30 1.0 JND。すなわちこの場合、約 1–2 JND より小さい座席間・条件間の差は音線追跡のノイズの範囲内にある。
 - **Load config…**: config JSON を開く(例: `my_hall/config.json`。平面上へのドロップでもよい)。ページがそのホール、
   材料、音源、座席に切り替わる。**Reset to config** はページの生成元の config に戻る。
 
