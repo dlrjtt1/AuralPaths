@@ -645,6 +645,20 @@ Reading:
   reflections after them (finite panels: the white panels between concrete beams had been +8.6 dB). Reflection by
   reflection, CR4 stays poor (correlation 0.35–0.46). For ITDG and level-ratio work in a real hall, check the early
   reflections of the hall at hand against a measurement before relying on them.
+- Why CR4's first-order reflections look too strong (browser engine, `validation/check_reflections_window.py`,
+  `validation/reflections_window_CR4.md`): on the 28 isolated first-order reflections, predicted − measured is +4.9 dB
+  (median) in the 1 ms window at the predicted time, but +0.2 dB for the energy within −1.5 … +2.5 ms of it after
+  subtracting the diffuse background of that window. By material: white panels (n 16) +6.3 dB at the predicted time,
+  +0.2 dB over the wider window, with the strongest measured 1 ms window scattered over ±1 ms (IQR −1.1 … +1.1 ms);
+  concrete (n 4) early in three of four (1.0–1.5 ms, a path about 0.35–0.5 m shorter: a geometry or position offset; the fourth −0.25 ms);
+  brick (n 7) on time (offset IQR 0 … +0.25 ms), +1.1 dB at the predicted time. So the CR4 excess is mainly energy that
+  arrives spread in time or slightly displaced, not missing absorption. A likely reason for the white panels is
+  structure the model leaves out: the BRAS model notes say the steel construction behind the ceiling panels was not
+  modelled, and their fitted scattering coefficient is 0.05, so the model returns one sharp specular reflection
+  (an interpretation, not tested). CR3 for comparison: offsets near 0 (IQR within ±0.5 ms), +1.9 dB at the predicted
+  time, +1.6 dB over the wider window (in 10 of 33 reflections the wider window holds nothing above the background).
+  Small samples per material; the strongest-window search is biased upwards by about 4–5 dB at random times, so it is
+  used for timing only. Not changed in the engine or the materials.
 - 2.5D hall: reverberation and clarity stay within a few JND, but in CR3 its predicted reflections are not in the
   measurement (the measured level at their times equals that at random times): with balconies and side galleries
   reduced to a 2.5D plan × section, the individual early reflections, and so the ITDG of a seat, do not correspond
