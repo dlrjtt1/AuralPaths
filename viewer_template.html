@@ -3298,7 +3298,7 @@ $("bAuto").hidden = true;
 atSample().then((s) => { if (s) $("bAuto").hidden = false; }).catch(() => {});
 // ---- quick guide (KO / JA / EN): shown at start until dismissed; the choice is a per-browser convenience only
 const GUIDE = {
-  en: { title: "Quick guide", sub: "AuralPaths computes binaural room impulse responses for a direct sound plus delayed PA, and lets you listen to them. Five steps:",
+  en: { title: "Quick guide", sub: "A research and teaching tool for the precedence effect in sound reinforcement: vary hall, loudspeaker and seat positions, delay and level, then compute, listen to and export binaural room responses. Five steps:",
     steps: [
       ["Choose the hall", "In <b>Hall</b>: Shoebox, Drawn hall (plan outline and section, can be traced from PDF drawings) or 3D model (OBJ). Enter sizes and materials, then <b>Apply</b>."],
       ["Place sources and seats", "In <b>Plan</b> and <b>Section</b>, drag the amplified source (Amp), the PAs and the seats, or type positions in <b>Layout</b>. The plan colour shows the effective ITDG at every point."],
@@ -3317,7 +3317,7 @@ const GUIDE = {
       ["?", "On each panel: notes on what it shows."]],
     note: "Results are model estimates, not a reproduction of a real hall. For research use, calibrate with measured T30 and check early reflections against a measurement.",
     hide: "Don't show at start", start: "Start" },
-  ko: { title: "간단 사용 안내", sub: "AuralPaths는 직접음과 지연된 PA음이 섞인 바이노럴 실내 임펄스 응답(BRIR)을 계산하고 들어 볼 수 있게 하는 도구입니다. 다섯 단계로 씁니다.",
+  ko: { title: "간단 사용 안내", sub: "PA 환경에서의 선행음 효과를 연구하고 가르치기 위한 시뮬레이션 도구입니다. 홀·스피커·좌석 배치와 딜레이·레벨 조건을 바꿔 가며 바이노럴 응답을 계산하고, 들어 보고, 실험 자극으로 내보낼 수 있습니다. 다섯 단계로 씁니다.",
     steps: [
       ["홀 고르기", "<b>Hall</b>에서 Shoebox(직육면체), Drawn hall(평면 외곽선과 단면; PDF 도면에서 따라 그릴 수 있음), 3D model(OBJ) 중 하나를 고릅니다. 크기와 재료를 넣고 <b>Apply</b>를 누릅니다."],
       ["음원과 좌석 배치", "<b>Plan</b>과 <b>Section</b>에서 확성 음원(Amp), PA, 좌석을 끌어 옮기거나 <b>Layout</b> 표에 좌표를 입력합니다. 평면의 색은 각 지점의 실효 ITDG(초기 반사음 지연 시간)를 나타냅니다."],
@@ -3336,7 +3336,7 @@ const GUIDE = {
       ["?", "각 패널의 설명을 펼칩니다."]],
     note: "결과는 모델 추정치이며 실제 홀을 재현한 것이 아닙니다. 연구에 쓸 때는 실측 T30으로 보정하고, 초기 반사를 실측과 대조해 보세요.",
     hide: "시작할 때 다시 보지 않기", start: "시작" },
-  ja: { title: "簡易ガイド", sub: "AuralPaths は、直接音と遅延した PA 音を含むバイノーラル室内インパルス応答(BRIR)を計算し、試聴できるツールです。5 つの手順で使います。",
+  ja: { title: "簡易ガイド", sub: "拡声(PA)環境における先行音効果の研究と教育のためのシミュレーションツールです。ホール・スピーカー・座席の配置と遅延・レベル条件を変えながらバイノーラル応答を計算し、試聴し、実験刺激として書き出せます。5 つの手順で使います。",
     steps: [
       ["ホールを選ぶ", "<b>Hall</b> で Shoebox(直方体)、Drawn hall(平面の外形と断面。PDF 図面からトレース可能)、3D model(OBJ)のいずれかを選び、寸法と材料を入力して <b>Apply</b> を押します。"],
       ["音源と座席を配置する", "<b>Plan</b> と <b>Section</b> で拡声音源(Amp)、PA、座席をドラッグするか、<b>Layout</b> の表に座標を入力します。平面の色は各点の実効 ITDG(初期反射音遅延時間)を示します。"],

@@ -1,5 +1,8 @@
 # AuralPaths
 
+*A research and teaching tool for the precedence effect in sound reinforcement: vary hall, loudspeaker and seat
+positions, delay and level, then compute, listen to and export binaural room responses.*
+
 A browser-based binaural room simulator for **direct vs. loudspeaker (PA) paths**: draw a hall from its plan and
 section, place a stage source and a pair of PA loudspeakers, and hear and measure how the arrival-time gap (ITDG)
 and the level ratio between the paths change from seat to seat.
