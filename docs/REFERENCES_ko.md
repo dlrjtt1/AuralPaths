@@ -42,6 +42,7 @@
   - 그린 홀: ISM에 광선추적의 잔여분을 더한다. H = H_ism + max(0, smooth(H_rt) − smooth(H_ism)).
   - 브라우저 엔진(`engine_geom.js`)은 같은 모델을 독자적으로 구현한 것이다. 같은 형상에서 허상 목록이 pyroomacoustics와 정확히 일치하는 것을 확인했다.
 - **발견한 문제 (v0.5에서 수정):** 0.10의 광선추적 히스토그램에는 공기흡음이 빠져 있다(켜고 끈 결과가 동일). 그래서 시간 칸마다 exp(−m·c·t)를 직접 곱하도록 고쳤다.
+- **발견한 문제 (2026-11-06 수정):** `energy_thres`는 광선을 끝내는 상대 기준이면서, 산란(diffuse rain) 기여를 수음점에 더할 때의 절대 하한으로도 쓰인다(0.10.1 `libroom_src/room.cpp`의 `scat_ray`). 1e-9에서는 약 0.5초 이후 산란 에너지가 빠져 T30이 짧게 나왔고 광선을 늘릴수록 더 짧아졌다(타일 직육면체, s = 1: 광선 2 000 / 20 000 / 100 000개에서 1.11 / 1.04 / 0.99 s). 1e-20(`brir_proto.RT_ENERGY_THRES`)으로 고친 뒤 브라우저 엔진과 같은 1.12 s가 나온다. 확산적인 직육면체에서 광선추적 T30은 Eyring보다 7–12 % 길다(자유 경로 길이의 분산, `validation/check_rt_eyring.py`, `validation/check_box_lambert.js`). 슈박스 경로(고차 ISM)는 광선추적을 쓰지 않아 영향이 없다(기본 예제 홀의 Python 기준값 72개를 다시 계산해 동일함을 확인).
 
 ### 2.2 1차 모서리 회절: UTD
 - **무엇:**
@@ -126,7 +127,7 @@
 - **라이선스:** 저장소 페이지 기준 CC BY-SA 4.0. 예전에 CC BY-NC-ND라고 말했던 것은 틀렸다.
 - **어디:** `validate_bras.py`. RS5(무한 모서리: MDF 칸막이, 높이 2.07 m, 4×4 위치, Genelec 8020c, 44.1 kHz)의 게이트 IR을 UTD 예측과 1/3옥타브로 비교한다.
 - **상태 (2026-11-03 실행):** RS5의 16개 RIR을 UTD + 바닥 영상 모델과 비교했다. 500 Hz–2 kHz 평균 절대 차이는 그림자 위치 11개에서 2.2 dB, 전체 16개에서 1.8 dB다. 예측이 평균 0.1–1.9 dB 높은데, 스피커 응답·지향성, 칸막이 두께(25 mm), 공기흡음을 넣지 않은 영향이 포함된다. 음원이나 수음점이 바닥 높이인 3개는 칸막이 투과음으로 보이는 성분이 먼저 도달한다(모델 밖). 결과 파일: `validation/bras_RS5.png/.csv/.md`. RS6(유한 물체)와 RS7(좌석 dip)은 다중 회절이 필요해 이 모델의 범위 밖이다.
-- **CR3·CR4 (2026-11-05 실행, `validate_bras_cr.py`):** 실제 홀 두 곳(CR3 실내악 홀 3331 m³, CR4 대학 강당 8657 m³)의 12면체 RIR 각 10개를 3D 모델(SketchUp → Blender OBJ)과 BRAS `fitted_estimates` 재료로 위치별 비교했다. T30은 7–18% 길다(Eyring으로 맞춘 계수는 비확산 음장의 광선추적에는 작다, 슈박스·타일 메시 확인으로 엔진 경로 문제는 배제). C80·C50·Ts는 0.9–1.6 JND. LS1으로 한 번 보정하면 보정 밖 LS2의 T30이 CR4 0.8 JND, CR3 1.6 JND. 1차 반사는 CR3에서 시각·레벨이 맞고(+1.6 dB 중앙값), CR4는 처음 +6.5 dB 과대였으나 유한 반사판 계수(2.2a) 후 같은 반사로 +2.7 dB(반사 하나하나의 상관은 낮음). 발코니가 있는 홀의 2.5D 버전은 잔향은 대체로 유지하지만 개별 초기 반사는 맞지 않는다. 이 과정에서 `obj_to_hall.py`의 평면 외곽선 버그(여러 조각이 하나로 이어짐)를 찾아 고쳤다. 결과: `validation/bras_CR3.*`, `bras_CR4.*`.
+- **CR3·CR4 (2026-11-05 실행, `validate_bras_cr.py`):** 실제 홀 두 곳(CR3 실내악 홀 3331 m³, CR4 대학 강당 8657 m³)의 12면체 RIR 각 10개를 3D 모델(SketchUp → Blender OBJ)과 BRAS `fitted_estimates` 재료로 위치별 비교했다. T30은 8–11% 길다(광선추적은 확산적인 직육면체에서도 Eyring보다 7–12% 느리게 감쇠하므로 Eyring으로 맞춘 계수는 광선추적에는 작다). C80·C50·Ts는 0.8–2.3 JND. LS1으로 한 번 보정하면 보정 밖 LS2의 T30이 두 홀 모두 0.8 JND(2026-11-06 에너지 하한 수정 후 재계산). 1차 반사는 CR3에서 시각·레벨이 맞고(+1.6 dB 중앙값), CR4는 처음 +6.5 dB 과대였으나 유한 반사판 계수(2.2a) 후 같은 반사로 +2.7 dB(반사 하나하나의 상관은 낮음). 발코니가 있는 홀의 2.5D 버전은 잔향은 대체로 유지하지만 개별 초기 반사는 맞지 않는다. 이 과정에서 `obj_to_hall.py`의 평면 외곽선 버그(여러 조각이 하나로 이어짐)를 찾아 고쳤다. 결과: `validation/bras_CR3.*`, `bras_CR4.*`.
 
 ### 5.2 좌석 dip — 모델 부재 확인
 - **무엇:** Meyer, J., Tahvanainen, H., Saarelma, J., & Lokki, T. (2023). Investigation of the seat-dip effect using finite-difference time-domain simulations. *J. Acoust. Soc. Am.*, 154(3), 1628–1639. [doi:10.1121/10.0020826](https://doi.org/10.1121/10.0020826)
@@ -151,7 +152,7 @@
   - Fratoni, G., D'Orazio, D., & Garai, M. (2023). Uncertainty of input data for wave-based room acoustic simulations in large non-trivial environments. *Forum Acusticum 2023*, Turin. [doi:10.61782/fa.2023.1114](https://doi.org/10.61782/fa.2023.1114). CC BY 3.0. Odeon에서 GA 계수를 실측에 맞춘 절차와, 보정된 GA의 잔차(오페라 극장 4곳, 500–1000 Hz T30 −0.06 … +0.12 s)를 비교 기준으로 인용했다. 이 논문의 홀 4곳은 오페라 극장(그림 1(a)의 25,400 m³는 TCB와 같다)이며 ULH·STC는 포함되지 않는다.
   - Christensen, C. L., & Rindel, J. H. (2005). A new scattering method that combines roughness and diffraction effects. *Forum Acusticum 2005*, Budapest. [DTU Orbit](https://orbit.dtu.dk/en/publications/a-new-scattering-method-that-combines-roughness-and-diffraction-e/). Odeon이 산란 계수에 면 크기·경로 길이에 따른 회절 산란을 더한다는 근거(STC 차이의 해석에 사용).
 - **어디:** `validate_fratoni.py`(ULH, STC), `obj_to_hall.py`. TCB와 DUS는 박스석·발코니가 있어 2.5D 범위 밖이다.
-- **상태 (2026-11-05 실행):** ULH는 3D 메시 기준 500 Hz–4 kHz에서 EDT·T30·C50·Ts가 약 1 JND 이내, 125–250 Hz에서 T30이 1–2 JND 짧다. STC는 3D 메시·2.5D 모두 T30이 약 15% 길다(입력이 Odeon용으로 보정된 영향으로 해석, 엔진 오류는 슈박스 확인에서 보이지 않음). 위치는 시트 그림에서 읽었고(±0.3 m), STC 재료 대응 일부는 판단이다. 결과 파일: `validation/fratoni_*`.
+- **상태 (2026-11-05 실행):** ULH는 3D 메시 기준 500 Hz–4 kHz에서 EDT·T30·C50·Ts가 약 1 JND 이내, 125–250 Hz에서 T30이 1–2 JND 짧다. STC는 3D 메시·2.5D 모두 T30이 약 15% 길다(입력이 Odeon용으로 보정된 영향으로 해석, 엔진 오류는 슈박스 확인에서 보이지 않음). 2026-11-06 에너지 하한 수정 후 재계산해도 변화는 0.4 JND 이하. 위치는 시트 그림에서 읽었고(±0.3 m), STC 재료 대응 일부는 판단이다. 결과 파일: `validation/fratoni_*`.
 
 ---
 
