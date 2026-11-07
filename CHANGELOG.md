@@ -3,6 +3,10 @@
 Dates are those of the commits on GitHub. The version is shown on the page and recorded in saved configs and exported
 files.
 
+## Unreleased
+- Fratoni opera houses TCB and DUS checked with the browser engine (`validation/check_fratoni_js.py`): DUS T30 within
+  about 1 JND at mid frequencies; TCB decays too fast (not counted as a successful check, cause not determined).
+
 ## 0.6.0 (2026-11-07)
 - 3D halls from OBJ models (SketchUp / Blender) in Python and in the browser: voxel room, BVH ray tracing, image
   sources to order 2 in the browser (order 1 in Python), material per face group.

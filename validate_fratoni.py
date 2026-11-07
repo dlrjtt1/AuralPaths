@@ -2,6 +2,8 @@
 Room-criteria check of the Python engine against measured halls: the Fratoni dataset (Mendeley Data,
 https://doi.org/10.17632/y7xnv6xg5s.1, CC BY 4.0). Two of its four rooms fit AuralPaths: ULH (raked university
 lecture hall, about 900 m3) and STC (elliptical concert hall with domed ceiling, about 950 m3).
+The other two (TCB, DUS: opera houses with boxes and balconies) are checked with the browser engine by
+validation/check_fratoni_js.py, which uses the positions and assignments in VENUES below.
 
     python validate_fratoni.py <dataset folder> ULH|STC --obj <hall.obj> [--rays 50000] [--max-faces 3000]
                                [--out validation/fratoni_ULH] [--no-2p5d | --no-3d] [--min-scatter s]
@@ -70,6 +72,31 @@ STC_POS = {
     "R9": (0.0, 6.33, 1.23), "R10": (0.0, 11.81, 1.23),
 }
 
+# TCB (historic opera house with boxes) and DUS (opera house with two balconies): too far from 2.5D for the drawn-hall
+# conversion; checked with the browser engine only (validation/check_fratoni_js.py; the Python ray tracer on these 6000 -
+# 10 000-face models would take hours). OBJ exported by the AuralPaths author from the dataset's SketchUp files with the
+# tags as groups. Positions: plan figures of the Room_Criteria sheets registered to the model (scale and offset fitted
+# to the walls of a horizontal cut through the mesh; mean residual 7 - 9 px at 30 - 43 px/m), receiver and source dots
+# read from the figures (+-0.3 m); heights are not read from the sections (their registration was poor): receivers at
+# 1.2 m above the floor below them (box, gallery or balcony floor from the mesh), sources 1.5 m above the stage or pit
+# floor. These heights are assumptions. TCB R15 - R26 are in the boxes above R12 / R13 / R14 (section figure: columns
+# R12-R15-R18-R21-R24, R13-..., R14-...; box floors 3.00 / 6.04 / 9.08 / 12.12 m, gallery 15.16 m). DUS R7 and R13
+# (front rows of the balconies) fell 0.6 / 0.8 m in front of the balcony edge and were moved back onto the balcony.
+TCB_COLS = {12: (47.75, -8.52), 13: (54.91, -7.08), 14: (58.70, -3.10)}
+TCB_TIERS = [3.00, 6.04, 9.08, 12.12, 15.16]
+TCB_POS = {"R1": (41.23, -3.16, 2.39), "R2": (42.79, -0.71, 2.45), "R3": (42.79, -4.76, 2.45), "R4": (44.33, -2.18, 2.50),
+           "R5": (45.93, -3.15, 2.56), "R6": (47.51, -0.57, 2.61), "R7": (47.51, -4.76, 2.61), "R8": (48.99, -2.17, 2.67),
+           "R9": (50.58, -1.16, 2.72), "R10": (52.10, -2.70, 2.77), "R11": (53.62, -1.16, 2.83)}
+for _t, _z in enumerate(TCB_TIERS):
+    for _c, (_x, _y) in TCB_COLS.items():
+        TCB_POS[f"R{_c + 3 * _t}"] = (_x, _y, round(_z + 1.2, 2))
+DUS_POS = {"R1": (13.86, 20.75, 0.69), "R2": (15.42, 23.47, 0.77), "R3": (10.04, 24.26, 0.78), "R4": (10.47, 29.43, 0.91),
+           "R5": (13.66, 31.13, 0.98), "R6": (14.68, 34.46, 1.13),
+           "R7": (10.45, 32.38, 4.21), "R8": (13.63, 32.75, 4.74), "R9": (9.47, 34.05, 4.73), "R10": (11.58, 36.09, 5.65),
+           "R11": (10.24, 38.08, 6.55), "R12": (10.74, 41.12, 7.59),
+           "R13": (10.26, 32.99, 9.76), "R14": (13.42, 33.16, 10.07), "R15": (9.29, 34.44, 10.41), "R16": (11.38, 36.45, 11.41),
+           "R17": (10.06, 38.43, 11.86), "R18": (10.55, 41.42, 13.21)}
+
 VENUES = {
     "ULH": dict(
         folder="4_ULH", tag="ULH",
@@ -90,6 +117,27 @@ VENUES = {
         sources={"S1": (0.0, 2.45, 1.92), "S2": (2.12, 9.15, 1.5)},
         receivers=STC_POS,
         depth_axis="y", stage_end="min", stage_depth=0.0),
+    "TCB": dict(
+        folder="1_TCB", tag="TCB", engine="browser", voxel=0.12,
+        # tags vs materials (the sheet has 8 materials, the model 13 tags; author's assignments): hall and gallery plaster
+        # -> "Plaster (boxes)" (the sheet's only plaster); box and gallery floors -> Carpet; fly-tower plaster -> "Stage
+        # house"; curtains and fly-tower velvet -> "Velvet drapes"; PVC (a screen on the stage) -> "Stage house"
+        groups={"Plaster_(hall)": "Plaster (boxes)", "Plaster_(gallery)": "Plaster (boxes)", "Plaster_(fly_tower)": "Stage house",
+                "Floor_(boxes)": "Carpet", "Floor_(gallery)": "Carpet", "Carpet": "Carpet", "Marble": "Marble", "Wood": "Wood",
+                "Seats": "Seats", "Stage_grid": "Stage grid", "Curtains": "Velvet drapes", "Velvet_(fly_tower)": "Velvet drapes",
+                "PVC": "Stage house"},
+        sources={"S1": (32.13, 0.07, 3.99), "S2": (27.31, 0.07, 4.16), "S3": (36.72, 0.96, 1.50)},
+        receivers=TCB_POS),
+    "DUS": dict(
+        folder="2_DUS", tag="DUS", engine="browser", voxel=0.08,
+        # tags vs materials (author's assignments): Carpet (the hall floors; the sheet has no carpet) -> Wood; fly-tower
+        # plaster and wings -> "Stage house"; Grid -> "Stage grid"; Velvet -> "Velvet drapes"; both galleries' seats ->
+        # "Seats (balconies)"
+        groups={"Plaster_fly_tower": "Stage house", "Plaster": "Plaster (hall)", "Wings": "Stage house", "Grid": "Stage grid",
+                "Carpet": "Wood", "Wood": "Wood", "Marble": "Marble", "Velvet": "Velvet drapes", "Seats_stalls": "Seats (stalls)",
+                "Seats_first_gallery": "Seats (balconies)", "Seats_second_gallery": "Seats (balconies)"},
+        sources={"S1": (12.06, 15.94, 2.03), "S2": (9.45, 10.28, 2.16), "S3": (5.16, 8.45, 2.19)},
+        receivers=DUS_POS),
 }
 
 
@@ -107,7 +155,7 @@ def read_boundary(path):
             break
         vals = [v for v in r[1:] if isinstance(v, (int, float))]
         a = dict(zip(hz, vals[:len(hz)]))
-        out[str(r[0]).strip()] = {"alpha": [float(a[b]) for b in BANDS], "s": float(vals[len(hz)])}
+        out[str(r[0]).strip().rstrip("*").strip()] = {"alpha": [float(a[b]) for b in BANDS], "s": float(vals[len(hz)])}
     return out
 
 
@@ -124,6 +172,9 @@ def read_criteria(path):
             cur = {"source": str(c[1]).strip(), "receivers": None, "metrics": {}, "single": {}}
             blocks.append(cur)
         elif c[0] == "Receivers" and cur is not None:
+            if cur["receivers"] is not None or cur.get("receivers_text"):   # TCB / DUS: several receiver zones per source
+                cur = {"source": cur["source"], "receivers": None, "metrics": {}, "single": {}}
+                blocks.append(cur)
             txt = str(c[1])
             nums = re.findall(r"R\s*(\d+)", txt)
             cur["receivers"] = [f"R{n}" for n in nums] if nums else None
@@ -366,7 +417,7 @@ def replot(csv_path):
     plot(blocks, plan, res["3D mesh"] or None, res["2.5D"] or None, hall, os.path.splitext(csv_path)[0] + ".png")
 
 
-def plot(blocks, plan, res3, res25, hall, path):
+def plot(blocks, plan, res3, res25, hall, path, label3="3D mesh", engine="Python engine"):
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
@@ -386,7 +437,7 @@ def plot(blocks, plan, res3, res25, hall, path):
             ax.fill_between(range(6), meas - band, meas + band, color="0.88", label="measured +- 1 JND")
             ax.plot(range(6), meas, "k-o", ms=3, lw=1.4, label="measured")
             if res3 is not None:
-                ax.plot(range(6), res3[s][n], "-s", color="#c2571a", ms=3, lw=1.2, label="3D mesh")
+                ax.plot(range(6), res3[s][n], "-s", color="#c2571a", ms=3, lw=1.2, label=label3)
             if res25 is not None:
                 ax.plot(range(6), res25[s][n], "--^", color="#2a6fb0", ms=3, lw=1.2, label="2.5D")
             ax.set_xticks(range(6)); ax.set_xticklabels(["125", "250", "500", "1k", "2k", "4k"], fontsize=8)
@@ -394,7 +445,7 @@ def plot(blocks, plan, res3, res25, hall, path):
             ax.grid(alpha=0.3)
     h, l = axs[0][0].get_legend_handles_labels()
     fig.legend(h, l, loc="lower center", ncol=len(l), fontsize=8, frameon=False)
-    fig.suptitle(f"Fratoni {hall}: measured (receiver mean) vs AuralPaths Python engine, dataset GA inputs unchanged", fontsize=10)
+    fig.suptitle(f"Fratoni {hall}: measured (receiver mean) vs AuralPaths {engine}, dataset GA inputs unchanged", fontsize=10)
     fig.tight_layout(rect=(0, 0.06, 1, 1))
     fig.savefig(path, dpi=110)
 

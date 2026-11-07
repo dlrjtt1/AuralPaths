@@ -1,0 +1,145 @@
+hall,source,zone,criterion,band_hz,model,measured,simulated,diff_jnd
+DUS,S1,Stalls,EDT,125,browser 3D,1.742,1.801,0.67
+DUS,S1,Stalls,EDT,250,browser 3D,1.583,1.611,0.35
+DUS,S1,Stalls,EDT,500,browser 3D,1.422,1.601,2.52
+DUS,S1,Stalls,EDT,1000,browser 3D,1.238,1.448,3.4
+DUS,S1,Stalls,EDT,2000,browser 3D,1.02,1.388,7.22
+DUS,S1,Stalls,EDT,4000,browser 3D,0.757,1.264,13.39
+DUS,S1,Stalls,T30,125,browser 3D,1.963,1.602,-3.67
+DUS,S1,Stalls,T30,250,browser 3D,1.705,1.369,-3.94
+DUS,S1,Stalls,T30,500,browser 3D,1.446,1.378,-0.94
+DUS,S1,Stalls,T30,1000,browser 3D,1.336,1.364,0.42
+DUS,S1,Stalls,T30,2000,browser 3D,1.187,1.271,1.41
+DUS,S1,Stalls,T30,4000,browser 3D,0.966,1.137,3.55
+DUS,S1,Stalls,C80,125,browser 3D,1.578,0.984,-0.59
+DUS,S1,Stalls,C80,250,browser 3D,4.872,2.021,-2.85
+DUS,S1,Stalls,C80,500,browser 3D,3.827,2.11,-1.72
+DUS,S1,Stalls,C80,1000,browser 3D,5.359,2.748,-2.61
+DUS,S1,Stalls,C80,2000,browser 3D,5.423,3.125,-2.3
+DUS,S1,Stalls,C80,4000,browser 3D,7.749,3.991,-3.76
+DUS,S1,Stalls,Ts,125,browser 3D,105.514,101.803,-0.37
+DUS,S1,Stalls,Ts,250,browser 3D,68.762,85.44,1.67
+DUS,S1,Stalls,Ts,500,browser 3D,75.119,84.221,0.91
+DUS,S1,Stalls,Ts,1000,browser 3D,57.492,76.306,1.88
+DUS,S1,Stalls,Ts,2000,browser 3D,56.982,72.253,1.53
+DUS,S1,Stalls,Ts,4000,browser 3D,40.379,62.456,2.21
+DUS,S1,1St Balcony,EDT,125,browser 3D,1.684,1.586,-1.17
+DUS,S1,1St Balcony,EDT,250,browser 3D,1.229,1.369,2.27
+DUS,S1,1St Balcony,EDT,500,browser 3D,1.125,1.348,3.98
+DUS,S1,1St Balcony,EDT,1000,browser 3D,1.034,1.226,3.71
+DUS,S1,1St Balcony,EDT,2000,browser 3D,0.892,1.166,6.14
+DUS,S1,1St Balcony,EDT,4000,browser 3D,0.801,1.048,6.18
+DUS,S1,1St Balcony,T30,125,browser 3D,2.061,1.658,-3.91
+DUS,S1,1St Balcony,T30,250,browser 3D,1.621,1.414,-2.56
+DUS,S1,1St Balcony,T30,500,browser 3D,1.458,1.364,-1.29
+DUS,S1,1St Balcony,T30,1000,browser 3D,1.288,1.223,-1.01
+DUS,S1,1St Balcony,T30,2000,browser 3D,1.14,1.203,1.1
+DUS,S1,1St Balcony,T30,4000,browser 3D,0.924,1.085,3.49
+DUS,S1,1St Balcony,C80,125,browser 3D,-0.916,0.058,0.97
+DUS,S1,1St Balcony,C80,250,browser 3D,2.165,1.135,-1.03
+DUS,S1,1St Balcony,C80,500,browser 3D,2.302,1.485,-0.82
+DUS,S1,1St Balcony,C80,1000,browser 3D,2.934,2.299,-0.63
+DUS,S1,1St Balcony,C80,2000,browser 3D,3.754,2.253,-1.5
+DUS,S1,1St Balcony,C80,4000,browser 3D,4.662,2.896,-1.77
+DUS,S1,1St Balcony,Ts,125,browser 3D,140.014,114.984,-2.5
+DUS,S1,1St Balcony,Ts,250,browser 3D,92.634,97.932,0.53
+DUS,S1,1St Balcony,Ts,500,browser 3D,87.132,94.035,0.69
+DUS,S1,1St Balcony,Ts,1000,browser 3D,72.487,83.578,1.11
+DUS,S1,1St Balcony,Ts,2000,browser 3D,69.338,82.543,1.32
+DUS,S1,1St Balcony,Ts,4000,browser 3D,58.987,74.702,1.57
+DUS,S1,2Nd Balcony,EDT,125,browser 3D,1.921,1.697,-2.33
+DUS,S1,2Nd Balcony,EDT,250,browser 3D,1.492,1.371,-1.62
+DUS,S1,2Nd Balcony,EDT,500,browser 3D,1.234,1.338,1.67
+DUS,S1,2Nd Balcony,EDT,1000,browser 3D,1.088,1.133,0.82
+DUS,S1,2Nd Balcony,EDT,2000,browser 3D,0.957,1.064,2.25
+DUS,S1,2Nd Balcony,EDT,4000,browser 3D,0.771,0.901,3.38
+DUS,S1,2Nd Balcony,T30,125,browser 3D,2.07,1.686,-3.71
+DUS,S1,2Nd Balcony,T30,250,browser 3D,1.793,1.43,-4.05
+DUS,S1,2Nd Balcony,T30,500,browser 3D,1.532,1.406,-1.64
+DUS,S1,2Nd Balcony,T30,1000,browser 3D,1.386,1.315,-1.04
+DUS,S1,2Nd Balcony,T30,2000,browser 3D,1.219,1.252,0.55
+DUS,S1,2Nd Balcony,T30,4000,browser 3D,0.978,1.136,3.23
+DUS,S1,2Nd Balcony,C80,125,browser 3D,-1.428,1.419,2.85
+DUS,S1,2Nd Balcony,C80,250,browser 3D,-0.49,2.609,3.1
+DUS,S1,2Nd Balcony,C80,500,browser 3D,1.614,2.896,1.28
+DUS,S1,2Nd Balcony,C80,1000,browser 3D,3.016,3.764,0.75
+DUS,S1,2Nd Balcony,C80,2000,browser 3D,3.852,3.862,0.01
+DUS,S1,2Nd Balcony,C80,4000,browser 3D,4.9,4.591,-0.31
+DUS,S1,2Nd Balcony,Ts,125,browser 3D,143.672,108.41,-3.53
+DUS,S1,2Nd Balcony,Ts,250,browser 3D,118.982,91.297,-2.77
+DUS,S1,2Nd Balcony,Ts,500,browser 3D,96.737,88.661,-0.81
+DUS,S1,2Nd Balcony,Ts,1000,browser 3D,82.373,78.504,-0.39
+DUS,S1,2Nd Balcony,Ts,2000,browser 3D,74.284,76.377,0.21
+DUS,S1,2Nd Balcony,Ts,4000,browser 3D,59.8,68.257,0.85
+DUS,S2,Stalls,EDT,125,browser 3D,2.054,1.781,-2.66
+DUS,S2,Stalls,EDT,250,browser 3D,1.607,1.562,-0.56
+DUS,S2,Stalls,EDT,500,browser 3D,1.51,1.511,0.01
+DUS,S2,Stalls,EDT,1000,browser 3D,1.288,1.308,0.32
+DUS,S2,Stalls,EDT,2000,browser 3D,1.2,1.247,0.78
+DUS,S2,Stalls,EDT,4000,browser 3D,1.026,1.113,1.7
+DUS,S2,Stalls,T30,125,browser 3D,1.952,1.684,-2.75
+DUS,S2,Stalls,T30,250,browser 3D,1.698,1.432,-3.14
+DUS,S2,Stalls,T30,500,browser 3D,1.494,1.432,-0.83
+DUS,S2,Stalls,T30,1000,browser 3D,1.32,1.401,1.22
+DUS,S2,Stalls,T30,2000,browser 3D,1.171,1.307,2.32
+DUS,S2,Stalls,T30,4000,browser 3D,0.96,1.164,4.27
+DUS,S2,Stalls,C80,125,browser 3D,-2.93,-0.749,2.18
+DUS,S2,Stalls,C80,250,browser 3D,1.375,0.592,-0.78
+DUS,S2,Stalls,C80,500,browser 3D,1.368,0.839,-0.53
+DUS,S2,Stalls,C80,1000,browser 3D,3.849,1.847,-2.0
+DUS,S2,Stalls,C80,2000,browser 3D,3.425,2.191,-1.23
+DUS,S2,Stalls,C80,4000,browser 3D,6.694,3.036,-3.66
+DUS,S2,Stalls,Ts,125,browser 3D,163.975,123.587,-4.04
+DUS,S2,Stalls,Ts,250,browser 3D,102.117,101.953,-0.02
+DUS,S2,Stalls,Ts,500,browser 3D,95.239,97.644,0.24
+DUS,S2,Stalls,Ts,1000,browser 3D,70.678,83.527,1.28
+DUS,S2,Stalls,Ts,2000,browser 3D,71.405,79.515,0.81
+DUS,S2,Stalls,Ts,4000,browser 3D,43.016,70.272,2.73
+DUS,S2,1St Balcony,EDT,125,browser 3D,1.497,1.663,2.22
+DUS,S2,1St Balcony,EDT,250,browser 3D,1.341,1.409,1.01
+DUS,S2,1St Balcony,EDT,500,browser 3D,1.066,1.35,5.33
+DUS,S2,1St Balcony,EDT,1000,browser 3D,0.872,1.072,4.58
+DUS,S2,1St Balcony,EDT,2000,browser 3D,0.71,1.053,9.66
+DUS,S2,1St Balcony,EDT,4000,browser 3D,0.629,0.994,11.57
+DUS,S2,1St Balcony,T30,125,browser 3D,1.921,1.778,-1.49
+DUS,S2,1St Balcony,T30,250,browser 3D,1.689,1.599,-1.06
+DUS,S2,1St Balcony,T30,500,browser 3D,1.447,1.583,1.87
+DUS,S2,1St Balcony,T30,1000,browser 3D,1.272,1.459,2.94
+DUS,S2,1St Balcony,T30,2000,browser 3D,1.091,1.478,7.11
+DUS,S2,1St Balcony,T30,4000,browser 3D,0.896,1.265,8.24
+DUS,S2,1St Balcony,C80,125,browser 3D,-0.423,0.604,1.03
+DUS,S2,1St Balcony,C80,250,browser 3D,2.248,2.047,-0.2
+DUS,S2,1St Balcony,C80,500,browser 3D,3.868,2.516,-1.35
+DUS,S2,1St Balcony,C80,1000,browser 3D,5.48,3.99,-1.49
+DUS,S2,1St Balcony,C80,2000,browser 3D,7.392,4.072,-3.32
+DUS,S2,1St Balcony,C80,4000,browser 3D,8.29,4.826,-3.46
+DUS,S2,1St Balcony,Ts,125,browser 3D,118.582,112.574,-0.6
+DUS,S2,1St Balcony,Ts,250,browser 3D,90.126,91.571,0.14
+DUS,S2,1St Balcony,Ts,500,browser 3D,73.227,87.2,1.4
+DUS,S2,1St Balcony,Ts,1000,browser 3D,58.96,73.268,1.43
+DUS,S2,1St Balcony,Ts,2000,browser 3D,45.498,70.806,2.53
+DUS,S2,1St Balcony,Ts,4000,browser 3D,38.786,62.81,2.4
+DUS,S2,2Nd Balcony,EDT,125,browser 3D,1.932,1.648,-2.94
+DUS,S2,2Nd Balcony,EDT,250,browser 3D,1.618,1.38,-2.94
+DUS,S2,2Nd Balcony,EDT,500,browser 3D,1.237,1.359,1.97
+DUS,S2,2Nd Balcony,EDT,1000,browser 3D,0.97,1.19,4.55
+DUS,S2,2Nd Balcony,EDT,2000,browser 3D,0.798,1.06,6.56
+DUS,S2,2Nd Balcony,EDT,4000,browser 3D,0.645,0.862,6.74
+DUS,S2,2Nd Balcony,T30,125,browser 3D,2.008,1.687,-3.2
+DUS,S2,2Nd Balcony,T30,250,browser 3D,1.749,1.499,-2.86
+DUS,S2,2Nd Balcony,T30,500,browser 3D,1.525,1.419,-1.39
+DUS,S2,2Nd Balcony,T30,1000,browser 3D,1.366,1.393,0.39
+DUS,S2,2Nd Balcony,T30,2000,browser 3D,1.178,1.35,2.92
+DUS,S2,2Nd Balcony,T30,4000,browser 3D,0.973,1.233,5.33
+DUS,S2,2Nd Balcony,C80,125,browser 3D,-0.205,2.412,2.62
+DUS,S2,2Nd Balcony,C80,250,browser 3D,-0.402,3.864,4.27
+DUS,S2,2Nd Balcony,C80,500,browser 3D,2.975,4.147,1.17
+DUS,S2,2Nd Balcony,C80,1000,browser 3D,4.976,5.364,0.39
+DUS,S2,2Nd Balcony,C80,2000,browser 3D,6.604,5.778,-0.83
+DUS,S2,2Nd Balcony,C80,4000,browser 3D,7.454,6.601,-0.85
+DUS,S2,2Nd Balcony,Ts,125,browser 3D,133.897,100.417,-3.35
+DUS,S2,2Nd Balcony,Ts,250,browser 3D,123.256,80.654,-4.26
+DUS,S2,2Nd Balcony,Ts,500,browser 3D,83.149,76.775,-0.64
+DUS,S2,2Nd Balcony,Ts,1000,browser 3D,64.223,64.869,0.06
+DUS,S2,2Nd Balcony,Ts,2000,browser 3D,51.446,62.553,1.11
+DUS,S2,2Nd Balcony,Ts,4000,browser 3D,45.526,55.415,0.99

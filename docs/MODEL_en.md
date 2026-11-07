@@ -572,6 +572,48 @@ page with **Load config…**. Run 2026-11-05, re-run 2026-11-06 with the specula
 and again with the ray-tracing energy floor fixed (changes ≤ 0.4 JND; ULH 3D mesh about 77 min, STC 38 min on 2 CPU
 cores).
 
+### The two opera houses with the browser engine (TCB, DUS; `validation/check_fratoni_js.py`, 2026-11-07)
+
+With 3D models in the engine, the two opera houses of the dataset can be checked too: **TCB** (historic opera house,
+five tiers of boxes, about 25 900 m³ with the stage house) and **DUS** (opera house with two balconies, about
+8 200 m³). They run with the browser engine (image sources to order 2, 20 000 rays per source; 2.5 and 5 min), since
+the Python ray tracer would take hours on these 6 000 – 10 000-face models.
+- Models: OBJ from the dataset's SketchUp files with the tags as groups. The tags do not match the sheets' materials
+  (TCB 13 tags vs 8 materials, DUS 11 vs 8); the assignments are AuralPaths' judgement and are listed in
+  `validate_fratoni.py` (e.g. TCB hall and gallery plaster → "Plaster (boxes)", box floors → Carpet, fly tower →
+  "Stage house"; DUS "Carpet" floors → Wood, as its sheet has no carpet).
+- Positions: plan figures registered to the model (scale and offset fitted to the walls of a horizontal cut; mean
+  residual 7–9 px at 30–43 px/m), dots read from the figures. Heights are **assumptions**: receivers 1.2 m above the
+  floor below them (stalls, box, gallery or balcony floor from the mesh), sources 1.5 m above the stage or pit floor.
+- Rays lost through gaps in the models: 17–24 % of the rays over the whole run (CR4: similar).
+
+Results (simulated − measured, mean absolute difference in JND at 500 Hz – 1 kHz over sources and receiver zones,
+signed mean in brackets; tables and figures in `validation/fratoni_DUS.*`, `fratoni_TCB.*`):
+
+| hall | EDT | T30 | C80 | Ts |
+|---|---|---|---|---|
+| DUS (2 sources × 3 zones) | 2.7 (+2.7) | 1.2 (−0.1) | 1.2 (−0.6) | 0.9 (+0.6) |
+| TCB (2 sources × 3 zones) | 8.2 (−8.2) | 4.0 (−4.0) | 2.7 (+2.3) | 3.5 (−3.5) |
+| TCB, hall plaster as Wood (sensitivity) | 5.1 (−5.1) | 2.4 (−2.4) | 2.0 (+1.3) | 2.5 (−2.1) |
+
+Reading:
+- DUS: T30 at mid frequencies within about 1 JND; as in ULH, T30 is short at 125–250 Hz (−3 … −4 JND) and long at
+  4 kHz (+3 … +4 JND); EDT up to 20 % long (mean about 14 %).
+- TCB: everything decays too fast (T30 about 20 % short, EDT about 40 % short, C80 mostly 2–4 dB high). A Sabine estimate
+  from the same inputs is already 8 % below the measured T30 (1.37 s vs about 1.5 s at 500–1000 Hz), so with this
+  material assignment the model holds too much absorption; giving the hall plaster the Wood coefficients instead
+  halves the T30 gap but leaves EDT 25 % short. The cause is not determined: the undocumented tag-to-material
+  assignment (the GA coefficients were tuned in Odeon on the authors' own assignment), the coupling of the boxes
+  (small absorbing rooms opening into the hall) and the lost rays are candidates. **TCB is therefore not counted as
+  a successful check**; it shows that a box-tier opera house cannot be simulated reliably here without a calibration
+  of its own.
+
+```bash
+python validation/check_fratoni_js.py "<dataset folder>" DUS --obj DUS_model.obj
+python validation/check_fratoni_js.py "<dataset folder>" TCB --obj TCB.obj
+python validation/check_fratoni_js.py "<dataset folder>" TCB --obj TCB.obj --swap "Plaster_(hall)=Wood" --out validation/fratoni_TCB_hall-plaster-as-Wood
+```
+
 ## Position-by-position check against two real halls (`validate_bras_cr.py`)
 
 BRAS v3 (Aspöck et al. 2020, [doi:10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3),

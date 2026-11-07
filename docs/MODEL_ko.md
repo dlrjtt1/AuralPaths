@@ -514,6 +514,41 @@ python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --no-3d --
 **Load config…**로 연다. 2026-11-05 실행, 2026-11-06 정반사 계수를 넣어 재실행(변화 0.2 JND 이하), 이어서 광선추적 에너지
 하한을 고쳐 재실행(변화 0.4 JND 이하. CPU 2코어에서 ULH 3D 메시 약 77분, STC 38분).
 
+### 두 오페라 극장, 브라우저 엔진 (TCB, DUS; `validation/check_fratoni_js.py`, 2026-11-07)
+
+엔진이 3D 모델을 다루게 되어 데이터셋의 오페라 극장 두 곳도 대조했다: **TCB**(박스석 5층의 역사적 오페라 극장, 무대 공간 포함
+약 25 900 m³)와 **DUS**(발코니 2층의 오페라 극장, 약 8 200 m³). 6 000–10 000면 모델에서는 Python 광선추적이 몇 시간 걸려서
+브라우저 엔진으로 계산했다(허상 2차, 음원당 광선 2만 개; 2.5분, 5분).
+- 모델: 데이터셋의 SketchUp 파일을 태그를 그룹으로 남겨 OBJ로 내보냈다. 태그가 재료표와 맞지 않는다(TCB 태그 13 대 재료 8,
+  DUS 11 대 8). 대응은 AuralPaths의 판단이며 `validate_fratoni.py`에 적었다(예: TCB 홀·갤러리 회벽 → "Plaster (boxes)",
+  박스 바닥 → Carpet, 플라이 타워 → "Stage house"; DUS "Carpet" 바닥 → Wood, 재료표에 카펫이 없음).
+- 위치: 평면 그림을 모델에 맞춘 뒤(수평 단면의 벽에 축척·위치 맞춤, 평균 잔차 7–9 px, 30–43 px/m) 그림의 점을 읽었다. 높이는
+  **가정**이다: 수음점은 아래 바닥(객석·박스·갤러리·발코니 바닥, 메시에서) 위 1.2 m, 음원은 무대 또는 피트 바닥 위 1.5 m.
+- 모델의 틈으로 잃는 광선: 전체 계산 동안 17–24 %(CR4도 비슷).
+
+결과(계산 − 실측, 500 Hz–1 kHz에서 음원·수음 구역 평균 절대 차이, JND; 괄호는 부호 있는 평균; 표·그림은 `validation/fratoni_DUS.*`,
+`fratoni_TCB.*`):
+
+| 홀 | EDT | T30 | C80 | Ts |
+|---|---|---|---|---|
+| DUS (음원 2 × 구역 3) | 2.7 (+2.7) | 1.2 (−0.1) | 1.2 (−0.6) | 0.9 (+0.6) |
+| TCB (음원 2 × 구역 3) | 8.2 (−8.2) | 4.0 (−4.0) | 2.7 (+2.3) | 3.5 (−3.5) |
+| TCB, 홀 회벽을 Wood로 (민감도) | 5.1 (−5.1) | 2.4 (−2.4) | 2.0 (+1.3) | 2.5 (−2.1) |
+
+해석:
+- DUS: 중음역 T30은 약 1 JND 이내. ULH처럼 125–250 Hz에서 T30이 짧고(−3 … −4 JND) 4 kHz에서 길다(+3 … +4 JND). EDT는 최대 20 %(평균 약 14 %) 길다.
+- TCB: 모든 감쇠가 너무 빠르다(T30 약 20 % 짧음, EDT 약 40 % 짧음, C80 대체로 2–4 dB 높음). 같은 입력의 Sabine 추정부터 실측 T30보다
+  8 % 낮아서(500–1000 Hz에서 1.37 s 대 약 1.5 s), 이 재료 대응으로는 모델의 흡음이 너무 많다. 홀 회벽에 Wood 값을 주면 T30 차이는
+  절반이 되지만 EDT는 여전히 25 % 짧다. 원인은 밝히지 못했다: 문서화되지 않은 태그–재료 대응(GA 계수는 저자들 자신의 대응으로
+  Odeon에서 맞춘 값), 박스의 결합(홀로 열린 작은 흡음실), 잃는 광선이 후보다. **따라서 TCB는 성공한 검증으로 세지 않는다.**
+  박스석 오페라 극장은 자체 보정 없이는 이 도구로 믿을 만하게 계산할 수 없다는 것을 보여 준다.
+
+```bash
+python validation/check_fratoni_js.py "<dataset folder>" DUS --obj DUS_model.obj
+python validation/check_fratoni_js.py "<dataset folder>" TCB --obj TCB.obj
+python validation/check_fratoni_js.py "<dataset folder>" TCB --obj TCB.obj --swap "Plaster_(hall)=Wood" --out validation/fratoni_TCB_hall-plaster-as-Wood
+```
+
 ## 실제 홀 두 곳과의 위치별 대조 (`validate_bras_cr.py`)
 
 BRAS v3(Aspöck et al. 2020, [doi:10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3),

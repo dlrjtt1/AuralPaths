@@ -525,6 +525,45 @@ python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --no-3d --
 **Load config…** で開く。2026-11-05 実行、2026-11-06 鏡面反射の係数を入れて再実行(変化は 0.2 JND 以下)、続いて音線追跡の
 エネルギー下限を修正して再実行(変化は 0.4 JND 以下。CPU 2 コアで ULH 3D メッシュ約 77 分、STC 38 分)。
 
+### 2 つのオペラハウス、ブラウザエンジン(TCB、DUS。`validation/check_fratoni_js.py`、2026-11-07)
+
+エンジンが 3D モデルを扱えるようになったため、データセットの 2 つのオペラハウスも照合した: **TCB**(5 層のボックス席をもつ歴史的
+オペラハウス、舞台空間を含め約 25 900 m³)と **DUS**(2 層のバルコニーをもつオペラハウス、約 8 200 m³)。6 000–10 000 面の
+モデルでは Python の音線追跡に数時間かかるため、ブラウザエンジンで計算した(虚像 2 次、音源あたり音線 2 万本。2.5 分、5 分)。
+- モデル: データセットの SketchUp ファイルを、タグをグループとして残して OBJ に書き出した。タグは材料表と一致しない(TCB は
+  タグ 13 対材料 8、DUS は 11 対 8)。対応は AuralPaths の判断であり、`validate_fratoni.py` に記した(例: TCB のホール・
+  ギャラリーの漆喰 → "Plaster (boxes)"、ボックス床 → Carpet、フライタワー → "Stage house"。DUS の "Carpet" 床 → Wood。
+  材料表にカーペットがないため)。
+- 位置: 平面図をモデルに合わせ(水平断面の壁に縮尺と位置を合わせた。平均残差 7–9 px、30–43 px/m)、図の点を読み取った。
+  高さは**仮定**である: 受音点は下の床(客席・ボックス・ギャラリー・バルコニーの床、メッシュから)の 1.2 m 上、音源は舞台または
+  ピット床の 1.5 m 上。
+- モデルの隙間から失われる音線: 計算全体で 17–24 %(CR4 も同程度)。
+
+結果(計算 − 実測、500 Hz–1 kHz における音源・受音区域の平均絶対差、JND。括弧内は符号付き平均。表と図は
+`validation/fratoni_DUS.*`、`fratoni_TCB.*`):
+
+| ホール | EDT | T30 | C80 | Ts |
+|---|---|---|---|---|
+| DUS(音源 2 × 区域 3) | 2.7 (+2.7) | 1.2 (−0.1) | 1.2 (−0.6) | 0.9 (+0.6) |
+| TCB(音源 2 × 区域 3) | 8.2 (−8.2) | 4.0 (−4.0) | 2.7 (+2.3) | 3.5 (−3.5) |
+| TCB、ホールの漆喰を Wood に(感度) | 5.1 (−5.1) | 2.4 (−2.4) | 2.0 (+1.3) | 2.5 (−2.1) |
+
+解釈:
+- DUS: 中音域の T30 は約 1 JND 以内である。ULH と同様に 125–250 Hz で T30 が短く(−3 … −4 JND)、4 kHz で長い(+3 … +4 JND)。
+  EDT は最大 20 %(平均約 14 %)長い。
+- TCB: すべての減衰が速すぎる(T30 は約 20 % 短く、EDT は約 40 % 短く、C80 はおおむね 2–4 dB 高い)。同じ入力による Sabine 推定値の
+  時点で実測 T30 より 8 % 低い(500–1000 Hz で 1.37 s 対約 1.5 s)ため、この材料対応ではモデルの吸音が多すぎる。ホールの漆喰に
+  Wood の値を与えると T30 の差は半分になるが、EDT は依然として 25 % 短い。原因は特定できていない: 文書化されていないタグと
+  材料の対応(GA 係数は著者ら自身の対応で Odeon において調整された値)、ボックスの結合(ホールに開いた小さな吸音室)、失われる
+  音線が候補である。**したがって TCB は成功した検証とは数えない。** ボックス席のオペラハウスは、独自の校正なしにはこのツールで
+  信頼できる計算ができないことを示している。
+
+```bash
+python validation/check_fratoni_js.py "<dataset folder>" DUS --obj DUS_model.obj
+python validation/check_fratoni_js.py "<dataset folder>" TCB --obj TCB.obj
+python validation/check_fratoni_js.py "<dataset folder>" TCB --obj TCB.obj --swap "Plaster_(hall)=Wood" --out validation/fratoni_TCB_hall-plaster-as-Wood
+```
+
 ## 実在ホール 2 館との位置ごとの照合(`validate_bras_cr.py`)
 
 BRAS v3(Aspöck et al. 2020, [doi:10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3)、
