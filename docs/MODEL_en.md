@@ -717,6 +717,41 @@ about 25 min, CR4 about 40 min on 2 CPU cores). The 2.5D halls
 (`validation/bras_CR*_2p5d_config.json`, CC BY-SA 4.0) open in the page with **Load config…**. `calibrate.py` now
 traces once per source for mesh halls (all receivers of that source together).
 
+## Comparison with an independent free simulator: I-Simpa (SPPS) (`validation/check_isimpa.py`, 2026-11-07)
+
+I-Simpa (Université Gustave Eiffel, GPL-3.0, [github.com/Universite-Gustave-Eiffel/I-Simpa](https://github.com/Universite-Gustave-Eiffel/I-Simpa))
+is a free room-acoustics program; its SPPS solver traces sound particles through a tetrahedral mesh of the room. It
+was run headless on the same BRAS halls with the same inputs as the Python 3D runs above (geometry, BRAS fitted
+absorption and scattering per octave, positions, receiver radius 0.5 m, air absorption; 300 000 particles per source
+and band) and on a shoebox. I-Simpa is not bundled or linked; the script writes its input files and runs it. On Linux
+one source fix in SPPS was needed (`abs()` on doubles truncated to integers, so every point receiver recorded zero;
+see the script's docstring).
+
+Results (simulated − measured or SPPS − AuralPaths, mean absolute difference in JND at 500 Hz – 2 kHz over the 10
+position pairs, signed mean in brackets; `validation/isimpa_check.md`):
+
+| | T30 | EDT | C80 | Ts |
+|---|---|---|---|---|
+| CR3: SPPS − measured | 5.1 (+5.1) | 3.7 (+3.7) | 1.1 (−0.9) | 1.6 (+1.5) |
+| CR3: AuralPaths − measured | 1.8 (+1.6) | 3.0 (+2.6) | 0.8 (−0.4) | 1.0 (+0.7) |
+| CR3: SPPS − AuralPaths | 3.4 (+3.4) | 1.2 (+1.1) | 0.5 (−0.4) | 0.8 (+0.8) |
+| CR4: SPPS − measured | 3.0 (+3.0) | 3.0 (+3.0) | 1.6 (−1.5) | 3.0 (+3.0) |
+| CR4: AuralPaths − measured | 2.1 (+2.1) | 3.7 (+3.5) | 1.6 (−0.5) | 2.3 (+1.8) |
+| CR4: SPPS − AuralPaths | 1.4 (+0.8) | 1.9 (−0.2) | 1.6 (−1.1) | 1.8 (+1.3) |
+
+Shoebox (12 × 9 × 7 m, α 0.2, no air), T30: SPPS 1.12 / 1.10 / 1.13 s at scattering 1.0 / 0.5 / 0.1; the browser
+tracer 1.11 / 1.15 s at 1.0 / 0.5 (`check_box_lambert.js`).
+
+Reading: in a diffuse box the two tracers agree within 0–4 %, and in CR4 within about 1–2 JND. In CR3 SPPS decays
+clearly slower (T30 about 17 % longer than AuralPaths, about 25 % longer than measured) while the early criteria
+agree better; the cause is not resolved (candidates: the reflection model at the low scattering of most CR3 surfaces —
+SPPS reflects diffusely with probability s, AuralPaths blends one direction as pyroomacoustics does — and the rays the
+browser tracer loses through gaps, about 12 % over 3 s in CR3 against about 0.01 % in SPPS). Neither program
+reproduces the measurement with these inputs, which were fitted with the Eyring formula for neither of them;
+differences of this size between simulators are expected (Brinkmann et al. 2019,
+[doi:10.1121/1.5096178](https://doi.org/10.1121/1.5096178)). The check shows that AuralPaths is not an outlier
+against an independent implementation in CR4 and in a diffuse box, and records the CR3 difference.
+
 ## Seat dip
 
 Not modelled. A literature check found no closed-form or parametric model that predicts the seat-dip filter

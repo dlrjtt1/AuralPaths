@@ -4,6 +4,8 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Comparison with an independent free simulator, I-Simpa's SPPS (`validation/check_isimpa.py`): diffuse box within
+  0–4 %, CR4 within about 1–2 JND; in CR3 SPPS decays about 17 % slower (not resolved).
 - Fratoni opera houses TCB and DUS checked with the browser engine (`validation/check_fratoni_js.py`): DUS T30 within
   about 1 JND at mid frequencies; TCB decays too fast (not counted as a successful check, cause not determined).
 

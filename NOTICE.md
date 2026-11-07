@@ -51,6 +51,8 @@ loaded and keeps its own licence.
 - IBM Plex Sans (SIL Open Font License 1.1), from Google Fonts.
 
 ## Not included (download separately)
+- I-Simpa (Université Gustave Eiffel, GPL-3.0) for `validation/check_isimpa.py`: run as a separate program from a local build
+  (https://github.com/Universite-Gustave-Eiffel/I-Simpa); not bundled, not linked.
 - `hrir/KU100.sofa` for the Python tools: `HRIR_FULL2DEG.sofa` from Zenodo record 3928297 (CC BY 3.0).
 - BRAS data for `validate_bras.py`: see above.
 - Fratoni dataset for `validate_fratoni.py`: see above.
