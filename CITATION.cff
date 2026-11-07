@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use AuralPaths in your work, please cite it as below, with the version you used (the page shows it, and saved configs and exported files record it)."
+type: software
+title: "AuralPaths: a research and teaching tool for the precedence effect in sound reinforcement"
+abstract: >-
+  Browser-based binaural room simulator for direct sound plus delayed loudspeaker (PA) paths. Vary hall,
+  loudspeaker and seat positions, delay and level, then compute, listen to and export binaural room impulse
+  responses (SOFA, WAV). Image sources, ray tracing and first-order edge diffraction; shoebox, drawn 2.5D and
+  OBJ 3D halls; calibration of absorption to measured T30; checks against measured halls (BRAS, Fratoni).
+authors:
+  - family-names: "You"
+    given-names: "Dong-Gyun"
+    orcid: "https://orcid.org/0009-0000-0075-4695"
+version: "0.6.0"
+date-released: "2026-11-07"
+license: MIT
+repository-code: "https://github.com/dlrjtt1/AuralPaths"
+url: "https://dlrjtt1.github.io/AuralPaths/"
+keywords:
+  - room acoustics
+  - binaural rendering
+  - precedence effect
+  - sound reinforcement
+  - BRIR
+  - ray tracing

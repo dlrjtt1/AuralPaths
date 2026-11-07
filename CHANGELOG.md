@@ -1,0 +1,23 @@
+# Changelog
+
+Dates are those of the commits on GitHub. The version is shown on the page and recorded in saved configs and exported
+files.
+
+## 0.6.0 (2026-11-07)
+- 3D halls from OBJ models (SketchUp / Blender) in Python and in the browser: voxel room, BVH ray tracing, image
+  sources to order 2 in the browser (order 1 in Python), material per face group.
+- OBJ to 2.5D conversion (`obj_to_hall.py`).
+- Image sources with finite panel size and scattering loss per reflection.
+- Python ray tracing: energy floor 1e-20 (was 1e-9, which cut scattered energy after about 0.5 s); validations re-run.
+- Checks against measured halls: Fratoni dataset (ULH, STC; room criteria) and BRAS CR3 / CR4 (position by position,
+  room criteria and first-order reflections, including a timing-tolerant reflection check).
+- Page: Calibrate button (absorption to measured T30, with held-out check positions), trust panel and ray-tracing
+  spread, provenance record in saved configs, BRIR export as SOFA (SingleRoomSRIR) and WAV, loadable HRIR set (SOFA),
+  parallel ray tracing, per-ray random streams, a demo with measured data (BRAS CR3), quick guide in Korean, Japanese
+  and English.
+- Regression checks (`tests/regression.py`) run on GitHub for every push; `tools/build_page.py`; citation metadata.
+
+## 0.5 (2026-11-03)
+- First public version: shoebox and drawn 2.5D halls, image sources, ray tracing and first-order UTD edge diffraction,
+  binaural rendering with KU100 HRIRs, direction-dependent late reverberation, A/B listening, Python tools for BRIR
+  sets, stimuli and calibration.

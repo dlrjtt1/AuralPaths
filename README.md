@@ -55,7 +55,7 @@ By LABO 1557 (Dong-Gyun You).
 
 ## Python tools
 ```bash
-pip install pyroomacoustics sofar soundfile scipy matplotlib
+pip install -r requirements.txt     # pyroomacoustics sofar soundfile scipy matplotlib
 # put HRIR_FULL2DEG.sofa (Zenodo 3928297) at hrir/KU100.sofa
 python run.py config.json          # BRIRs, metrics, out/viewer.html
 python export_viewer.py config.json
@@ -65,6 +65,13 @@ python obj_to_hall.py mesh_config.json             # -> mesh_config_2p5d.json
 ```
 Full description of the model, the checks and the outputs: `docs/MODEL_en.md` (Korean: `docs/MODEL_ko.md`, Japanese: `docs/MODEL_ja.md`). Literature and data used:
 `docs/REFERENCES_ko.md` (Korean).
+
+## Checks and citing
+- `python tests/regression.py` runs the checks that need no external data (page build, Python vs browser agreement of
+  image sources, diffraction and ray tracing, reverberation baselines, calibration); they run on GitHub for every push
+  to main. Checks against measured halls need the datasets: see `validation/` and `docs/MODEL_en.md`.
+- To cite AuralPaths, use `CITATION.cff` (GitHub: "Cite this repository") with the version you used. Changes:
+  `CHANGELOG.md`; how to report problems or contribute: `CONTRIBUTING.md`.
 
 ## Licence
 Code: MIT (`LICENSE`). Third-party data keep their own licences (KU100 HRIRs and headphone filter: CC BY 3.0;

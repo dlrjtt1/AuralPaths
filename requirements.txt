@@ -1,0 +1,8 @@
+# Python tools (run.py, calibrate.py, validation). tests/baseline.json was made with these versions;
+# pyroomacoustics is pinned because its ray tracer sets the Python reverberation results.
+numpy>=1.26
+scipy>=1.11
+pyroomacoustics==0.10.1
+soundfile>=0.12
+matplotlib>=3.8
+sofar>=1.1

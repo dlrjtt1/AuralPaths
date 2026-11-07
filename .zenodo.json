@@ -1,0 +1,10 @@
+{
+  "title": "AuralPaths: a research and teaching tool for the precedence effect in sound reinforcement",
+  "upload_type": "software",
+  "description": "Browser-based binaural room simulator for direct sound plus delayed loudspeaker (PA) paths: vary hall, loudspeaker and seat positions, delay and level, then compute, listen to and export binaural room impulse responses (SOFA, WAV). Image sources, ray tracing and first-order edge diffraction; shoebox, drawn 2.5D and OBJ 3D halls; calibration of absorption to measured T30; checks against measured halls (BRAS, Fratoni). Third-party data included in the repository keep their own licences (see NOTICE.md).",
+  "creators": [
+    {"name": "You, Dong-Gyun", "orcid": "0009-0000-0075-4695"}
+  ],
+  "license": "MIT",
+  "keywords": ["room acoustics", "binaural rendering", "precedence effect", "sound reinforcement", "BRIR", "ray tracing"]
+}

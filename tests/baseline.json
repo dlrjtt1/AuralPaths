@@ -1,0 +1,81 @@
+{
+ "box_js": {
+  "T30_s05": {
+   "rtol": 0.02,
+   "value": 1.15
+  },
+  "T30_s1": {
+   "rtol": 0.02,
+   "value": 1.11
+  },
+  "traced_vs_predicted_s05": {
+   "max": 0.05,
+   "min": -0.05
+  },
+  "traced_vs_predicted_s1": {
+   "max": 0.05,
+   "min": -0.05
+  }
+ },
+ "box_py": {
+  "T30_a0.15_s0.7": {
+   "rtol": 0.03,
+   "value": 1.597448433
+  },
+  "T30_a0.3_s0.1": {
+   "rtol": 0.03,
+   "value": 0.7216116999
+  }
+ },
+ "calibrate": {
+  "iterations": {
+   "max": 6
+  },
+  "max_abs_error_pct": {
+   "max": 2.0
+  }
+ },
+ "diffraction": {
+  "arrivals": {
+   "tol": 0,
+   "value": 132
+  },
+  "max_energy_diff": {
+   "max": 1e-08
+  }
+ },
+ "page": {
+  "up_to_date": {
+   "min": 1
+  }
+ },
+ "page_load": {
+  "first_computation_done": {
+   "min": 1
+  },
+  "guide_present": {
+   "min": 1
+  },
+  "script_errors": {
+   "max": 0
+  }
+ },
+ "rays_split": {
+  "max_abs_diff_rel_total": {
+   "max": 1e-12
+  },
+  "total_energy": {
+   "rtol": 1e-09,
+   "value": 0.2393649502
+  }
+ },
+ "specular": {
+  "images": {
+   "tol": 0,
+   "value": 48
+  },
+  "max_rel_energy_diff": {
+   "max": 1e-05
+  }
+ }
+}
