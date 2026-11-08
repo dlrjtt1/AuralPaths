@@ -534,7 +534,10 @@ const GEOM = (() => {
   function rays(G, src, recs, opts, mats, air) {
     // k0 / k1: trace only rays k0 ... k1 - 1 of the n (each ray has its own random stream and the directions are
     // stratified over all n, so the parts of several workers add up to exactly the single-run result)
-    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null, k0 = 0, k1 = n } = opts, NB = air.length;
+    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null, k0 = 0, k1 = n, log = 0 } = opts, NB = air.length;
+    // log > 0 (diagnostics, validation/early_paths.py): every receiver hit before `log` seconds as
+    // [receiver, t, reflections, first surface, last surface, last reflection point xyz, launch direction xyz, band energies...]
+    const LOG = log > 0 ? [] : null;
     const nBins = Math.round(tMax / bin), H = recs.map(() => Array.from({ length: NB }, () => new Float64Array(nBins)));
     // late-field arrival directions (as dirrays.py): energy per Fibonacci bin (head frame) and band after tLate[m]
     const W = tLate ? recs.map(() => new Float64Array(FIB.length * NB)) : null, RW = 1.0, VW = 4 / 3 * Math.PI * RW ** 3;   // incoming direction -d, head frame [-dy, dx, -dz]
@@ -552,7 +555,7 @@ const GEOM = (() => {
       const zc = 1 - 2 * (k + rnd()) / n, ph = 2 * Math.PI * rnd(), sr = Math.sqrt(Math.max(0, 1 - zc * zc));
       let dx = sr * Math.cos(ph), dy = sr * Math.sin(ph), dz = zc;
       let ox = src[0], oy = src[1], oz = src[2], L = 0, last = -1, twinPrev = false;
-      const e = new Float64Array(NB).fill(e0);
+      const e = new Float64Array(NB).fill(e0), d0 = [dx, dy, dz]; let firstS = -1;
       for (let bounce = 0; bounce < 400; bounce++) {
         // nearest surface
         let best = Infinity, bi = -1;
@@ -592,6 +595,7 @@ const GEOM = (() => {
           const dist = L + (ta + tb) / 2, ib = Math.floor(dist / c / bin); if (ib >= nBins) continue;
           const f = (tb - ta) / Vs; for (let b = 0; b < NB; b++) H[m][b][ib] += e[b] * Math.exp(-air[b] * dist) * f;
           hits++;
+          if (LOG && dist / c < log) LOG.push([m, dist / c, bounce, firstS, last, ox, oy, oz, d0[0], d0[1], d0[2], ...Array.from(e, (v, b) => v * Math.exp(-air[b] * dist) * f)]);
         }
         L += best; if (L >= Lmax) break;
         ox += best * dx; oy += best * dy; oz += best * dz;
@@ -621,10 +625,10 @@ const GEOM = (() => {
             const ml = Math.hypot(mx, my, mz); dx = mx / ml; dy = my / ml; dz = mz / ml;
           } else { dx = lx; dy = ly; dz = lz; }
         } else { const dn = 2 * (dx * s.n[0] + dy * s.n[1] + dz * s.n[2]); dx -= dn * s.n[0]; dy -= dn * s.n[1]; dz -= dn * s.n[2]; }
-        last = bi;
+        last = bi; if (firstS < 0) firstS = bi;
       }
     }
-    return { H, W, escaped, hits, n, leaked };
+    return LOG ? { H, W, escaped, hits, n, leaked, LOG } : { H, W, escaped, hits, n, leaked };
   }
 
   // ---------- loudspeaker directivity (generic, axisymmetric; an engineering assumption, not measured data)
