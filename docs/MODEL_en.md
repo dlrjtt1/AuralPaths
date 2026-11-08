@@ -835,7 +835,7 @@ Model findings:
 - FABIAN head (`tools/fabian_to_sofa.py`: the FABIAN HRIRs of the BRAS release, head-above-torso orientation 0°, 2°
   grid; left / right checked on the data) together with the measured K8 pattern and on-axis response
   (`validation/bras_brir_CR3_FABIAN_K8data.md`, `_CR4_FABIAN_K8data.md`): the spectrum difference at 2–4 kHz
-  (−7 … −13 dB with the KU100) drops to within 1.4 dB in both halls, so it was the head, not the room; |ITD
+  (−6 … −13 dB with the KU100) drops to within 1.4 dB in both halls, so it was the head, not the room; |ITD
   difference| 0–5 µs, |ILD difference| 0.3–0.5 dB; IACC_E3 0.35 (CR3) and 0.63 (CR4) against 0.52 and 0.83; C80 at
   500 Hz −1.3 dB (CR3) and −2.5 dB (CR4); T30 and EDT unchanged. With head and loudspeaker matched, what remains is
   the room model: low IACC_E3, low C80, CR4 T30 long, CR3 EDT long.

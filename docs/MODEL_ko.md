@@ -731,7 +731,7 @@ FABIAN 더미헤드로 한 청취 위치(MP6 = RIR 위치 MP1, 머리는 LS7 방
   받았고, 위 CR4 바이노럴 결과는 재계산한 것이다. Fratoni TCB / DUS 브라우저 계산은 재계산했으며, DUS의 한 쌍(S2 → R14, C80 최대 0.2 dB)을 빼면 바뀌지 않았다. 앞서 K8 패턴으로 얻은 CR4 LS7의
   IACC_E3 0.84는 두 번 들어간 천장 반사 때문이었으며, 지금은 0.63이다(실측 0.92).
 - FABIAN 머리(`tools/fabian_to_sofa.py`: BRAS 배포본의 FABIAN HRIR, 머리 방향 0°, 2° 격자; 좌우는 데이터로 확인)와 실측 K8 패턴 및
-  정면 특성을 함께 쓰면(`validation/bras_brir_CR3_FABIAN_K8data.md`, `_CR4_FABIAN_K8data.md`), KU100에서 −7 … −13 dB였던 2–4 kHz
+  정면 특성을 함께 쓰면(`validation/bras_brir_CR3_FABIAN_K8data.md`, `_CR4_FABIAN_K8data.md`), KU100에서 −6 … −13 dB였던 2–4 kHz
   스펙트럼 차이가 두 홀 모두 1.4 dB 이내로 줄어든다. 즉 원인은 방이 아니라 머리였다. ITD 차이 0–5 µs, ILD 차이 0.3–0.5 dB; IACC_E3는
   0.35(CR3), 0.63(CR4) 대 0.52, 0.83; 500 Hz C80은 −1.3 dB(CR3), −2.5 dB(CR4); T30과 EDT는 그대로다. 머리와 스피커를 맞춘 뒤 남는 것은
   방 모델의 차이다: 낮은 IACC_E3, 낮은 C80, 긴 CR4 T30, 긴 CR3 EDT.

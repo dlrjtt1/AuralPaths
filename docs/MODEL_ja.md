@@ -750,7 +750,7 @@ BRIR が含まれる。スクリプトは同じ 5 組を Python のメッシュ�
   MP1、1 次反射 1 つ)が影響を受け、上の CR4 のバイノーラル結果は再計算したものである。Fratoni TCB / DUS のブラウザ計算は再計算し、DUS の 1 組(S2 → R14、C80 で最大 0.2 dB)を除いて変わらなかった。
   以前 K8 パターンで得た CR4 LS7 の IACC_E3 0.84 は 2 回数えた天井反射によるもので、現在は 0.63(実測 0.92)である。
 - FABIAN の頭部(`tools/fabian_to_sofa.py`: BRAS 配布データの FABIAN HRIR、頭部方向 0°、2° 格子。左右はデータで確認)と実測 K8 の
-  パターンおよび正面特性を併用すると(`validation/bras_brir_CR3_FABIAN_K8data.md`、`_CR4_FABIAN_K8data.md`)、KU100 で −7 … −13 dB で
+  パターンおよび正面特性を併用すると(`validation/bras_brir_CR3_FABIAN_K8data.md`、`_CR4_FABIAN_K8data.md`)、KU100 で −6 … −13 dB で
   あった 2–4 kHz のスペクトル差は両ホールとも 1.4 dB 以内に縮まる。すなわち原因は室ではなく頭部であった。ITD の差 0–5 µs、ILD の差
   0.3–0.5 dB。IACC_E3 は 0.35(CR3)、0.63(CR4)対 0.52、0.83。500 Hz の C80 は −1.3 dB(CR3)、−2.5 dB(CR4)。T30 と EDT は変わらない。
   頭部とスピーカーを合わせた後に残るのは室モデルの差である: 低い IACC_E3、低い C80、長い CR4 の T30、長い CR3 の EDT。
