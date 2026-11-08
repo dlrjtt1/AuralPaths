@@ -24,7 +24,8 @@ with --coverage a coverage cone aimed at the listener; 105 deg is the K8's nomin
         ("2 Source and receiver descriptions/QSC K8", RWTH Aachen, 1 deg grid, third-octave complex spectra; BRAS
         documentation section 3.3.1: front-pole grid, Theta from the front axis, Phi = 0 deg towards +z, 90 deg towards
         +y). Third-octave powers are summed to octaves and gridded as a balloon (brir_proto.balloon_from_points),
-        normalised on axis per band: only the pattern is used, not the K8's on-axis frequency response. Aim (BRAS
+        normalised on axis per band; the on-axis response (direction P000T000) is applied to the whole BRIR as a
+        minimum-phase filter (k8_onaxis_fir). Aim (BRAS
         documentation section 3.4.2): LS3 - LS6 tweeter towards the head, LS7 not rotated or tilted (horizontal,
         towards the listener's azimuth).
 """
@@ -133,6 +134,22 @@ def k8_balloon(path, bands):
                                                            "db": bp.balloon_from_points(dirs, pw).tolist()}}
 
 
+def k8_onaxis_fir(path, fs, n=1024):
+    """Minimum-phase FIR of the K8's on-axis magnitude (BRAS MPS file, direction P000T000, third-octave values
+    interpolated on a log-frequency axis, 0 dB at 1 kHz)."""
+    with open(path, encoding="utf-8", errors="ignore") as f:
+        fr = np.array([float(x) for x in f.readline().split(",")[1:] if x.strip()])
+        for line in f:
+            if line.startswith("P000T000"):
+                h = np.array([abs(complex(x.replace(" ", "").replace("i", "j"))) for x in line.split(",")[1:] if x.strip()])
+                break
+    db = 20 * np.log10(h / h[np.argmin(np.abs(fr - 1000))])
+    f = np.fft.rfftfreq(4 * n, 1 / fs)
+    mag = 10 ** (np.interp(np.log(np.clip(f, fr[0], fr[-1])), np.log(fr), db) / 20)
+    from scipy import signal as sg
+    return sg.minimum_phase(np.fft.fftshift(np.fft.irfft(mag ** 2, 4 * n)), method="homomorphic")[:n]
+
+
 def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None):
     scene = os.path.join(bras, SCENES[hall])
     mats = vb.read_bras_materials(os.path.join(bras, "3 Surface descriptions"), hall, "fitted")
@@ -171,6 +188,9 @@ def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None):
         hist, centers, resid = bp.energy_hist(cfg, s, "MP6", return_resid=True)
         dirw = bp.late_directions(cfg, s, ["MP6"], centers, air)[0] if bp.late_on(cfg) else None
         out[s], _ = bp.path_brir(cfg, s, "MP6", hrir, hist, centers, n_len, seed=j, dirw=dirw, resid=resid)
+        if k8:      # the K8's on-axis response (the balloon carries the pattern only)
+            from scipy import signal as sg
+            out[s] = sg.fftconvolve(out[s], k8_onaxis_fir(k8, fs)[None, :])[:, :n_len]
         print(f"{hall} {s}: simulated in {time.time() - t:.0f} s", flush=True)
     return out
 
