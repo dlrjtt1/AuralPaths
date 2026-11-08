@@ -800,6 +800,17 @@ Model findings:
   and LS7 from 0.83 to 0.91 (0.92). The noise rendering of the early remainder therefore explains only a part of the
   gap; the early energy distribution matters at least as much (inputs: materials fitted to reverberation; the
   source pattern below 2 kHz, which here widens from 105° by an assumed rule, not K8 data). The engine is unchanged.
+- Measured K8 pattern (`--k8-mps`: the QSC K8 directivity of the BRAS release, RWTH Aachen, 1° grid, third-octave
+  spectra, BRAS documentation sections 3.3.1 / 3.4.2; octave balloon, pattern only, LS3–LS6 aimed at the head, LS7
+  horizontal; `validation/bras_brir_CR3_K8data.md`, `_CR4_K8data.md`, `bras_brir_iacc_split_K8data.md`). The K8 is
+  more directional at 250–500 Hz than the assumed rule (Q 1.9 / 3.0 against 1.0 / 1.7). Against the 105° rule:
+  IACC_E3 0.29 → 0.34 in CR3 (measured 0.52) and 0.57 → 0.63 in CR4 (0.83); C80 at 500 Hz −2.0 → −1.8 dB (CR3) and
+  −3.7 → −2.8 dB (CR4); the spectrum at 125 Hz–1 kHz within about 1.6 dB in CR3 and 2.2 dB in CR4 (before 2.0 and
+  3.0); T30, EDT, ITD / ILD and the direct-to-early ratio practically unchanged. The source pattern explains a part of
+  the difference. What remains is position-dependent: in CR4, LS6 and LS7 now match in IACC per band, while for
+  LS3–LS5 the simulation puts 14–19 % of the 0–80 ms energy into 20–50 ms (measured 5–6 %) and the direct share at
+  500 Hz is about half the measured one. That points to the room model for these paths (geometry or materials of the
+  surfaces reflecting LS3–LS5 towards the listener), not identified.
 - IACC_L is about a third to a half of the measurement. The late part is rendered with the coherence of an ideal
   diffuse field for the head, which is near 0 above 500 Hz (see "Late interaural coherence"); the measured late part
   is more coherent than that at this position.

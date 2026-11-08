@@ -8,7 +8,8 @@ files.
   option for directional sources): direct-sound ITD within 14–18 µs and ILD within 0.8 dB; with a 105° source the
   direct-to-early ratio matches; IACC_E3 too low (split per band in `validation/iacc_split.py`: the noise rendering
   of the early remainder explains only a part, the early energy distribution as much), C80 low, CR4 T30 15–24 % long
-  (not resolved).
+  (not resolved). With the measured K8 directivity of the BRAS release (`--k8-mps`) IACC_E3 rises from 0.29 to 0.34
+  (CR3) and 0.57 to 0.63 (CR4) and C80 at 500 Hz improves by 0.2–0.9 dB; the rest of the gap is position-dependent.
 - Comparison with an independent free simulator, I-Simpa's SPPS (`validation/check_isimpa.py`): diffuse box within
   0–4 %, CR4 within about 1–2 JND; in CR3 SPPS decays about 17 % slower (not resolved).
 - Fratoni opera houses TCB and DUS checked with the browser engine (`validation/check_fratoni_js.py`): DUS T30 within
