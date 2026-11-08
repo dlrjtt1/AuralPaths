@@ -18,9 +18,11 @@ What is taken from measurement and what is assumed (state this with any result):
   of the B&K 4292-L (dodeca_HBK_4292L.csv). BRAS measured with its own dodecahedron, whose pattern is not used.
 - Path B (B_L, B_R): QSC K8 with its measured directivity (BRAS release, --k8-mps; pattern as a balloon). Positions
   are ASSUMED: the real CR4 has small PA loudspeakers on the side walls, shown only in a drawing of the BRAS model
-  notes (CR4_ModelSimplifications.pdf, item 17) without coordinates. Here: on the side brick walls above the side
-  balconies, 0.3 m from the wall, 6 m from the RIR source plane towards the audience, 4.5 m above the stage floor
-  level, aimed at a point on the centre line (x = 10 m, 1.2 m high, BRAS frame). Not the real installation.
+  notes (CR4_ModelSimplifications.pdf, item 17) without coordinates. Here: in front of the side-balcony fronts (0.3 m
+  in front of them), 6 m from the RIR source plane towards the audience, 3.0 m high, aimed at a point on the centre
+  line (x = 10 m, 1.2 m high, BRAS frame); from there both loudspeakers have line of sight to MP1 - MP5. A first
+  try on the brick walls above the balconies (4.5 m) was dropped: the balcony fronts blocked the direct sound of
+  the nearer loudspeaker at MP2 - MP5. Not the real installation.
 - Seats: MP1 - MP5 of the BRAS RIRs (MP1 is also the BRIR listener position MP6), ear height as measured, facing the
   stage. Reference seat for ITDG and level ratio: MP1.
 - Head: KU100 HRIRs (the AuralPaths default), headphone filter HD600 as in config.json.
@@ -43,7 +45,7 @@ import check_bras_brir as cb                # noqa: E402
 import validate_bras_cr as vb               # noqa: E402
 from validate_fratoni import BANDS, criteria  # noqa: E402
 
-PA_BRAS = {"B_L": (6.0, -13.34, 4.5), "B_R": (6.0, 13.34, 4.5)}   # BRAS frame: x towards the audience, -y = listener left (LS3 side)
+PA_BRAS = {"B_L": (6.0, -11.05, 3.0), "B_R": (6.0, 11.05, 3.0)}   # BRAS frame: x towards the audience, -y = listener left (LS3 side)
 PA_AIM_BRAS = (10.0, 0.0, 1.2)
 
 
