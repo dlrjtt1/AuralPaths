@@ -7,7 +7,7 @@ DUS: OBJ 9852 faces (2339 hidden faces dropped), voxel 0.080 m, room volume (vox
 surface areas (m2): Marble 204, Plaster (hall) 2616, Seats (balconies) 572, Seats (stalls) 302, Stage grid 200, Stage house 1186, Velvet drapes 211, Wood 1757; total 7047
 Sabine T (s), no air: 125 Hz 1.33, 250 Hz 1.13, 500 Hz 1.11, 1000 Hz 1.02, 2000 Hz 1.04, 4000 Hz 1.06
 tags -> materials: Plaster_fly_tower -> Stage house, Plaster -> Plaster (hall), Wings -> Stage house, Grid -> Stage grid, Carpet -> Wood, Wood -> Wood, Marble -> Marble, Velvet -> Velvet drapes, Seats_stalls -> Seats (stalls), Seats_first_gallery -> Seats (balconies), Seats_second_gallery -> Seats (balconies)
-browser engine: image sources to order 2, 20000 rays per source; S1 160 s (4783 rays lost), S2 149 s (4407 rays lost); total 313 s
+browser engine: image sources to order 2, 20000 rays per source; S1 149 s (4783 rays lost), S2 151 s (4407 rays lost); total 305 s
 ```
 
 ## S1, STALLS (R1,R2,R3,R4,R5,R6) (6)
@@ -80,13 +80,13 @@ browser engine: image sources to order 2, 20000 rays per source; S1 160 s (4783 
 | criterion | model | 125 Hz | 250 Hz | 500 Hz | 1000 Hz | 2000 Hz | 4000 Hz | mean abs (JND) 500-1k | mean abs (JND) all |
 |---|---|---|---|---|---|---|---|---|---|
 | EDT | measured | 1.93 | 1.62 | 1.24 | 0.97 | 0.80 | 0.64 | | |
-| | browser 3D | 1.65 (-2.9) | 1.38 (-2.9) | 1.36 (+2.0) | 1.19 (+4.5) | 1.06 (+6.6) | 0.86 (+6.7) | 3.3 | 4.3 |
+| | browser 3D | 1.65 (-2.9) | 1.38 (-2.9) | 1.36 (+2.0) | 1.19 (+4.5) | 1.06 (+6.6) | 0.86 (+6.8) | 3.3 | 4.3 |
 | T30 | measured | 2.01 | 1.75 | 1.53 | 1.37 | 1.18 | 0.97 | | |
 | | browser 3D | 1.69 (-3.2) | 1.50 (-2.9) | 1.42 (-1.4) | 1.39 (+0.4) | 1.35 (+2.9) | 1.23 (+5.3) | 0.9 | 2.7 |
 | C80 | measured | -0.21 | -0.40 | 2.97 | 4.98 | 6.60 | 7.45 | | |
-| | browser 3D | 2.41 (+2.6) | 3.86 (+4.3) | 4.15 (+1.2) | 5.36 (+0.4) | 5.78 (-0.8) | 6.60 (-0.9) | 0.8 | 1.7 |
+| | browser 3D | 2.41 (+2.6) | 3.86 (+4.3) | 4.15 (+1.2) | 5.36 (+0.4) | 5.77 (-0.8) | 6.58 (-0.9) | 0.8 | 1.7 |
 | Ts | measured | 134 | 123 | 83 | 64 | 51 | 46 | | |
-| | browser 3D | 100 (-3.3) | 81 (-4.3) | 77 (-0.6) | 65 (+0.1) | 63 (+1.1) | 55 (+1.0) | 0.4 | 1.7 |
+| | browser 3D | 100 (-3.3) | 81 (-4.3) | 77 (-0.6) | 65 (+0.1) | 63 (+1.1) | 56 (+1.0) | 0.4 | 1.7 |
 
 Values in brackets: simulated - measured in JND (ISO 3382-1 Annex A: EDT / T30 5 %, C80 / C50 1 dB, Ts 10 ms).
 

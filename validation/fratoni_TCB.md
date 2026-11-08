@@ -7,7 +7,7 @@ TCB: OBJ 5997 faces (1154 hidden faces dropped), voxel 0.120 m, room volume (vox
 surface areas (m2): Carpet 782, Marble 97, Plaster (boxes) 3312, Seats 249, Stage grid 477, Stage house 4207, Velvet drapes 476, Wood 1500; total 11101
 Sabine T (s), no air: 125 Hz 1.69, 250 Hz 1.44, 500 Hz 1.37, 1000 Hz 1.37, 2000 Hz 1.43, 4000 Hz 1.45
 tags -> materials: Plaster_(hall) -> Plaster (boxes), Plaster_(gallery) -> Plaster (boxes), Plaster_(fly_tower) -> Stage house, Floor_(boxes) -> Carpet, Floor_(gallery) -> Carpet, Carpet -> Carpet, Marble -> Marble, Wood -> Wood, Seats -> Seats, Stage_grid -> Stage grid, Curtains -> Velvet drapes, Velvet_(fly_tower) -> Velvet drapes, PVC -> Stage house
-browser engine: image sources to order 2, 20000 rays per source; S2 69 s (3342 rays lost), S3 72 s (3988 rays lost); total 144 s
+browser engine: image sources to order 2, 20000 rays per source; S2 64 s (3342 rays lost), S3 66 s (3988 rays lost); total 134 s
 ```
 
 ## S2, STALLS (R3,R5,R7,R8,R10,R11) (6)

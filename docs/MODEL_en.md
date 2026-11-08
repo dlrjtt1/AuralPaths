@@ -830,7 +830,7 @@ Model findings:
   (in CR4 the ceiling reflection of LS7, twice its energy). Both engines now count images of the same order within
   1 cm once (`brir_proto.visible_images`, `engine_geom.js` ism). Of the earlier checks, the BRAS RIR check has one
   affected pair (CR4 LS2 → MP1, one first-order reflection); the CR4 binaural results above are reruns; the
-  Fratoni TCB / DUS browser runs were not rerun. The earlier
+  Fratoni TCB / DUS browser runs, rerun, are unchanged except one DUS pair (S2 → R14, C80 up to 0.2 dB). The earlier
   CR4 LS7 IACC_E3 of 0.84 with the K8 pattern came from the doubled ceiling reflection; it is 0.63 now (0.92 measured).
 - IACC_L is about a third to a half of the measurement. The late part is rendered with the coherence of an ideal
   diffuse field for the head, which is near 0 above 500 Hz (see "Late interaural coherence"); the measured late part

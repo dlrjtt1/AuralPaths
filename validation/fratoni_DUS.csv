@@ -21,7 +21,7 @@ DUS,S1,Stalls,Ts,125,browser 3D,105.514,101.803,-0.37
 DUS,S1,Stalls,Ts,250,browser 3D,68.762,85.44,1.67
 DUS,S1,Stalls,Ts,500,browser 3D,75.119,84.221,0.91
 DUS,S1,Stalls,Ts,1000,browser 3D,57.492,76.306,1.88
-DUS,S1,Stalls,Ts,2000,browser 3D,56.982,72.253,1.53
+DUS,S1,Stalls,Ts,2000,browser 3D,56.982,72.254,1.53
 DUS,S1,Stalls,Ts,4000,browser 3D,40.379,62.456,2.21
 DUS,S1,1St Balcony,EDT,125,browser 3D,1.684,1.586,-1.17
 DUS,S1,1St Balcony,EDT,250,browser 3D,1.229,1.369,2.27
@@ -123,23 +123,23 @@ DUS,S2,2Nd Balcony,EDT,125,browser 3D,1.932,1.648,-2.94
 DUS,S2,2Nd Balcony,EDT,250,browser 3D,1.618,1.38,-2.94
 DUS,S2,2Nd Balcony,EDT,500,browser 3D,1.237,1.359,1.97
 DUS,S2,2Nd Balcony,EDT,1000,browser 3D,0.97,1.19,4.55
-DUS,S2,2Nd Balcony,EDT,2000,browser 3D,0.798,1.06,6.56
-DUS,S2,2Nd Balcony,EDT,4000,browser 3D,0.645,0.862,6.74
+DUS,S2,2Nd Balcony,EDT,2000,browser 3D,0.798,1.06,6.57
+DUS,S2,2Nd Balcony,EDT,4000,browser 3D,0.645,0.865,6.82
 DUS,S2,2Nd Balcony,T30,125,browser 3D,2.008,1.687,-3.2
 DUS,S2,2Nd Balcony,T30,250,browser 3D,1.749,1.499,-2.86
 DUS,S2,2Nd Balcony,T30,500,browser 3D,1.525,1.419,-1.39
 DUS,S2,2Nd Balcony,T30,1000,browser 3D,1.366,1.393,0.39
 DUS,S2,2Nd Balcony,T30,2000,browser 3D,1.178,1.35,2.92
 DUS,S2,2Nd Balcony,T30,4000,browser 3D,0.973,1.233,5.33
-DUS,S2,2Nd Balcony,C80,125,browser 3D,-0.205,2.412,2.62
-DUS,S2,2Nd Balcony,C80,250,browser 3D,-0.402,3.864,4.27
-DUS,S2,2Nd Balcony,C80,500,browser 3D,2.975,4.147,1.17
-DUS,S2,2Nd Balcony,C80,1000,browser 3D,4.976,5.364,0.39
-DUS,S2,2Nd Balcony,C80,2000,browser 3D,6.604,5.778,-0.83
-DUS,S2,2Nd Balcony,C80,4000,browser 3D,7.454,6.601,-0.85
-DUS,S2,2Nd Balcony,Ts,125,browser 3D,133.897,100.417,-3.35
-DUS,S2,2Nd Balcony,Ts,250,browser 3D,123.256,80.654,-4.26
-DUS,S2,2Nd Balcony,Ts,500,browser 3D,83.149,76.775,-0.64
-DUS,S2,2Nd Balcony,Ts,1000,browser 3D,64.223,64.869,0.06
-DUS,S2,2Nd Balcony,Ts,2000,browser 3D,51.446,62.553,1.11
-DUS,S2,2Nd Balcony,Ts,4000,browser 3D,45.526,55.415,0.99
+DUS,S2,2Nd Balcony,C80,125,browser 3D,-0.205,2.411,2.62
+DUS,S2,2Nd Balcony,C80,250,browser 3D,-0.402,3.863,4.27
+DUS,S2,2Nd Balcony,C80,500,browser 3D,2.975,4.146,1.17
+DUS,S2,2Nd Balcony,C80,1000,browser 3D,4.976,5.362,0.39
+DUS,S2,2Nd Balcony,C80,2000,browser 3D,6.604,5.771,-0.83
+DUS,S2,2Nd Balcony,C80,4000,browser 3D,7.454,6.578,-0.88
+DUS,S2,2Nd Balcony,Ts,125,browser 3D,133.897,100.418,-3.35
+DUS,S2,2Nd Balcony,Ts,250,browser 3D,123.256,80.656,-4.26
+DUS,S2,2Nd Balcony,Ts,500,browser 3D,83.149,76.781,-0.64
+DUS,S2,2Nd Balcony,Ts,1000,browser 3D,64.223,64.893,0.07
+DUS,S2,2Nd Balcony,Ts,2000,browser 3D,51.446,62.636,1.12
+DUS,S2,2Nd Balcony,Ts,4000,browser 3D,45.526,55.637,1.01
