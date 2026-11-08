@@ -191,7 +191,8 @@ def main(cfg_path="config.json"):
             f"레벨비 추정(직접음 보정) vs BRIR 에너지비, 수음점 {len(recs)}곳: 최대 오차 {max(abs(e) for e in errs):.2f} dB")
 
     # 5) 평면도: 좌석별 실효 ITDG(가까운 PA 기준, 직접음 기하 계산)
-    plan_figure(cfg, os.path.join(out, "plan_itdg.png"))
+    if not bp.has_geometry(cfg):        # the plan uses the shoebox dimensions; not drawn for OBJ / drawn halls
+        plan_figure(cfg, os.path.join(out, "plan_itdg.png"))
     if binaural:
         import export_viewer
         export_viewer.main(cfg_path)
@@ -264,7 +265,7 @@ def plan_figure(cfg, path):
     A = np.array(cfg["sources"][bp.AMP]["pos"])
     BL, BR = (np.array(cfg["sources"][k]["pos"]) for k in ("B_L", "B_R"))
     ref = np.array(cfg["receivers"][cfg["conditions"]["reference_receiver"]])
-    z = cfg["receivers"]["C"][2]
+    z = ref[2]
     xs, ys = np.linspace(0.5, W - 0.5, 160), np.linspace(1.0, A[1] - 3.0, 160)
     X, Y = np.meshgrid(xs, ys)
     P = np.stack([X, Y, np.full_like(X, z)], -1)
