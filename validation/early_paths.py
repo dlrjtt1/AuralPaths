@@ -51,12 +51,23 @@ def main():
     ap.add_argument("bras"); ap.add_argument("hall", choices=list(cb.SCENES))
     ap.add_argument("--sources", default="LS3,LS4,LS5,LS6,LS7"); ap.add_argument("--rays", type=int, default=100000)
     ap.add_argument("--k8-mps", default=None); ap.add_argument("--voxel", type=float, default=0.15)
+    ap.add_argument("--set", default="", help='sensitivity: "tag:s=0.5,tag:a=0.3" sets scattering / absorption '
+                    '(all octaves) of a material tag (without the mat_<hall>_ prefix)')
+    ap.add_argument("--summary", action="store_true", help="only the energy-share table per source")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     out = a.out or os.path.join(HERE, f"bras_early_paths_{a.hall}.md")
     up, c, fs = a.bras, 343.5, 44100
     scene = os.path.join(up, cb.SCENES[a.hall])
     mats = vb.read_bras_materials(os.path.join(up, "3 Surface descriptions"), a.hall, "fitted")
+    changed = []
+    for kv in filter(None, a.set.split(",")):
+        tag, rest = kv.split(":"); key, val = rest.split("="); m = mats[f"mat_{a.hall}_{tag.strip()}"]
+        if key.strip() == "s":
+            m["s_oct"] = [float(val)] * 6
+        else:
+            m["alpha"] = [float(val)] * 6
+        changed.append(kv.strip())
     obj = cb.rotate_obj(open(os.path.join(scene, "Geometry", f"{a.hall}.obj"), encoding="utf-8", errors="ignore").read())
     P = cb.POS[a.hall]; L = cb.rot(P["L"]); srcs = a.sources.split(",")
     import pyroomacoustics as pra
@@ -80,7 +91,8 @@ def main():
           f"`validation/early_paths.py`: voxel {o['h']:.2f} m, {o['faces']} faces, {a.rays} rays per source, image sources "
           f"to order 2; sources {'with the measured K8 pattern (BRAS), LS3 - LS6 aimed at the head, LS7 horizontal' if bal else 'omnidirectional'}. "
           "Energy: sum of the 250 Hz - 2 kHz octaves. Windows in ms after the direct sound. Materials: BRAS fitted estimates "
-          f"(tags without the `mat_{a.hall}_` prefix). Run time {time.time() - t0:.0f} s.", ""]
+          f"(tags without the `mat_{a.hall}_` prefix)" + (f"; changed for this run: {', '.join(changed)}" if changed else "") +
+          f". Run time {time.time() - t0:.0f} s.", ""]
     for s in srcs:
         res = o["res"][s]
         aim = cb.aim_at(pos[s], L)
@@ -109,6 +121,8 @@ def main():
                "|---|" + "---|" * len(WINS),
                "| share of 0–80 ms, measured (%) | " + " | ".join(f"{100 * e / sum(mE):.0f}" for e in mE) + " |",
                "| share of 0–80 ms, browser engine (%) | " + " | ".join(f"{100 * e / sum(wE):.0f}" for e in wE) + " |", ""]
+        if a.summary:
+            continue
         tt = Lg[:, 1] - td if len(Lg) else np.zeros(0)
         Eb = Le[:, bsel].sum(axis=1) if len(Lg) else np.zeros(0)
         for x0, x1 in WINS[1:]:
