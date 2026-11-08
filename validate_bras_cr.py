@@ -135,7 +135,7 @@ def predicted_first_order(cfg, src, recs, bands_idx=(2, 3, 4)):
     out = {}
     for i, r in enumerate(recs):
         m = np.asarray(cfg["receivers"][r], float)
-        vis = room.visibility[0][i].astype(bool)
+        vis = bp.visible_images(room, i)
         d0 = np.linalg.norm(m - np.asarray(cfg["sources"][src]["pos"], float))
         lst = []
         ks = np.flatnonzero(vis & (S.orders == 1))

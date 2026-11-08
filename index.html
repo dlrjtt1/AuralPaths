@@ -955,6 +955,10 @@ const GEOM = (() => {
   // ---------- image sources. mats: { name: { R:[nb], s } }, air: [nb]
   function ism(G, src, recs, order, tWindow, c, mats, air, bands) { // bands (Hz): with them, reflections get specFactor
     const NB = air.length, out = recs.map(() => []);
+    // each image once per receiver: on a mesh a reflection point on the shared edge of two coplanar (or nearly coplanar)
+    // triangles, e.g. on the symmetry plane of a hall for a centred source and listener, is valid for both triangles;
+    // images of the same order within 1 cm count as one (as brir_proto.visible_images)
+    const seen = recs.map(() => []);
     const maxD = recs.map((r) => Math.hypot(src[0] - r[0], src[1] - r[1], src[2] - r[2]) + c * tWindow);
     const maxAll = Math.max(...maxD);
     // direct
@@ -962,6 +966,8 @@ const GEOM = (() => {
     // pts: reflection points, source side first (for the direct sound: [receiver]); pts[0] is where the path leaves the source to
     function push(k, img, seq, r, pts) {
       const d = Math.hypot(img[0] - r[0], img[1] - r[1], img[2] - r[2]); if (d > maxD[k] || d < 1e-9) return;
+      for (const q of seen[k]) if (q[3] === seq.length && Math.hypot(q[0] - img[0], q[1] - img[1], q[2] - img[2]) < 0.01) return;
+      seen[k].push([img[0], img[1], img[2], seq.length]);
       const first = pts[0], g = new Float64Array(NB), F = bands && seq.length ? specFactor(G, src, r, seq, pts, mats, bands, c) : null;
       for (let b = 0; b < NB; b++) { let a = 1; for (const w of seq) a *= mats[G.S[w].mat].R[b]; g[b] = a / d * Math.exp(-0.5 * air[b] * d) * (F ? Math.sqrt(F[b]) : 1); }
       const ex = first[0] - src[0], ey = first[1] - src[1], ez = first[2] - src[2], el = Math.hypot(ex, ey, ez) || 1;

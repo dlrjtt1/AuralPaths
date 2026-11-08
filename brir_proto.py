@@ -628,7 +628,7 @@ def energy_hist(cfg, src, rec, t_max=2.5, return_resid=False):
     room.add_source(cfg["sources"][src]["pos"])
     room.add_microphone(cfg["receivers"][rec])
     room.image_source_model()
-    h_ism = _image_energy_hist(room, cfg["receivers"][rec], c, t_max, room.visibility[0][0].astype(bool), cfg, src)
+    h_ism = _image_energy_hist(room, cfg["receivers"][rec], c, t_max, visible_images(room, 0), cfg, src)
     if diffraction_on(cfg):                            # edge diffraction energy incl. interference at its boundaries
         for q in diffraction_arrivals(cfg, src, rec, room.octave_bands.centers, room.air_absorption, t_max):
             i = int(q["t"] / HIST_BIN)
@@ -678,6 +678,24 @@ def head_frame(cfg, rec):
     return front, left, up
 
 
+def visible_images(room, i=0):
+    """Visibility mask of the image sources of source 0 at microphone i, each image counted once. On a mesh a
+    reflection point on the shared edge of two coplanar triangles (e.g. on the symmetry plane of a hall, for a
+    centred source and listener) is valid for both, and pyroomacoustics lists the same image once per triangle (or
+    nearly the same, for nearly coplanar triangles). Images of the same order within 1 cm count as one (the first is
+    kept; same rule as engine_geom.js ism)."""
+    vis = room.visibility[0][i].astype(bool).copy()
+    S = room.sources[0]
+    kept = []
+    for k in np.flatnonzero(vis):
+        p, o = S.images[:, k], S.orders[k]
+        if any(S.orders[j] == o and np.linalg.norm(S.images[:, j] - p) < 0.01 for j in kept):
+            vis[k] = False
+        else:
+            kept.append(k)
+    return vis
+
+
 def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len):
     fs, c = cfg["fs"], cfg["c"]
     b = cfg["binaural"]
@@ -686,7 +704,7 @@ def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len):
     room.add_microphone(cfg["receivers"][rec])
     room.image_source_model()
     S = room.sources[0]
-    vis = room.visibility[0][0].astype(bool)
+    vis = visible_images(room, 0)
     sel = np.flatnonzero(vis)
     imgs, damp = S.images[:, vis], S.damping[:, vis]
     m = np.array(cfg["receivers"][rec])
@@ -993,7 +1011,7 @@ def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None):
     rt.ray_tracing()
     dm = dir_model(cfg, src, room.octave_bands.centers)
     for i, r in enumerate(recs):
-        h_ism = _image_energy_hist(room, pos[i], c, t_max, room.visibility[0][i].astype(bool), cfg, src)
+        h_ism = _image_energy_hist(room, pos[i], c, t_max, visible_images(room, i), cfg, src)
         if diffraction_on(cfg):
             for q in diffraction_arrivals(cfg, src, r, room.octave_bands.centers, room.air_absorption, t_max):
                 k = int(q["t"] / HIST_BIN)
@@ -1124,7 +1142,7 @@ def image_arrivals(cfg, src, rec, window_ms=150.0, order=None):
     room.add_microphone(cfg["receivers"][rec])
     room.image_source_model()
     S = room.sources[0]
-    vis = room.visibility[0][0].astype(bool)
+    vis = visible_images(room, 0)
     imgs, damp, orders = S.images[:, vis], S.damping[:, vis], S.orders[vis]
     sel = np.flatnonzero(vis)
     m = np.array(cfg["receivers"][rec])
