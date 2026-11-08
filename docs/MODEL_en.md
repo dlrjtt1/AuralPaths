@@ -784,10 +784,22 @@ Reading, set-up first:
   the K8 response, the FABIAN vs KU100 head and the BRAS normalization are not modelled.
 
 Model findings:
-- IACC_E3 stays too low even when the direct-to-early ratio is right (CR3 0.29 vs 0.52, CR4 0.57 vs 0.83). In the
-  Python mesh path the ray-traced remainder inside the early window is rendered as decorrelated noise, while measured
-  early reflections are coherent and arrive from directions. A diagnostic run (CR3, LS7) with the image sources only
-  gave IACC_E3 0.69 against 0.73 measured, which points to that rendering.
+- IACC_E3 stays too low even when the direct-to-early ratio is right (CR3 0.29 vs 0.52, CR4 0.57 vs 0.83).
+  `validation/iacc_split.py` (`validation/bras_brir_iacc_split.md`, 105° sources) splits it per band into the first
+  3.5 ms ("direct") and the rest, both at the lag of the direct sound. In CR3 the measured rest adds +0.17 to +0.61 at
+  500 Hz (LS7 also +0.44 / +0.30 at 1 / 2 kHz), the simulated rest 0.00 to +0.16: measured early reflections add
+  coherently to the direct sound, the simulated ones hardly. In CR4 the larger difference is the direct part at
+  500 Hz (measured +0.63 to +0.77, simulated +0.28 to +0.57): in that band the simulation has too much energy besides
+  the direct sound, and broadband 20–50 ms holds 13–20 % of the 0–80 ms energy against 5–9 % measured (LS3–LS6),
+  in line with the low C80 at 500 Hz.
+- Rendering tests (2026-11-08; prototypes, not in the repository), CR3 LS7 with the 105° source (measured 0.73):
+  the early remainder rendered as noise with the interaural coherence of its traced arrival directions (Python mesh
+  path) raised IACC_E3 from 0.35 to 0.39; with the browser engine's image sources and rays, rendering the remainder
+  as the individual ray arrivals (exact time and direction, random sign) raised it from 0.37 to 0.45, image sources
+  to order 2 from 0.38 to 0.44, both together to 0.46. In CR4 order 2 raised LS3 from 0.52 to 0.59 (measured 0.82)
+  and LS7 from 0.83 to 0.91 (0.92). The noise rendering of the early remainder therefore explains only a part of the
+  gap; the early energy distribution matters at least as much (inputs: materials fitted to reverberation; the
+  source pattern below 2 kHz, which here widens from 105° by an assumed rule, not K8 data). The engine is unchanged.
 - IACC_L is about a third to a half of the measurement. The late part is rendered with the coherence of an ideal
   diffuse field for the head, which is near 0 above 500 Hz (see "Late interaural coherence"); the measured late part
   is more coherent than that at this position.
