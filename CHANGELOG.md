@@ -4,6 +4,10 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Binaural check against the measured BRAS BRIRs in CR3 and CR4 (`validation/check_bras_brir.py`, new `--coverage`
+  option for directional sources): direct-sound ITD within 14–18 µs and ILD within 0.8 dB; with a 105° source the
+  direct-to-early ratio matches; IACC_E3 too low (early ray-traced remainder rendered as noise), C80 low, CR4 T30
+  15–24 % long (not resolved).
 - Comparison with an independent free simulator, I-Simpa's SPPS (`validation/check_isimpa.py`): diffuse box within
   0–4 %, CR4 within about 1–2 JND; in CR3 SPPS decays about 17 % slower (not resolved).
 - Fratoni opera houses TCB and DUS checked with the browser engine (`validation/check_fratoni_js.py`): DUS T30 within

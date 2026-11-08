@@ -752,6 +752,54 @@ differences of this size between simulators are expected (Brinkmann et al. 2019,
 [doi:10.1121/1.5096178](https://doi.org/10.1121/1.5096178)). The check shows that AuralPaths is not an outlier
 against an independent implementation in CR4 and in a diffuse box, and records the CR3 difference.
 
+## Binaural check against measured BRIRs (BRAS CR3 / CR4; `validation/check_bras_brir.py`, 2026-11-08)
+
+BRAS (Aspöck et al. 2020, [doi:10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3), CC BY-SA 4.0)
+contains BRIRs measured with the FABIAN head at one listener position (MP6 = RIR position MP1, head facing LS7) for five
+loudspeakers LS3–LS7 (QSC K8). The script renders the same five pairs with the Python mesh path (BRAS OBJ, fitted
+materials unchanged, not calibrated; image sources order 1, 5000 rays per source, KU100 HRIRs) and compares direct-sound
+ITD / ILD, IACC_E3 (0–80 ms) and IACC_L (80 ms–end; mean of 500 Hz–2 kHz, lag ±1 ms), T30, EDT, C80 and the octave
+spectrum relative to 250 Hz–1 kHz. It was run twice: omnidirectional sources, and a frequency-independent 105° coverage
+cone aimed at the listener (`--coverage 105`; 105° is the K8's nominal coverage,
+[QSC K8 specifications](https://www.qsys.com/resource-files/productresources/spk/k/k8/q_spk_k_8_archengspecs.txt)).
+Results: `validation/bras_brir_CR3.md`, `_CR3_K8.md`, `_CR4.md`, `_CR4_K8.md`.
+
+| mean over LS3–LS7 | CR3 measured | CR3 omni | CR3 105° | CR4 measured | CR4 omni | CR4 105° |
+|---|---|---|---|---|---|---|
+| direct (first 3 ms) / 0–80 ms energy, dB | −3.1 | −8.3 | −3.2 | −0.7 | −4.2 | −1.2 |
+| IACC_E3 | 0.52 | 0.18 | 0.29 | 0.83 | 0.39 | 0.57 |
+| IACC_L | 0.16 | 0.09 | 0.09 | 0.33 | 0.11 | 0.11 |
+| T30, sim − meas, 125 Hz–4 kHz | | −3…+4 % | −3…+4 % | | +15…+24 % | +15…+22 % |
+| EDT, sim − meas | | +3…+28 % | +3…+28 % | | −3…+8 % | −3…+8 % |
+| C80 at 500 / 1k / 2k Hz, sim − meas, dB | | −2.4 / −1.9 / −5.0 | −2.0 / −1.3 / −3.5 | | −4.3 / −3.3 / −6.5 | −3.7 / −1.7 / −2.5 |
+
+Direct sound: |ITD difference| 18 µs (CR3) and 14 µs (CR4), within one or two samples of the nearest-HRIR rendering;
+|ILD difference| 0.8 dB in both halls.
+
+Reading, set-up first:
+- The direct-to-early energy ratio is a set-up difference: with the coverage cone it matches the measurement within
+  about 0.5 dB, without it the simulated direct sound is 4–5 dB too weak. Comparisons against measured BRIRs need the
+  source directivity.
+- The spectrum (simulated 4 kHz about 9–15 dB below the measurement relative to 250 Hz–1 kHz) is not interpreted:
+  the K8 response, the FABIAN vs KU100 head and the BRAS normalization are not modelled.
+
+Model findings:
+- IACC_E3 stays too low even when the direct-to-early ratio is right (CR3 0.29 vs 0.52, CR4 0.57 vs 0.83). In the
+  Python mesh path the ray-traced remainder inside the early window is rendered as decorrelated noise, while measured
+  early reflections are coherent and arrive from directions. A diagnostic run (CR3, LS7) with the image sources only
+  gave IACC_E3 0.69 against 0.73 measured, which points to that rendering.
+- IACC_L is about a third to a half of the measurement. The late part is rendered with the coherence of an ideal
+  diffuse field for the head, which is near 0 above 500 Hz (see "Late interaural coherence"); the measured late part
+  is more coherent than that at this position.
+- C80 is too low at 500 Hz–1 kHz in both halls, by 1–4 dB with the coverage cone. EDT is 15–28 % long in CR3 but
+  within 8 % in CR4.
+- T30 is 15–24 % long in CR4, about twice the deviation of the RIR check in the same hall (about +2 JND ≈ +10 %,
+  dodecahedron, LS1 / LS2, decimated mesh); the cause is not resolved (the two runs differ in sources, mesh decimation
+  and ray count).
+
+These are laboratory-style comparisons at one listener position in two rooms; they do not say how audible the
+differences are.
+
 ## Seat dip
 
 Not modelled. A literature check found no closed-form or parametric model that predicts the seat-dip filter

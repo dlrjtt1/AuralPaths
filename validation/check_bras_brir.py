@@ -17,8 +17,8 @@ What is compared, per source (simulated vs measured; onsets aligned, since BRAS 
   - spectral balance: octave levels of the whole BRIR relative to their 250 Hz - 1 kHz mean (the BRAS BRIRs are
     normalized to 0 dB at 300 Hz - 1 kHz, so absolute levels are not comparable)
 Known differences of the set-up, not of the room model: the measurement used QSC K8 loudspeakers (directional, with
-their own frequency response) and the FABIAN head; the simulation uses omnidirectional sources with a flat response
-and the KU100 HRIRs. These mainly affect ILD / spectrum at high frequencies and the direct-to-reverberant ratio.
+their own frequency response) and the FABIAN head; the simulation uses sources with a flat response (omnidirectional, or
+with --coverage a coverage cone aimed at the listener; 105 deg is the K8's nominal coverage) and the KU100 HRIRs. These mainly affect ILD / spectrum at high frequencies and the direct-to-reverberant ratio.
 """
 import argparse
 import copy
