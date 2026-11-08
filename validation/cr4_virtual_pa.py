@@ -52,6 +52,7 @@ def main():
     ap.add_argument("bras"); ap.add_argument("--k8-mps", required=True); ap.add_argument("--dodeca", required=True)
     ap.add_argument("--dry", required=True); ap.add_argument("--out", default=os.path.join(HERE, "..", "out", "cr4_pa"))
     ap.add_argument("--rays", type=int, default=5000)
+    ap.add_argument("--hrir", default=os.path.join(HERE, "..", "hrir", "KU100.sofa"), help="KU100 SOFA (not in the repository)")
     a = ap.parse_args()
     out = os.path.abspath(a.out); os.makedirs(out, exist_ok=True)
     scene = glob.glob(os.path.join(a.bras, "CR4*"))[0]
@@ -83,7 +84,7 @@ def main():
                         "materials": {k: {"alpha": list(map(float, v["alpha"][:6])), "s": list(map(float, v["s_oct"][:6]))}
                                       for k, v in mats.items()},
                         "ism_order": 1, "rays": a.rays, "diffraction": False, "shared_rays": True},
-           "binaural": {"sofa_path": os.path.join(HERE, "..", "hrir", "KU100.sofa"), "early_window_ms": 100.0, "crossfade_ms": 10.0,
+           "binaural": {"sofa_path": os.path.abspath(a.hrir), "early_window_ms": 100.0, "crossfade_ms": 10.0,
                         "ism_order_early": 12, "ism_order_omni": 60,
                         "headphone_filter": os.path.join(HERE, "..", "hrir", "HPCF_Sennheiser-HD600.mat")},
            "output_dir": os.path.join(out, "run")}
