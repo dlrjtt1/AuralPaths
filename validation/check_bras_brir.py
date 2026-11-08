@@ -19,6 +19,14 @@ What is compared, per source (simulated vs measured; onsets aligned, since BRAS 
 Known differences of the set-up, not of the room model: the measurement used QSC K8 loudspeakers (directional, with
 their own frequency response) and the FABIAN head; the simulation uses sources with a flat response (omnidirectional, or
 with --coverage a coverage cone aimed at the listener; 105 deg is the K8's nominal coverage) and the KU100 HRIRs. These mainly affect ILD / spectrum at high frequencies and the direct-to-reverberant ratio.
+
+    --k8-mps <QSCK8_1x1_64442_MPS_front_pole.csv>   measured K8 directivity of the BRAS release
+        ("2 Source and receiver descriptions/QSC K8", RWTH Aachen, 1 deg grid, third-octave complex spectra; BRAS
+        documentation section 3.3.1: front-pole grid, Theta from the front axis, Phi = 0 deg towards +z, 90 deg towards
+        +y). Third-octave powers are summed to octaves and gridded as a balloon (brir_proto.balloon_from_points),
+        normalised on axis per band: only the pattern is used, not the K8's on-axis frequency response. Aim (BRAS
+        documentation section 3.4.2): LS3 - LS6 tweeter towards the head, LS7 not rotated or tilted (horizontal,
+        towards the listener's azimuth).
 """
 import argparse
 import copy
@@ -104,7 +112,28 @@ def aim_at(src, dst):
     return {"az": float(np.degrees(np.arctan2(d[0], -d[1]))), "el": float(np.degrees(np.arcsin(d[2])))}
 
 
-def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0):
+def k8_balloon(path, bands):
+    """Inline balloon {"name", "balloon": {"bands", "db"}} for brir_proto from the BRAS K8 MPS file (see the module doc)."""
+    import re
+    with open(path, encoding="utf-8", errors="ignore") as f:
+        head = f.readline()
+        fr = np.array([float(x) for x in head.split(",")[1:] if x.strip()])
+        th, ph, P = [], [], []
+        for line in f:
+            q = line.split(",")
+            m = re.match(r"\s*P(\d+)T(\d+)", q[0])
+            if not m:
+                continue
+            ph.append(float(m.group(1))); th.append(float(m.group(2)))
+            P.append([abs(complex(x.replace(" ", "").replace("i", "j"))) ** 2 for x in q[1:] if x.strip()])
+    th, ph, P = np.radians(th), np.radians(ph), np.array(P)
+    dirs = np.c_[np.cos(th), np.sin(th) * np.sin(ph), np.sin(th) * np.cos(ph)]       # x front, y left, z up
+    pw = np.array([P[:, np.abs(np.log2(fr / fc)) < 0.55].sum(axis=1) for fc in bands])
+    return {"name": "QSC K8 (BRAS, measured)", "balloon": {"bands": [float(b) for b in bands],
+                                                           "db": bp.balloon_from_points(dirs, pw).tolist()}}
+
+
+def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None):
     scene = os.path.join(bras, SCENES[hall])
     mats = vb.read_bras_materials(os.path.join(bras, "3 Surface descriptions"), hall, "fitted")
     obj = rotate_obj(open(os.path.join(scene, "Geometry", f"{hall}.obj"), encoding="utf-8", errors="ignore").read())
@@ -124,6 +153,14 @@ def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0):
         json.dump(cfg, f)
     cfg = bp.load_config(f.name)
     os.unlink(f.name)
+    if k8:
+        bal = k8_balloon(k8, [float(x) for x in bp.make_room(cfg, 0).octave_bands.centers])
+        for k, p in P["LS"].items():
+            aim = aim_at(rot(p), rot(P["L"]))
+            if k == 7:
+                aim["el"] = 0.0
+            cfg["sources"][f"LS{k}"].update({"directivity": bal, "aim": aim})
+            cfg["sources"][f"LS{k}"].pop("coverage", None)
     hrir = bp.load_hrir(cfg["binaural"]["sofa_path"], fs)
     n_len = int(2.5 * fs)
     srcs = bp.source_names(cfg)
@@ -146,10 +183,11 @@ def main():
     ap.add_argument("--coverage", type=float, default=0.0,
                     help="model the sources as the generic directional pattern of brir_proto.dir_model with this "
                          "nominal -6 dB angle (deg), aimed at the listener (QSC K8: 105); 0 = omnidirectional")
+    ap.add_argument("--k8-mps", default=None, help="BRAS QSCK8_1x1_64442_MPS_front_pole.csv: measured K8 directivity")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     out = a.out or os.path.join(HERE, f"bras_brir_{a.hall}")
-    sim = simulate(a.bras, a.hall, a.rays, a.hrir, coverage=a.coverage)
+    sim = simulate(a.bras, a.hall, a.rays, a.hrir, coverage=a.coverage, k8=a.k8_mps)
     rows, lines = [], []
     for k in range(3, 8):
         x, fs = sf.read(os.path.join(a.bras, SCENES[a.hall], "BRIRs", "wav", f"{a.hall}_BRIR_LS{k}_MP6_HATO0.wav"))
@@ -159,8 +197,10 @@ def main():
     md = [f"# BRAS {a.hall}: binaural check, AuralPaths (Python engine, KU100) vs measured BRIRs (FABIAN)", "",
           "Five loudspeakers LS3 - LS7 to listener MP6 (= RIR position MP1), head facing LS7. Materials: BRAS fitted "
           f"estimates, unchanged (not calibrated). {a.rays} rays per source, image sources order 1. Sources: "
+          + ("measured QSC K8 directivity of the BRAS release (balloon, pattern only; LS3 - LS6 aimed at the head, "
+             "LS7 horizontal). " if a.k8_mps else "")
           + (f"generic directional pattern, {a.coverage:.0f} deg nominal, aimed at the listener (an approximation of the "
-             "QSC K8; brir_proto.dir_model). " if a.coverage else "omnidirectional. ") + "Simulated BRIRs: "
+             "QSC K8; brir_proto.dir_model). " if a.coverage else ("" if a.k8_mps else "omnidirectional. ")) + "Simulated BRIRs: "
           f"`{os.path.basename(out)}_LSk_sim.wav`.", "",
           "## Direct sound and spatial measures", "",
           "| source | ITD measured / simulated (us) | ILD measured / simulated (dB) | IACC_E3 measured / simulated | IACC_L measured / simulated |",
