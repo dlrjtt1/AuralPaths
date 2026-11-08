@@ -195,8 +195,11 @@ def main(cfg_path="config.json"):
         plan_figure(cfg, os.path.join(out, "plan_itdg.png"))
     if binaural:
         import export_viewer
-        export_viewer.main(cfg_path)
-        say(f"[viewer] {os.path.join(out, 'viewer.html')} updated (open in a browser)")
+        try:
+            export_viewer.main(cfg_path)
+            say(f"[viewer] {os.path.join(out, 'viewer.html')} updated (open in a browser)")
+        except KeyError as e:       # configs written by scripts may lack fields the page needs; BRIRs are not affected
+            say(f"[viewer] not written ({e!r} missing in the config); BRIRs and manifest are")
     write_manifest(cfg_path, cfg, out, sofa if binaural else None, hp_path if hpcf is not None else None, recs, srcs)
     say(f"[manifest] {os.path.join(out, 'manifest.json')}")
     say(f"[done] {time.time() - t_start:.1f} s")
