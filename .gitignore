@@ -2,3 +2,4 @@ __pycache__/
 node_modules/
 *.whl
 *.tar.gz
+validation/bras_brir_*_sim.wav
