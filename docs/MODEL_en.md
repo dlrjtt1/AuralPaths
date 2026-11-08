@@ -762,19 +762,20 @@ ITD / ILD, IACC_E3 (0–80 ms) and IACC_L (80 ms–end; mean of 500 Hz–2 kHz, 
 spectrum relative to 250 Hz–1 kHz. It was run twice: omnidirectional sources, and a frequency-independent 105° coverage
 cone aimed at the listener (`--coverage 105`; 105° is the K8's nominal coverage,
 [QSC K8 specifications](https://www.qsys.com/resource-files/productresources/spk/k/k8/q_spk_k_8_archengspecs.txt)).
-Results: `validation/bras_brir_CR3.md`, `_CR3_K8.md`, `_CR4.md`, `_CR4_K8.md`.
+Results: `validation/bras_brir_CR3.md`, `_CR3_K8.md`, `_CR4.md`, `_CR4_K8.md` (CR4 rerun after the image-source fix
+below).
 
 | mean over LS3–LS7 | CR3 measured | CR3 omni | CR3 105° | CR4 measured | CR4 omni | CR4 105° |
 |---|---|---|---|---|---|---|
-| direct (first 3 ms) / 0–80 ms energy, dB | −3.1 | −8.3 | −3.2 | −0.7 | −4.2 | −1.2 |
-| IACC_E3 | 0.52 | 0.18 | 0.29 | 0.83 | 0.39 | 0.57 |
+| direct (first 3 ms) / 0–80 ms energy, dB | −3.1 | −8.3 | −3.2 | −0.7 | −4.4 | −1.3 |
+| IACC_E3 | 0.52 | 0.18 | 0.29 | 0.83 | 0.33 | 0.53 |
 | IACC_L | 0.16 | 0.09 | 0.09 | 0.33 | 0.11 | 0.11 |
-| T30, sim − meas, 125 Hz–4 kHz | | −3…+4 % | −3…+4 % | | +15…+24 % | +15…+22 % |
+| T30, sim − meas, 125 Hz–4 kHz | | −3…+4 % | −3…+4 % | | +15…+25 % | +15…+23 % |
 | EDT, sim − meas | | +3…+28 % | +3…+28 % | | −3…+8 % | −3…+8 % |
-| C80 at 500 / 1k / 2k Hz, sim − meas, dB | | −2.4 / −1.9 / −5.0 | −2.0 / −1.3 / −3.5 | | −4.3 / −3.3 / −6.5 | −3.7 / −1.7 / −2.5 |
+| C80 at 500 / 1k / 2k Hz, sim − meas, dB | | −2.4 / −1.9 / −5.0 | −2.0 / −1.3 / −3.5 | | −4.8 / −3.6 / −6.9 | −4.2 / −2.1 / −3.1 |
 
 Direct sound: |ITD difference| 18 µs (CR3) and 14 µs (CR4), within one or two samples of the nearest-HRIR rendering;
-|ILD difference| 0.8 dB in both halls.
+|ILD difference| 0.8–0.9 dB in both halls.
 
 Reading, set-up first:
 - The direct-to-early energy ratio is a set-up difference: with the coverage cone it matches the measurement within
@@ -784,39 +785,59 @@ Reading, set-up first:
   the K8 response, the FABIAN vs KU100 head and the BRAS normalization are not modelled.
 
 Model findings:
-- IACC_E3 stays too low even when the direct-to-early ratio is right (CR3 0.29 vs 0.52, CR4 0.57 vs 0.83).
+- IACC_E3 stays too low even when the direct-to-early ratio is right (CR3 0.29 vs 0.52, CR4 0.53 vs 0.83).
   `validation/iacc_split.py` (`validation/bras_brir_iacc_split.md`, 105° sources) splits it per band into the first
   3.5 ms ("direct") and the rest, both at the lag of the direct sound. In CR3 the measured rest adds +0.17 to +0.61 at
   500 Hz (LS7 also +0.44 / +0.30 at 1 / 2 kHz), the simulated rest 0.00 to +0.16: measured early reflections add
   coherently to the direct sound, the simulated ones hardly. In CR4 the larger difference is the direct part at
-  500 Hz (measured +0.63 to +0.77, simulated +0.28 to +0.57): in that band the simulation has too much energy besides
-  the direct sound, and broadband 20–50 ms holds 13–20 % of the 0–80 ms energy against 5–9 % measured (LS3–LS6),
-  in line with the low C80 at 500 Hz.
+  500 Hz (measured +0.63 to +0.77, simulated +0.28 to +0.47): in that band the simulation has too much energy besides
+  the direct sound, and broadband 20–50 ms holds 13–20 % of the 0–80 ms energy against 5–9 % measured, in line with
+  the low C80 at 500 Hz.
 - Rendering tests (2026-11-08; prototypes, not in the repository), CR3 LS7 with the 105° source (measured 0.73):
   the early remainder rendered as noise with the interaural coherence of its traced arrival directions (Python mesh
   path) raised IACC_E3 from 0.35 to 0.39; with the browser engine's image sources and rays, rendering the remainder
   as the individual ray arrivals (exact time and direction, random sign) raised it from 0.37 to 0.45, image sources
-  to order 2 from 0.38 to 0.44, both together to 0.46. In CR4 order 2 raised LS3 from 0.52 to 0.59 (measured 0.82)
-  and LS7 from 0.83 to 0.91 (0.92). The noise rendering of the early remainder therefore explains only a part of the
+  to order 2 from 0.38 to 0.44, both together to 0.46. In CR4 order 2 raised LS3 from 0.52 to 0.59 (measured 0.82).
+  The noise rendering of the early remainder therefore explains only a part of the
   gap; the early energy distribution matters at least as much (inputs: materials fitted to reverberation; the
   source pattern below 2 kHz, which here widens from 105° by an assumed rule, not K8 data). The engine is unchanged.
 - Measured K8 pattern (`--k8-mps`: the QSC K8 directivity of the BRAS release, RWTH Aachen, 1° grid, third-octave
   spectra, BRAS documentation sections 3.3.1 / 3.4.2; octave balloon, pattern only, LS3–LS6 aimed at the head, LS7
   horizontal; `validation/bras_brir_CR3_K8data.md`, `_CR4_K8data.md`, `bras_brir_iacc_split_K8data.md`). The K8 is
   more directional at 250–500 Hz than the assumed rule (Q 1.9 / 3.0 against 1.0 / 1.7). Against the 105° rule:
-  IACC_E3 0.29 → 0.34 in CR3 (measured 0.52) and 0.57 → 0.63 in CR4 (0.83); C80 at 500 Hz −2.0 → −1.8 dB (CR3) and
-  −3.7 → −2.8 dB (CR4); the spectrum at 125 Hz–1 kHz within about 1.6 dB in CR3 and 2.2 dB in CR4 (before 2.0 and
+  IACC_E3 0.29 → 0.34 in CR3 (measured 0.52) and 0.53 → 0.59 in CR4 (0.83); C80 at 500 Hz −2.0 → −1.8 dB (CR3) and
+  −4.2 → −3.4 dB (CR4); the spectrum at 125 Hz–1 kHz within about 1.6 dB in CR3 and 2.2 dB in CR4 (before 2.0 and
   3.0); T30, EDT, ITD / ILD and the direct-to-early ratio practically unchanged. The source pattern explains a part of
-  the difference. What remains is position-dependent: in CR4, LS6 and LS7 now match in IACC per band, while for
-  LS3–LS5 the simulation puts 14–19 % of the 0–80 ms energy into 20–50 ms (measured 5–6 %) and the direct share at
-  500 Hz is about half the measured one. That points to the room model for these paths (geometry or materials of the
-  surfaces reflecting LS3–LS5 towards the listener), not identified.
+  the difference. In CR4 LS6 matches per band (IACC 0.66 / 0.69 / 0.86 against 0.69 / 0.79 / 0.87); for the other
+  four the simulation puts 14–19 % of the 0–80 ms energy into 20–50 ms (measured 5–8 %).
+- Where the CR4 excess comes from (`validation/early_paths.py`, `validation/bras_early_paths_CR4.md`; browser engine,
+  same inputs, measured K8 pattern, 300 000 rays per source, arrivals logged with the surfaces they last reflected
+  from). For all five sources the browser engine also puts 25–27 % of the 0–80 ms energy (250 Hz–2 kHz) into
+  20–50 ms (measured 9–11 %) and 0–1 % into 3–20 ms (measured 6–11 %). Of the 20–50 ms ray energy about half last
+  reflected from the ceiling panels (`whitePanels`, about 7–8 m above the floor between stage and audience; strongest
+  image sources: the first-order ceiling reflection at 21–33 ms and stage floor → ceiling at 31–40 ms) and about a
+  third from the aisle floor just in front of the listener (`linoleum`, mostly ceiling → floor). Sensitivity (LS3 and
+  LS7, 50 000 rays, `--set`): ceiling scattering 0.5 changes the 20–50 ms share little and 0.9 lowers it to 17–20 %;
+  floor absorption 0.3 changes it little; ceiling absorption 0.3 / 0.6 lowers it to 20–21 % / 13–14 %. Only a
+  clearly more absorbing (or transmitting) ceiling brings the early distribution near the measurement, which would
+  also shorten the CR4 T30 that is 15–25 % long. The BRAS photographs show panels hung between deep concrete beams
+  and the model notes say the steel construction behind them is not modelled (`CR4_ModelSimplifications.pdf`, item 8),
+  so sound may pass behind the panels; this is a hypothesis, not tested against data, and the BRAS materials are left
+  as they are. The missing 3–20 ms energy (the model has the chairs only as a material, item 2, and no equipment near
+  the sources or the listener) is not explained either.
+- Image-source fix found with this check: on a mesh a reflection point on the shared edge of two coplanar triangles
+  (on the symmetry plane, centred source and listener) was valid for both triangles, so the image was counted twice
+  (in CR4 the ceiling reflection of LS7, twice its energy). Both engines now count images of the same order within
+  1 cm once (`brir_proto.visible_images`, `engine_geom.js` ism). Of the earlier checks, the BRAS RIR check has one
+  affected pair (CR4 LS2 → MP1, one first-order reflection); the CR4 binaural results above are reruns; the
+  Fratoni TCB / DUS browser runs were not rerun. The earlier
+  CR4 LS7 IACC_E3 of 0.84 with the K8 pattern came from the doubled ceiling reflection; it is 0.63 now (0.92 measured).
 - IACC_L is about a third to a half of the measurement. The late part is rendered with the coherence of an ideal
   diffuse field for the head, which is near 0 above 500 Hz (see "Late interaural coherence"); the measured late part
   is more coherent than that at this position.
 - C80 is too low at 500 Hz–1 kHz in both halls, by 1–4 dB with the coverage cone. EDT is 15–28 % long in CR3 but
   within 8 % in CR4.
-- T30 is 15–24 % long in CR4, about twice the deviation of the RIR check in the same hall (about +2 JND ≈ +10 %,
+- T30 is 15–25 % long in CR4, about twice the deviation of the RIR check in the same hall (about +2 JND ≈ +10 %,
   dodecahedron, LS1 / LS2, decimated mesh); the cause is not resolved (the two runs differ in sources, mesh decimation
   and ray count).
 
