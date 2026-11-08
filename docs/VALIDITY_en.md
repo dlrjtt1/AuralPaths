@@ -15,7 +15,8 @@ criteria averaged over receivers. That is a small sample; the results describe t
 | What | Result | Section in MODEL_en.md |
 |---|---|---|
 | Direct-sound arrival time | measured onset within −0.67 … +0.07 ms of distance / c at all 20 BRAS position pairs | Position-by-position check |
-| Direct-sound ITD and ILD | within 14–18 µs and 0.8–0.9 dB of the measured BRIRs (5 loudspeakers × 2 halls) | Binaural check against measured BRIRs |
+| Direct-sound ITD and ILD | within 14–18 µs and 0.8–0.9 dB of the measured BRIRs with the KU100 head; 0–5 µs and 0.3–0.5 dB with the measurement's head (FABIAN) (5 loudspeakers × 2 halls) | Binaural check against measured BRIRs |
+| Octave spectrum at the binaural listener, same head and loudspeaker as the measurement | within 1.4 dB, 125 Hz–4 kHz (relative to 250 Hz–1 kHz) | Binaural check against measured BRIRs |
 | ITDG and level ratio set by the stimulus builder | equal to the nominal values at the reference seat (0.000 ms, 0.000 dB); files rebuilt independently to 1.5·10⁻⁵ | Stimuli for the listening tests |
 | Browser page vs Python | C80 / D50 / EDT / T30 within 0.007 dB / 0.001 / 0.001 s / 0.001 s; IACC_E3 within 0.035 (shoebox, 36 conditions) | Browser vs Python |
 | Reverberation after calibration on measured T30 | held-out positions within 0.8 JND in T30 (BRAS CR3 and CR4) | Position-by-position check |

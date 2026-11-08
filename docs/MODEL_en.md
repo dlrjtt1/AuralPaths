@@ -781,8 +781,8 @@ Reading, set-up first:
 - The direct-to-early energy ratio is a set-up difference: with the coverage cone it matches the measurement within
   about 0.5 dB, without it the simulated direct sound is 4–5 dB too weak. Comparisons against measured BRIRs need the
   source directivity.
-- The spectrum (simulated 4 kHz about 9–15 dB below the measurement relative to 250 Hz–1 kHz) is not interpreted:
-  the K8 response, the FABIAN vs KU100 head and the BRAS normalization are not modelled.
+- The spectrum (simulated 4 kHz about 9–15 dB below the measurement relative to 250 Hz–1 kHz) comes from the head:
+  with the FABIAN HRIRs it is within 1.4 dB (see below).
 
 Model findings:
 - IACC_E3 stays too low even when the direct-to-early ratio is right (CR3 0.29 vs 0.52, CR4 0.53 vs 0.83).
@@ -832,6 +832,13 @@ Model findings:
   affected pair (CR4 LS2 → MP1, one first-order reflection); the CR4 binaural results above are reruns; the
   Fratoni TCB / DUS browser runs, rerun, are unchanged except one DUS pair (S2 → R14, C80 up to 0.2 dB). The earlier
   CR4 LS7 IACC_E3 of 0.84 with the K8 pattern came from the doubled ceiling reflection; it is 0.63 now (0.92 measured).
+- FABIAN head (`tools/fabian_to_sofa.py`: the FABIAN HRIRs of the BRAS release, head-above-torso orientation 0°, 2°
+  grid; left / right checked on the data) together with the measured K8 pattern and on-axis response
+  (`validation/bras_brir_CR3_FABIAN_K8data.md`, `_CR4_FABIAN_K8data.md`): the spectrum difference at 2–4 kHz
+  (−7 … −13 dB with the KU100) drops to within 1.4 dB in both halls, so it was the head, not the room; |ITD
+  difference| 0–5 µs, |ILD difference| 0.3–0.5 dB; IACC_E3 0.35 (CR3) and 0.63 (CR4) against 0.52 and 0.83; C80 at
+  500 Hz −1.3 dB (CR3) and −2.5 dB (CR4); T30 and EDT unchanged. With head and loudspeaker matched, what remains is
+  the room model: low IACC_E3, low C80, CR4 T30 long, CR3 EDT long.
 - IACC_L is about a third to a half of the measurement. The late part is rendered with the coherence of an ideal
   diffuse field for the head, which is near 0 above 500 Hz (see "Late interaural coherence"); the measured late part
   is more coherent than that at this position.

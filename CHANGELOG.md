@@ -4,6 +4,10 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- BRAS binaural check with the FABIAN HRIRs of the BRAS release (`tools/fabian_to_sofa.py`) and the K8 on-axis
+  response: the 2–4 kHz spectrum difference (−7 … −13 dB with the KU100) drops to within 1.4 dB, ITD within 5 µs;
+  low IACC_E3 and C80 remain (room model). Stimulus builder and protocol draft for a listening test
+  (`validation/listening_bras.py`, `validation/listening_bras_protocol.md`; not run).
 - `docs/VALIDITY_en.md` (`_ko`, `_ja`): what the checks support and what they do not, with the numbers and the
   sections they come from.
 
