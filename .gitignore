@@ -4,3 +4,4 @@ node_modules/
 *.tar.gz
 validation/bras_brir_*_sim.wav
 out/listening_bras/
+out/cr4_pa/

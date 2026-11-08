@@ -246,6 +246,8 @@ inward normal (n_z < -0.3 ceiling, > 0.3 floor, otherwise wall), for a tag that 
 Group names are matched as case-insensitive substrings of the OBJ "g" / "o" / "usemtl" names (the SketchUp ->
 Blender path writes the SketchUp tag into the group name, e.g. "_(Loose_Entity).004__(Loose_Entity)_Seats").
 "axes": "y-up" (Blender / SketchUp OBJ default) maps OBJ (x, y, z) to AuralPaths (x, -z, y); "z-up" keeps them.
+"shared_rays": true makes run.py trace rays once per source for all receivers (brir_proto.energy_hists) instead of
+once per source-receiver pair; faster for many seats, with a different (equally valid) random ray set per path.
 
 Mesh faces carry no reliable winding, and pyroomacoustics needs every wall normal to point out of the room (the
 image-source side test and the ray-tracing reflection both use it; a flipped shoebox loses 6 of 7 first-order

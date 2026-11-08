@@ -44,9 +44,15 @@ def main(cfg_path="config.json"):
         omni = {k: np.pad(v, (0, max(0, n_len - len(v))))[:n_len] for k, v in omni.items()}
         say(f"[omni] 고차 ISM(order {cfg['binaural']['ism_order_omni']}) RIR {len(omni)}개 산출")
     hist, resid = {}, {}
-    for r in recs:
+    if bp.has_geometry(cfg) and cfg["geometry"].get("shared_rays"):     # one ray-tracing run per source, all seats
         for s in srcs:
-            hist[(s, r)], centers, resid[(s, r)] = bp.energy_hist(cfg, s, r, return_resid=True)
+            h, centers, rs = bp.energy_hists(cfg, s, recs, return_resid=True)
+            for r in recs:
+                hist[(s, r)], resid[(s, r)] = h[r], rs[r]
+    else:
+        for r in recs:
+            for s in srcs:
+                hist[(s, r)], centers, resid[(s, r)] = bp.energy_hist(cfg, s, r, return_resid=True)
     say(f"[hist] octave-band image-energy histograms: {len(hist)} paths")
 
     # 2) 바이노럴(SOFA 있을 때)

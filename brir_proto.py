@@ -985,14 +985,16 @@ def seat_direct(cfg, pts, centers, band_idx=(2, 3)):
 
 
 # ---------------------------------------------------------------- 지표
-def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None):
+def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None, return_resid=False):
     """energy_hist for several receivers at once (one image-source run and one ray-tracing run shared by all
-    receivers; same model as energy_hist). Used for room-criteria checks over many seats (validate_fratoni.py).
-    Returns ({rec: hist [n_bands, n_bins]}, band_centres)."""
+    receivers; same model as energy_hist). Used for room-criteria checks over many seats (validate_fratoni.py) and by
+    run.py when geometry.shared_rays is set. Returns ({rec: hist [n_bands, n_bins]}, band_centres), with
+    return_resid also {rec: resid} (as energy_hist)."""
     import zlib
     c = cfg["c"]
     g = cfg.get("geometry") or {}
     pos = [cfg["receivers"][r] for r in recs]
+    res = {}
     room = make_room(cfg, early_order(cfg) if has_geometry(cfg) else cfg["binaural"]["ism_order_omni"])
     room.add_source(cfg["sources"][src]["pos"])
     room.add_microphone_array(np.array(pos, float).T)
@@ -1026,8 +1028,9 @@ def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None):
         h_rt = h_rt * np.exp(-np.outer(np.asarray(room.air_absorption, float), c * t_c))
         if dm is not None:
             h_rt = h_rt * dm["diffuse"][:, None]
-        out[r] = h_ism + np.maximum(0.0, _smooth(h_rt) - _smooth(h_ism))
-    return out, room.octave_bands.centers
+        res[r] = np.maximum(0.0, _smooth(h_rt) - _smooth(h_ism))
+        out[r] = h_ism + res[r]
+    return (out, room.octave_bands.centers, res) if return_resid else (out, room.octave_bands.centers)
 
 
 def schroeder_db(x):
