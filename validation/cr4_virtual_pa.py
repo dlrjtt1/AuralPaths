@@ -51,7 +51,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("bras"); ap.add_argument("--k8-mps", required=True); ap.add_argument("--dodeca", required=True)
     ap.add_argument("--dry", required=True); ap.add_argument("--out", default=os.path.join(HERE, "..", "out", "cr4_pa"))
-    ap.add_argument("--rays", type=int, default=20000)
+    ap.add_argument("--rays", type=int, default=5000)
     a = ap.parse_args()
     out = os.path.abspath(a.out); os.makedirs(out, exist_ok=True)
     scene = glob.glob(os.path.join(a.bras, "CR4*"))[0]
