@@ -65,7 +65,8 @@ python export_viewer.py config.json
 pip install fast-simplification openpyxl            # optional: large meshes, dataset sheets
 python obj_to_hall.py mesh_config.json             # -> mesh_config_2p5d.json
 ```
-Full description of the model, the checks and the outputs: `docs/MODEL_en.md` (Korean: `docs/MODEL_ko.md`, Japanese: `docs/MODEL_ja.md`). Literature and data used:
+Full description of the model, the checks and the outputs: `docs/MODEL_en.md` (Korean: `docs/MODEL_ko.md`, Japanese: `docs/MODEL_ja.md`). What the
+checks support and what they do not, in two pages: `docs/VALIDITY_en.md` (`_ko`, `_ja`). Literature and data used:
 `docs/REFERENCES_ko.md` (Korean).
 
 ## Checks and citing

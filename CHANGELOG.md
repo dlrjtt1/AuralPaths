@@ -3,6 +3,10 @@
 Dates are those of the commits on GitHub. The version is shown on the page and recorded in saved configs and exported
 files.
 
+## Unreleased
+- `docs/VALIDITY_en.md` (`_ko`, `_ja`): what the checks support and what they do not, with the numbers and the
+  sections they come from.
+
 ## 0.7.0 (2026-11-08)
 - Binaural check against the measured BRAS BRIRs in CR3 and CR4 (`validation/check_bras_brir.py`, new `--coverage`
   option for directional sources): direct-sound ITD within 14–18 µs and ILD within 0.8 dB; with a 105° source the
