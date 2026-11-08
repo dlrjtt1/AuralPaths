@@ -12,6 +12,7 @@ authors:
     given-names: "Dong-Gyun"
     orcid: "https://orcid.org/0009-0000-0075-4695"
 version: "0.7.0"
+doi: "10.5281/zenodo.24053630"
 date-released: "2026-11-08"
 license: MIT
 repository-code: "https://github.com/dlrjtt1/AuralPaths"
