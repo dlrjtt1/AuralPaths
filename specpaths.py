@@ -104,8 +104,8 @@ def _blocked(G, a, b, skip):
     return bool(ok.any())
 
 
-def candidates(G, src, recs, order=3, t_max=0.35, c=343.0, n_rays=20000, k_radius=1.5):
-    """Panel sequences (orders 2 .. order) whose specular rays pass near each receiver: [set per receiver].
+def candidates(G, src, recs, order=3, t_max=0.35, c=343.0, n_rays=20000, k_radius=1.5, min_order=2):
+    """Panel sequences (orders min_order .. order) whose specular rays pass near each receiver: [set per receiver].
     t_max: per receiver (array) or one value, seconds after emission."""
     diffraction.prepare(G)
     pid, _ = reflections.panels(G)
@@ -126,7 +126,7 @@ def candidates(G, src, recs, order=3, t_max=0.35, c=343.0, n_rays=20000, k_radiu
         if not idx.size:
             break
         t, s = ray_hits(G, O[idx], D[idx], last[idx])
-        if b >= 2:                                     # segments after b reflections: do they pass a receiver?
+        if b >= max(min_order, 1):                     # segments after b reflections: do they pass a receiver?
             for m, rec in enumerate(recs):
                 w = rec - O[idx]
                 tc = np.einsum("ij,ij->i", w, D[idx])
@@ -197,13 +197,13 @@ def validate(G, src, rec, pseq):
     return pts, faces, ims[-1]
 
 
-def find_paths(G, src, recs, order=3, t_max=0.35, c=343.0, n_rays=20000):
+def find_paths(G, src, recs, order=3, t_max=0.35, c=343.0, n_rays=20000, min_order=2):
     """Valid specular paths of orders 2 .. order arriving within t_max (s after emission; per receiver or one value)
     at each receiver. Returns [list per receiver] of dicts {"order", "faces", "panels", "pts", "image", "dist"},
     sorted by arrival. One ray set per source serves all receivers."""
     recs = np.atleast_2d(np.asarray(recs, float))
     tmx = np.broadcast_to(np.asarray(t_max, float), (len(recs),))
-    cand = candidates(G, src, recs, order, tmx, c, n_rays)
+    cand = candidates(G, src, recs, order, tmx, c, n_rays, min_order=min_order)
     res = []
     for m, rec in enumerate(recs):
         out = []
