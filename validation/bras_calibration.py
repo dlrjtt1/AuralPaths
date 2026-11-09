@@ -33,10 +33,14 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("bras"); ap.add_argument("hall", choices=["CR3", "CR4"])
     ap.add_argument("--out", default=None); ap.add_argument("--rays", type=int, default=5000)
+    ap.add_argument("--to-16k", action="store_true",
+                    help="materials and measured T30 for 125 Hz - 16 kHz (8 octaves) instead of 125 Hz - 4 kHz; the BRAS "
+                         "material data reach 20 kHz, and without this the engine repeats the 4 kHz value above 4 kHz")
     a = ap.parse_args()
+    bands = [125, 250, 500, 1000, 2000, 4000, 8000, 16000] if a.to_16k else BANDS
     out = os.path.abspath(a.out or os.path.join(HERE, "..", "out", f"bras_cal_{a.hall}")); os.makedirs(out, exist_ok=True)
     scene = glob.glob(os.path.join(a.bras, f"{a.hall}*"))[0]
-    mats = vb.read_bras_materials(os.path.join(a.bras, "3 Surface descriptions"), a.hall, "fitted")
+    mats = vb.read_bras_materials(os.path.join(a.bras, "3 Surface descriptions"), a.hall, "fitted", bands=bands)
     obj_path = os.path.join(out, f"{a.hall}_rotated.obj")
     with open(obj_path, "w", encoding="utf-8") as f:
         f.write(cb.rotate_obj(open(os.path.join(scene, "Geometry", f"{a.hall}.obj"), encoding="utf-8", errors="ignore").read()))
@@ -50,7 +54,7 @@ def main():
            "sources": {"LS1": {"pos": rot(S["LS1"])}},
            "receivers": {k: rot(v) for k, v in sorted(M.items())},
            "geometry": {"mesh": {"obj": obj_path, "axes": "y-up", "groups": {k: k for k in mats}, "voxel": 0.08},
-                        "materials": {k: {"alpha": list(map(float, v["alpha"][:6])), "s": list(map(float, v["s_oct"][:6]))}
+                        "materials": {k: {"alpha": list(map(float, v["alpha"])), "s": list(map(float, v["s_oct"]))}
                                       for k, v in mats.items()},
                         "ism_order": 1, "rays": a.rays, "diffraction": False}}
     json.dump(cfg, open(os.path.join(out, "config.json"), "w"), indent=1)
@@ -60,8 +64,8 @@ def main():
             w = csv.writer(f); w.writerow(["label", "src_x", "src_y", "src_z", "rec_x", "rec_y", "rec_z", "band_hz", "T30_s", "EDT_s"])
             for i, r in enumerate(rid):
                 x = ir[i, j]; on = int(np.argmax(np.abs(x) > 0.1 * np.abs(x).max())) / fs_m
-                c_ = criteria(vb.measured_hist(x, fs_m), on)
-                for b, t30, edt in zip(BANDS, c_["T30"], c_["EDT"]):
+                c_ = criteria(vb.measured_hist(x, fs_m, bands=bands), on)
+                for b, t30, edt in zip(bands, c_["T30"], c_["EDT"]):
                     w.writerow([f"{src}_MP{r}", *np.round(rot(S[src]), 3), *np.round(rot(M[f"MP{r}"]), 3), b,
                                 round(float(t30), 3), round(float(edt), 3)])
     print(f"python calibrate.py {out}/config.json {out}/t30_LS1.csv --out {out}/config_cal.json")

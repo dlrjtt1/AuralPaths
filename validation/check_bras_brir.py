@@ -159,7 +159,9 @@ def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None, mater
         if missing:
             sys.exit(f"{materials}: no calibrated values for {', '.join(missing)}")
         for k in mats:
-            mats[k]["alpha"] = list(cal[k]["alpha"][:6])
+            mats[k]["alpha"] = list(cal[k]["alpha"])
+            if isinstance(cal[k].get("s"), list):
+                mats[k]["s_oct"] = list(cal[k]["s"])
     obj = rotate_obj(open(os.path.join(scene, "Geometry", f"{hall}.obj"), encoding="utf-8", errors="ignore").read())
     P = POS[hall]
     cfg = {"name": f"BRAS {hall} binaural check", "fs": fs, "c": 343.5,
@@ -168,7 +170,7 @@ def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None, mater
                                                          if coverage else {})) for k, p in P["LS"].items()},
            "receivers": {"MP6": rot(P["L"])},
            "geometry": {"mesh": {"obj": f"{hall}_rotated.obj", "obj_text": obj, "axes": "y-up", "groups": {k: k for k in mats}},
-                        "materials": {k: {"alpha": list(map(float, v["alpha"][:6])), "s": list(map(float, v["s_oct"][:6]))}
+                        "materials": {k: {"alpha": list(map(float, v["alpha"])), "s": list(map(float, v["s_oct"]))}
                                       for k, v in mats.items()},
                         "ism_order": 1, "rays": rays, "diffraction": False},
            "binaural": {"sofa_path": hrir_path, "early_window_ms": 100.0, "crossfade_ms": 10.0, "ism_order_early": 12,
@@ -226,7 +228,7 @@ def main():
     md = [f"# BRAS {a.hall}: binaural check, AuralPaths (Python engine, KU100) vs measured BRIRs (FABIAN)", "",
           "Five loudspeakers LS3 - LS7 to listener MP6 (= RIR position MP1), head facing LS7. Materials: "
           + (f"BRAS fitted estimates with absorption calibrated on measured T30 (`{os.path.basename(a.materials)}`, "
-             "calibrate.py; scattering as fitted). " if a.materials else "BRAS fitted estimates, unchanged (not calibrated). ")
+             "calibrate.py; scattering as fitted; with 8 / 16 kHz when the calibration had them). " if a.materials else "BRAS fitted estimates, unchanged (not calibrated). ")
           + f"{a.rays} rays per source, image sources order 1. Sources: "
           + ("measured QSC K8 directivity of the BRAS release (balloon, pattern only; LS3 - LS6 aimed at the head, "
              "LS7 horizontal). " if a.k8_mps else "")

@@ -7,7 +7,7 @@ Material calibration from measured reverberation times.
 measurements.csv (one row per position pair and octave band; EDT optional, used for checking only):
     label,src_x,src_y,src_z,rec_x,rec_y,rec_z,band_hz,T30_s,EDT_s
 
-Method: per octave band (125 Hz - 4 kHz), one factor k_b scales the absorption coefficients of the adjustable
+Method: per octave band (125 Hz - 4 kHz, or up to 16 kHz when the measurement file has 8 kHz / 16 kHz rows), one factor k_b scales the absorption coefficients of the adjustable
 material groups (drawn hall: aud / stage / wall / ceil; OBJ mesh hall: its material keys; shoebox: the uniform
 coefficient), so that the simulated T30, averaged over the calibration positions, matches the measured average.
 Sabine scaling is used as the update:
@@ -34,7 +34,8 @@ import numpy as np
 
 import brir_proto as bp
 
-BANDS = [125, 250, 500, 1000, 2000, 4000]
+ALL_BANDS = [125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+BANDS = ALL_BANDS[:6]   # replaced in main() by the bands present in the measurement file (125 Hz - 4 kHz or up to 16 kHz)
 JND_T = 0.05          # ISO 3382-1 Annex A: 5 % (EDT); used here as the tolerance scale for reverberation time
 
 
@@ -93,8 +94,14 @@ def simulate(cfg, pos, src_dir):
 
 def get_alpha(cfg, groups):
     if bp.has_geometry(cfg):
-        return {g: np.array(cfg["geometry"]["materials"][g]["alpha"][:6], float) for g in groups}
-    return {"room": np.array(cfg["room"]["absorption_octave"]["values"][:6], float)}
+        return {g: _pad(cfg["geometry"]["materials"][g]["alpha"]) for g in groups}
+    return {"room": _pad(cfg["room"]["absorption_octave"]["values"])}
+
+
+def _pad(a):
+    """Coefficients for the calibrated bands; missing high bands repeat the last value (as the engine does)."""
+    a = list(a)
+    return np.array([a[i] if i < len(a) else a[-1] for i in range(len(BANDS))], float)
 
 
 def set_alpha(cfg, base, k):
@@ -122,6 +129,9 @@ def main():
 
     cfg = bp.load_config(a.config)
     pos = read_measurements(a.measurements)
+    global BANDS
+    present = {b for p in pos.values() for b in p["T30"]}
+    BANDS = ALL_BANDS[:8] if {8000, 16000} <= present else ALL_BANDS[:6]
     meas_T = np.array([np.nanmean([p["T30"].get(b, np.nan) for p in pos.values()]) for b in BANDS])
     if np.all(np.isnan(meas_T)):
         sys.exit("no T30 values in the measurement file")

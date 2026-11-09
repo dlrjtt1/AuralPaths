@@ -5,6 +5,6 @@ node_modules/
 validation/bras_brir_*_sim.wav
 out/listening_bras/
 out/cr4_pa/
-out/bras_cal_*/
+out/bras_cal*/
 out/listening_bras_cal/
 out/*.log

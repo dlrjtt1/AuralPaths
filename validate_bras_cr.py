@@ -56,18 +56,19 @@ OCT_EDGES = [(fc / 2 ** 0.5, fc * 2 ** 0.5) for fc in BANDS]
 
 
 # ---------------------------------------------------------------- inputs
-def read_bras_materials(folder, hall, which):
-    """{"mat_CRn_x": {"alpha": [6 octaves], "s": scattering at 1 kHz octave}} from the BRAS csv files."""
+def read_bras_materials(folder, hall, which, bands=BANDS):
+    """{"mat_CRn_x": {"alpha": [octaves], "s": scattering at 1 kHz octave, "s_oct": [octaves]}} from the BRAS csv
+    files (third-octave data averaged per octave; default 125 Hz - 4 kHz, the BRAS data reach 20 kHz)."""
     out = {}
     for p in sorted(glob.glob(os.path.join(folder, "_csv", f"{which}_estimates", f"mat_{hall}_*.csv"))):
         rows = [[float(v) for v in ln.split(",")] for ln in open(p, encoding="utf-8").read().strip().splitlines()]
         f, a, s = (np.asarray(r) for r in rows[:3])
         alpha, scat = [], []
-        for lo, hi in OCT_EDGES:
+        for lo, hi in [(fc / 2 ** 0.5, fc * 2 ** 0.5) for fc in bands]:
             sel = (f >= lo) & (f < hi)
             alpha.append(float(np.mean(a[sel])))
             scat.append(float(np.mean(s[sel])))
-        out[os.path.splitext(os.path.basename(p))[0]] = {"alpha": alpha, "s": scat[BANDS.index(1000)], "s_oct": scat}
+        out[os.path.splitext(os.path.basename(p))[0]] = {"alpha": alpha, "s": scat[list(bands).index(1000)], "s_oct": scat}
     if not out:
         raise SystemExit(f"no mat_{hall}_*.csv in {folder}/_csv/{which}_estimates")
     return out
