@@ -45,7 +45,22 @@ aisle reflect more coherently than the model's small panels with their scatterin
 loudspeaker radiates more upwards than its directivity data; geometry differences above the listener (the BRAS notes
 list the unmodelled steel structure behind the ceiling panels).
 
-## 4. Consequence for use
+## 4. Can it be corrected by fitting the model? (2026-11-10: no)
+
+- Reflection matching in the omnidirectional RIRs (validation/bras_reflection_match.py, LS1 -> MP1 - MP5, 1 and
+  2 kHz, model paths of orders 1 - 6): reflections 14 - 70 ms after the direct sound agree, median measured - model
+  -1.1 dB in both halls (CR3 19 of 20 matched, CR4 32 of 37). After 70 ms the "peaks" of the measured RIRs are mostly
+  fluctuations of the dense reverberation (same picture in CR3, where the late IACC agrees): +16 ... +17 dB above any
+  model path at the same time, so a per-surface reflection-strength fit has nothing consistent to fit.
+- No parameter of the model brings the 80 - 200 ms IACC of CR4 LS7 near the measured 0.43: K8 directivity 0.17,
+  omnidirectional source 0.12, orders 3 / 6 0.13 / 0.17, no finite-reflector loss 0.19, scattering x 0.25 (order 3)
+  IACC_L 0.18, directional late field 0.12.
+- The missing coherent median-plane energy therefore comes from features the model geometry does not contain
+  (not from materials, loudspeaker directivity or the renderer). Fitting parameters would not make the model
+  predictive. The ways to get it right at such a position are geometry detail or measured data (e.g. a measured
+  binaural late part).
+
+## 5. Consequence for use
 
 A listener in an aisle under a flat hard ceiling can hear a vertical flutter echo (here about 85 - 100 ms and
 170 ms) that the simulation reproduces in timing but underestimates in level; late spaciousness (IACC_L) is then
