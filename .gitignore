@@ -7,3 +7,4 @@ out/listening_bras/
 out/cr4_pa/
 out/bras_cal_*/
 out/listening_bras_cal/
+out/*.log
