@@ -3,7 +3,7 @@ node_modules/
 *.whl
 *.tar.gz
 validation/bras_brir_*_sim.wav
-out/listening_bras/
+out/listening_bras*/
 out/cr4_pa/
 out/bras_cal*/
 out/listening_bras_cal/
