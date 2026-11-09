@@ -50,7 +50,7 @@ js = """const fs = require('fs'); const GEOM = eval(fs.readFileSync(process.argv
 const j = JSON.parse(fs.readFileSync(0, 'utf8'));
 const G = GEOM.buildMesh({ obj: GEOM.loadObj(j.obj), groups: j.groups, axes: j.axes, voxel: j.voxel }, j.src);
 const I = GEOM.ism(G, j.src, [j.rec], 1, j.tWin, j.c, j.mats, j.air, j.bands, j.spec)[0].filter((q) => q.o >= 2);
-console.log(JSON.stringify(I.map((q) => [q.d, q.o, Array.from(q.g).map((v) => v * v)])));"""
+console.log(JSON.stringify(I.map((q) => [q.d, q.o, Array.from(q.g).map((v) => v * v), q.seq])));"""
 out = subprocess.run(["node", "--max-old-space-size=4096", "-e", js, os.path.join(HERE, "engine_geom.js")],
                      input=json.dumps(job), capture_output=True, text=True, check=True).stdout
 J = json.loads(out)
@@ -71,6 +71,10 @@ print(f"{len(P)} Python paths, {len(J)} browser paths; matched {len(P) - len(mis
       f"difference {worst:.2e}")
 for k in miss_js:
     print(f"  only Python: {1000 * (pd[k] - d0) / c:+.2f} ms after direct, order {P[k]['order']}")
+import reflections   # noqa: E402
+pid = reflections.panels(G)[0]
 for i in miss_py:
-    print(f"  only browser: {1000 * (jd[i] - d0) / c:+.2f} ms after direct, order {J[i][1]}")
+    pseq = tuple(int(pid[f]) for f in J[i][3])
+    why = "valid in Python (not nominated by its rays)" if specpaths.validate(G, src, rec, pseq) else "rejected by specpaths.validate"
+    print(f"  only browser: {1000 * (jd[i] - d0) / c:+.2f} ms after direct, order {J[i][1]}, surfaces {J[i][3]}: {why}")
 sys.exit(1 if (miss_js or miss_py or worst > 1e-3) else 0)

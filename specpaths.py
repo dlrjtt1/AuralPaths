@@ -98,7 +98,7 @@ def _blocked(G, a, b, skip):
     qv = np.cross(tv, E1)
     v = (qv @ d) * inv
     t = np.einsum("tk,tk->t", E2, qv) * inv
-    ok &= (u >= 0) & (u <= 1) & (v >= 0) & (u + v <= 1) & (t > 1e-6) & (t < L - 1e-6)
+    ok &= (u >= 0) & (u <= 1) & (v >= 0) & (u + v <= 1) & (t > 1e-6 * L) & (t < (1 - 1e-6) * L)   # as occluded(): relative
     if skip:
         ok &= ~np.isin(F, list(skip))
     return bool(ok.any())

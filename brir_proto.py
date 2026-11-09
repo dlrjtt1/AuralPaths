@@ -1037,7 +1037,8 @@ def late_directions(cfg, src, recs, centers, air, n_rays=None):
     nb = len(centers)
     al = lambda m: [mats[m]["alpha"][i] if i < len(mats[m]["alpha"]) else mats[m]["alpha"][-1] for i in range(nb)]
     alpha = np.array([al(s["mat"]) for s in G["S"]])
-    scat = np.array([mats[s["mat"]].get("s", 0.0) for s in G["S"]])
+    # per-band scattering: one probability per surface, the mean over the bands (as engine_geom.js rays for meshes)
+    scat = np.array([float(np.mean(mats[s["mat"]].get("s", 0.0))) for s in G["S"]])
     S = np.asarray(cfg["sources"][src]["pos"], float)
     R = [np.asarray(cfg["receivers"][r], float) for r in recs]
     t_late = [np.linalg.norm(r - S) / cfg["c"] + cfg["binaural"]["early_window_ms"] / 1000 for r in R]

@@ -60,6 +60,41 @@ def _inside(s, P):
     return c & ok
 
 
+BIG_MESH = 3000     # surfaces; above this the nearest hit is found by specpaths.ray_hits (triangles, chunked)
+
+
+def _nearest(G, o, d, last, Nn, Dp, nS):
+    """Nearest hit (t, surface) of rays o + t d on surfaces facing the ray (n . d < 0), skipping `last`."""
+    den = d @ Nn.T
+    with np.errstate(divide="ignore", invalid="ignore"):
+        T = (Dp[None, :] - o @ Nn.T) / den
+    T[(den >= -1e-12) | ~(T > 1e-9)] = np.inf
+    has = last >= 0
+    T[np.flatnonzero(has), last[has]] = np.inf
+    best = np.full(len(o), np.inf)
+    bi = np.full(len(o), -1)
+    rem = np.arange(len(o))
+    for _it in range(nS):
+        j = np.argmin(T[rem], axis=1)
+        tj = T[rem, j]
+        fin = np.isfinite(tj)
+        rem, j, tj = rem[fin], j[fin], tj[fin]
+        if not rem.size:
+            break
+        P = o[rem] + tj[:, None] * d[rem]
+        ok = np.zeros(rem.size, bool)
+        for s in np.unique(j):
+            m = j == s
+            ok[m] = _inside(G["S"][s], P[m])
+        best[rem[ok]] = tj[ok]
+        bi[rem[ok]] = j[ok]
+        T[rem[~ok], j[~ok]] = np.inf
+        rem = rem[~ok]
+        if not rem.size:
+            break
+    return best, bi
+
+
 def late_direction_energy(G, src, recs, t_late, alpha, scat, air, c=343.0, n_rays=20000, seed=1, t_max=2.5,
                           radius=1.0, max_bounce=400):
     """Energy per receiver, direction bin and band arriving after t_late[r] (seconds).
@@ -94,33 +129,11 @@ def late_direction_energy(G, src, recs, t_late, alpha, scat, air, c=343.0, n_ray
         if not idx.size:
             break
         o, d = O[idx], D[idx]
-        den = d @ Nn.T
-        with np.errstate(divide="ignore", invalid="ignore"):
-            T = (Dp[None, :] - o @ Nn.T) / den
-        T[(den >= -1e-12) | ~(T > 1e-9)] = np.inf
-        has = last[idx] >= 0
-        T[np.flatnonzero(has), last[idx][has]] = np.inf
-        best = np.full(idx.size, np.inf)
-        bi = np.full(idx.size, -1)
-        rem = np.arange(idx.size)
-        for _it in range(nS):
-            j = np.argmin(T[rem], axis=1)
-            tj = T[rem, j]
-            fin = np.isfinite(tj)
-            rem, j, tj = rem[fin], j[fin], tj[fin]
-            if not rem.size:
-                break
-            P = o[rem] + tj[:, None] * d[rem]
-            ok = np.zeros(rem.size, bool)
-            for s in np.unique(j):
-                m = j == s
-                ok[m] = _inside(G["S"][s], P[m])
-            best[rem[ok]] = tj[ok]
-            bi[rem[ok]] = j[ok]
-            T[rem[~ok], j[~ok]] = np.inf
-            rem = rem[~ok]
-            if not rem.size:
-                break
+        if nS > BIG_MESH:      # large meshes: nearest hit by triangles in chunks of rays (no rays x surfaces matrix)
+            import specpaths
+            best, bi = specpaths.ray_hits(G, o, d, last[idx])
+        else:
+            best, bi = _nearest(G, o, d, last[idx], Nn, Dp, nS)
         hit = bi >= 0
         alive[idx[~hit]] = False
         idx, o, d, best, bi = idx[hit], o[hit], d[hit], best[hit], bi[hit]
