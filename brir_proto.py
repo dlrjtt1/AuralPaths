@@ -86,7 +86,40 @@ def make_room(cfg, max_order, rand_ism=False, ray_tracing=False):
         room = pra.ShoeBox(r["dims_m"], fs=cfg["fs"], materials=mat, max_order=max_order,
                            air_absorption=r["air_absorption"], use_rand_ism=rand_ism, ray_tracing=ray_tracing)
     room.set_sound_speed(cfg["c"])
+    _fix_air_above_table(room)
     return room
+
+
+def _iso9613_db_per_m(f, temp_c=20.0, rh=40.0, pa_kpa=101.325):
+    """Pure-tone air absorption (dB/m), ISO 9613-1:1993 eqs. (1) - (5)."""
+    pr, T0, T01, T = 101.325, 293.15, 273.16, temp_c + 273.15
+    h = rh * pr * 10 ** (-6.8346 * (T01 / T) ** 1.261 + 4.6151) / pa_kpa
+    fro = pa_kpa / pr * (24 + 4.04e4 * h * (0.02 + h) / (0.391 + h))
+    frn = pa_kpa / pr * (T / T0) ** -0.5 * (9 + 280 * h * np.exp(-4.17 * ((T / T0) ** (-1 / 3) - 1)))
+    f = np.asarray(f, float)
+    return 8.686 * f ** 2 * (1.84e-11 * (pr / pa_kpa) * (T / T0) ** 0.5 + (T / T0) ** -2.5 * (
+        0.01275 * np.exp(-2239.1 / T) / (fro + f ** 2 / fro) + 0.1068 * np.exp(-3352.0 / T) / (frn + f ** 2 / frn)))
+
+
+def _fix_air_above_table(room):
+    """pyroomacoustics' air-absorption table (20 C, 30 - 50 % RH; Vorlaender 2008) ends at the 8 kHz octave; its value
+    for the 16 kHz octave band is an extrapolation (0.035 /m), less than half of what ISO 9613-1 gives there, which
+    left the simulated late tail far too bright at 16 kHz (BRAS CR3 / CR4: +10 ... +23 dB re measured). Bands above
+    the table are set to the table's 8 kHz value times the ISO 9613-1 frequency trend (20 C, 40 % RH):
+    m(f) = m(8 kHz) * a_ISO(f) / a_ISO(8 kHz); 16 kHz -> about 0.066 /m. An engineering bridge, not a measurement."""
+    ab = getattr(room, "air_absorption", None)
+    if ab is None or not len(ab):
+        return
+    cen = np.asarray(room.octave_bands.centers, float)
+    tab = pra.parameters.air_absorption_table["center_freqs"]
+    top = max(tab)
+    i8 = int(np.argmin(np.abs(cen - top)))
+    hi = cen > top * 1.01
+    if not hi.any():
+        return
+    ab = np.asarray(ab, float).copy()
+    ab[hi] = ab[i8] * _iso9613_db_per_m(cen[hi]) / _iso9613_db_per_m(top)
+    room.air_absorption = ab.tolist()
 
 
 def early_order(cfg):
