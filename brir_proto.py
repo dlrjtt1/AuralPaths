@@ -23,7 +23,9 @@ from scipy import signal
 
 AMP = "S_amp"      # 확성 음원: 직접음 경로 A + PA(B_L·B_R)로 송출
 UNAMP = "S_unamp"  # 비확성 음원: 직접음만
-OCT_CENTERS = np.array([125, 250, 500, 1000, 2000, 4000, 8000], dtype=float)
+# late-noise bank: up to the 16 kHz octave (the top band is a high-pass from its lower edge). Until 2026-11 the bank
+# stopped at 8 kHz, so everything above 5.7 kHz decayed with the 8 kHz histogram (too bright a late tail at 16 kHz).
+OCT_CENTERS = np.array([125, 250, 500, 1000, 2000, 4000, 8000, 16000], dtype=float)
 
 
 # ---------------------------------------------------------------- 설정·실내
@@ -178,7 +180,7 @@ def load_hrir(path, fs_target):
     # 확산음장 평균: 등간격 방위·고도 격자는 극 부근이 과밀하므로 cos(고도)로 면적 가중
     wgt = np.sqrt(np.clip(1 - d[:, 2] ** 2, 0, 1)) + 1e-6
     wgt = wgt / wgt.sum()
-    df = np.zeros((2, len(OCT_CENTERS)))
+    df = np.zeros((2, len(bands["edges"])))
     for b, (lo, hi) in enumerate(bands["edges"]):
         sel = (f >= lo) & (f < hi)
         df[:, b] = np.einsum("m,mr->r", wgt, H[:, :, sel].mean(axis=2))
@@ -218,10 +220,11 @@ def coherent_pair(rng, n_len, fs, coh_f, coh):
 
 # ---------------------------------------------------------------- 대역 필터
 def octave_filterbank(fs):
+    cen = [fc for fc in OCT_CENTERS if fc / np.sqrt(2) < 0.45 * fs]      # bands whose lower edge is below Nyquist
     edges = []
-    for i, fc in enumerate(OCT_CENTERS):
+    for i, fc in enumerate(cen):
         lo = fc / np.sqrt(2) if i > 0 else 0.0
-        hi = fc * np.sqrt(2) if i < len(OCT_CENTERS) - 1 else fs / 2
+        hi = fc * np.sqrt(2) if i < len(cen) - 1 and fc * np.sqrt(2) < fs / 2 else fs / 2
         edges.append((lo, hi))
     sos = []
     for lo, hi in edges:
@@ -866,7 +869,7 @@ def late_field(hrir: HRIRSet, W, centers, fs):
     tab = late_dir_tables(hrir)
     Om = tab["Om"]
     rho = np.where(Om[:, None] > 0, W / np.maximum(Om[:, None], 1e-30), 0.0)        # [nbin, n_pra_bands]
-    E = np.zeros((2, len(OCT_CENTERS)))
+    E = np.zeros((2, len(octave_filterbank(fs)["edges"])))
     for bi, pb in enumerate(bank_to_band(fs, centers)):
         r = rho[:, pb]
         E[:, bi] = np.einsum("d,dr->r", r, tab["BE"][:, :, bi]) / max(float(r @ Om), 1e-30)

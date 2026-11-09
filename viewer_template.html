@@ -2529,9 +2529,9 @@ async function loadHrirSofa(file) {
   if (fs0 !== D.fs) { $("hrirNote").textContent = `Resampling ${file.name} from ${fs0} to ${D.fs} Hz…`; ({ ir, N } = await resampleIR(ir, M, N, fs0, D.fs)); }
   // diffuse-field band energies and interaural coherence, area-weighted by cos(elevation) (as brir_proto.load_hrir)
   const w = new Float64Array(M); let ws = 0; for (let m = 0; m < M; m++) { w[m] = Math.sqrt(Math.max(0, 1 - dirs[3 * m + 2] ** 2)) + 1e-6; ws += w[m]; } for (let m = 0; m < M; m++) w[m] /= ws;
-  const OC = [125, 250, 500, 1000, 2000, 4000, 8000], fsh = D.fs / 2, edges = OC.map((fc, i) => [i ? fc / Math.SQRT2 : 0, i < OC.length - 1 ? fc * Math.SQRT2 : fsh]);
+  const edges = D.bankEdges;   // the late-noise bank of the exported data (brir_proto.octave_filterbank)
   const spec = (m, e, nf) => { const re = new Float64Array(nf), im = new Float64Array(nf), x = ir.subarray((2 * m + e) * N, (2 * m + e + 1) * N); for (let i = 0; i < Math.min(N, nf); i++) re[i] = x[i]; ENG.fftAny(re, im, false); return [re, im]; };
-  const df = [new Array(7).fill(0), new Array(7).fill(0)], NF1 = 4096, NF2 = 512, nb2 = NF2 / 2 + 1, cr = new Float64Array(nb2), pl = new Float64Array(nb2), pr = new Float64Array(nb2);
+  const df = [new Array(edges.length).fill(0), new Array(edges.length).fill(0)], NF1 = 4096, NF2 = 512, nb2 = NF2 / 2 + 1, cr = new Float64Array(nb2), pl = new Float64Array(nb2), pr = new Float64Array(nb2);
   for (let m = 0; m < M; m++) {
     for (let e = 0; e < 2; e++) { const [re, im] = spec(m, e, NF1);
       edges.forEach(([lo, hi], b) => { let s = 0, n = 0; for (let k = 0; k <= NF1 / 2; k++) { const f = k * D.fs / NF1; if (f >= lo && f < hi) { s += re[k] * re[k] + im[k] * im[k]; n++; } } df[e][b] += w[m] * (n ? s / n : 0); }); }
