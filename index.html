@@ -953,7 +953,8 @@ const GEOM = (() => {
   }
 
   // ---------- image sources. mats: { name: { R:[nb], s } }, air: [nb]
-  function ism(G, src, recs, order, tWindow, c, mats, air, bands) { // bands (Hz): with them, reflections get specFactor
+  function ism(G, src, recs, order, tWindow, c, mats, air, bands, spec) { // bands (Hz): with them, reflections get specFactor
+    // spec = { order, rays } (mesh halls): higher-order specular paths found with rays, as specpaths.py
     const NB = air.length, out = recs.map(() => []);
     // each image once per receiver: on a mesh a reflection point on the shared edge of two coplanar (or nearly coplanar)
     // triangles, e.g. on the symmetry plane of a hall for a centred source and listener, is valid for both triangles;
@@ -1008,7 +1009,64 @@ const GEOM = (() => {
       }
     }
     rec([src.slice()], []);
+    if (spec && spec.order >= 2 && G.mesh) specPaths();
     return out;
+
+    // ray-guided image sources (specpaths.py): specular rays from the source nominate panel sequences of orders
+    // 2 .. spec.order that pass near a receiver; each is checked exactly (images in the panel planes, back-traced
+    // reflection points on a surface of the panel, both neighbours on the room side, no leg blocked)
+    function specPaths() {
+      const { pid, members } = panels(G), n = spec.rays, dth = Math.sqrt(4 * Math.PI / n), Lmax = maxAll;
+      const found = recs.map(() => new Set());
+      for (let k = 0; k < n; k++) {
+        const z = 1 - 2 * (k + 0.5) / n, ph = Math.PI * (1 + Math.sqrt(5)) * (k + 0.5), sr = Math.sqrt(Math.max(0, 1 - z * z));
+        let o = src.slice(), d = [sr * Math.cos(ph), sr * Math.sin(ph), z], L = 0, last = -1; const sq = [];
+        for (let b = 0; b <= spec.order; b++) {
+          let best = Infinity, bi = -1;
+          const test = (i) => {
+            if (i === last) return;
+            const s = G.S[i], den = s.n[0] * d[0] + s.n[1] * d[1] + s.n[2] * d[2];
+            if (den >= -1e-12) return;
+            const t = (s.d - (s.n[0] * o[0] + s.n[1] * o[1] + s.n[2] * o[2])) / den;
+            if (t > 1e-7 && t < best && inSurface(s, [o[0] + t * d[0], o[1] + t * d[1], o[2] + t * d[2]])) { best = t; bi = i; return t; }
+          };
+          if (G.bvh) bvhWalk(G.bvh, o, d, Infinity, test); else for (let i = 0; i < G.S.length; i++) test(i);
+          if (b >= 2) recs.forEach((r, m) => {
+            const wx = r[0] - o[0], wy = r[1] - o[1], wz = r[2] - o[2], tc = wx * d[0] + wy * d[1] + wz * d[2], d2 = wx * wx + wy * wy + wz * wz - tc * tc;
+            const rad = Math.max(0.3, 1.5 * (L + Math.max(tc, 0)) * dth);
+            if (tc > 0 && tc < best && d2 < rad * rad && L + tc < maxD[m]) found[m].add(sq.map((f) => pid[f]).join(","));
+          });
+          if (b === spec.order || bi < 0) break;
+          o = [o[0] + best * d[0], o[1] + best * d[1], o[2] + best * d[2]];
+          const nn = G.S[bi].n, dn = d[0] * nn[0] + d[1] * nn[1] + d[2] * nn[2];
+          d = [d[0] - 2 * dn * nn[0], d[1] - 2 * dn * nn[1], d[2] - 2 * dn * nn[2]];
+          L += best; last = bi; sq.push(bi);
+          if (L > Lmax) break;
+        }
+      }
+      recs.forEach((r, m) => {
+        const keys = [...found[m]].map((s) => s.split(",").map(Number)).sort((a, b) => a.length - b.length);
+        for (const ps of keys) {
+          const pl = ps.map((p) => G.S[members.get(p)[0]]), ims = [src];
+          for (const s of pl) { const im = ims[ims.length - 1], side = s.n[0] * im[0] + s.n[1] * im[1] + s.n[2] * im[2] - s.d; ims.push([im[0] - 2 * side * s.n[0], im[1] - 2 * side * s.n[1], im[2] - 2 * side * s.n[2]]); }
+          let p = r, ok = true; const pts = [], faces = [];
+          for (let k = ps.length - 1; k >= 0 && ok; k--) {
+            const s = pl[k], im = ims[k + 1], dx = im[0] - p[0], dy = im[1] - p[1], dz = im[2] - p[2], den = s.n[0] * dx + s.n[1] * dy + s.n[2] * dz;
+            if (Math.abs(den) < 1e-12) { ok = false; break; }
+            const t = (s.d - (s.n[0] * p[0] + s.n[1] * p[1] + s.n[2] * p[2])) / den;
+            if (!(t > 1e-6 && t < 1 - 1e-9)) { ok = false; break; }
+            const q = [p[0] + t * dx, p[1] + t * dy, p[2] + t * dz], f = members.get(ps[k]).find((i) => inSurface(G.S[i], q));
+            if (f === undefined) { ok = false; break; }
+            pts.unshift(q); faces.unshift(f); p = q;
+          }
+          if (!ok) continue;
+          const path = [src].concat(pts, [r]);
+          for (let k = 0; k < ps.length && ok; k++) { const s = pl[k], a = s.n[0] * path[k][0] + s.n[1] * path[k][1] + s.n[2] * path[k][2] - s.d, b = s.n[0] * path[k + 2][0] + s.n[1] * path[k + 2][1] + s.n[2] * path[k + 2][2] - s.d; if (a * b <= 0) ok = false; }
+          for (let k = 0; k + 1 < path.length && ok; k++) if (occluded(G, path[k], path[k + 1], k > 0 ? faces[k - 1] : -1, k < faces.length ? faces[k] : -1)) ok = false;
+          if (ok) push(m, ims[ims.length - 1], faces, r, pts);
+        }
+      });
+    }
   }
 
   // Fibonacci sphere of 64 directions (same sequence as dirrays.fib_dirs)
@@ -1513,12 +1571,14 @@ const ENG = (() => {
   }
   // early part (HRIR-rendered specular arrivals) faded into noise shaped by `hist`;
   // `resid` (optional) is diffuse energy the early arrivals do not explain, added as noise inside the early window
-  function compose(earlySig, tDir, k, hist, resid, late) {
+  // discrete = true (drawn / 3D halls, as brir_proto.path_brir): the early signal holds every discrete arrival up to
+  // DISCRETE_MS and is not faded out; `hist` must then be the energy those arrivals do not explain
+  function compose(earlySig, tDir, k, hist, resid, late, discrete) {
     const t0 = tDir + D.earlyMs / 1000, cf = D.xfadeMs / 1000, out = [new Float32Array(NL), new Float32Array(NL)], bank = late ? late.bank : BANK[k % K], dfE = late ? late.E : D.df;
     const envL = bandEnv(hist), envR = resid ? bandEnv(resid) : null;
     for (let i = 0; i < NL; i++) {
       const w = Math.min(1, Math.max(0, (i / fs - t0) / cf)), wl = Math.sin(0.5 * Math.PI * w) ** 2, we = 1 - wl;
-      for (let e = 0; e < 2; e++) { let l = 0; for (let b = 0; b < edges.length; b++) l += bank[e][b][i] * (envL[b][i] * wl + (envR ? envR[b][i] * we : 0)) * Math.sqrt(dfE[e][b]); out[e][i] = earlySig[e][i] * we + l; }
+      for (let e = 0; e < 2; e++) { let l = 0; for (let b = 0; b < edges.length; b++) l += bank[e][b][i] * (envL[b][i] * wl + (envR ? envR[b][i] * we : 0)) * Math.sqrt(dfE[e][b]); out[e][i] = earlySig[e][i] * (discrete ? 1 : we) + l; }
     }
     return out;
   }
@@ -1764,7 +1824,7 @@ self.onmessage = (e) => {
   // m.tasks: [{ i: source index, k0, k1: ray range, ism: also the image sources of this source }] (one worker of a pool)
   const m = e.data, G = m.geom.mesh ? GEOM.buildMesh(Object.assign({}, m.geom.mesh, { obj: GEOM.loadObj(m.geom.mesh.text) }), m.geom.mesh.seed) : GEOM.build(m.geom), E = m.diff ? GEOM.edges(G) : null;
   for (const t of m.tasks) {
-    const src = m.srcs[t.i], ism = t.ism ? withDiffraction(G, E, src, m, GEOM.ism(G, src, m.recs, m.order, m.tWin, m.c, m.mats, m.air, m.bands)).map((L) => L.map(slim)) : null;
+    const src = m.srcs[t.i], ism = t.ism ? withDiffraction(G, E, src, m, GEOM.ism(G, src, m.recs, m.order, m.tWin, m.c, m.mats, m.air, m.bands, m.spec)).map((L) => L.map(slim)) : null;
     const RT = GEOM.rays(G, src, m.recs, { n: m.rays, c: m.c, seed: 1000 + 7919 * m.seeds[t.i], tLate: tLateOf(src, m), k0: t.k0, k1: t.k1 }, m.mats, m.air);
     self.postMessage({ job: m.job, i: t.i, ism, H: RT.H, W: RT.W, escaped: RT.escaped, n: RT.n }, RT.H.flat().map((a) => a.buffer).concat(RT.W ? RT.W.map((a) => a.buffer) : []));
   }
@@ -1785,7 +1845,7 @@ function geomCompute(srcs, seats, seedOff = 0) {
   const M = HALL.mesh, geom = isMesh() ? { mesh: { text: M.text, groups: M.groups, default: M.def || "wall", axes: M.axes, rot: M.rot, shift: M.shift, voxel: GM.vox.h, seed: GM.seed } }
     : { plan: HALL.geom.plan, floor: HALL.geom.floor, ceil: HALL.geom.ceil, stageY: HALL.dims[1] - HALL.stage };
   const msg = { job: ++jobId, geom,
-    mats: workerMats(), air: D.air, c: D.c, order: isMesh() ? meshOrder() : HALL.order, rays: HALL.rays, tWin: 0.16, diff: !isMesh() && !!HALL.diff, bands: D.praBands, lateDir: !!D.lateDir, tEarly: D.earlyMs / 1000,
+    mats: workerMats(), air: D.air, c: D.c, order: isMesh() ? meshOrder() : HALL.order, rays: HALL.rays, tWin: Math.max(0.16, DISCRETE_MS / 1000), spec: isMesh() ? SPEC : null, diff: !isMesh() && !!HALL.diff, bands: D.praBands, lateDir: !!D.lateDir, tEarly: D.earlyMs / 1000,
     srcs: srcs.map((o) => o.pos.slice()), seeds: srcs.map((o) => pathIndex(o) + seedOff), recs: seats.map((s) => s.pos.slice()) };
   const progress = (k) => { $("busy").textContent = `Computing hall ${k}/${srcs.length}`; };
   progress(0);
@@ -1819,7 +1879,7 @@ function inline(msg, progress) { // fallback without a worker: same engine on th
   return new Promise((ok) => {
     const G = msg.geom.mesh ? GM : GEOM.build(msg.geom), E = msg.diff ? GEOM.edges(G) : null, res = []; let i = 0;
     const step = () => {
-      const src = msg.srcs[i], I = withDiffraction(G, E, src, msg, GEOM.ism(G, src, msg.recs, msg.order, msg.tWin, msg.c, msg.mats, msg.air, msg.bands));
+      const src = msg.srcs[i], I = withDiffraction(G, E, src, msg, GEOM.ism(G, src, msg.recs, msg.order, msg.tWin, msg.c, msg.mats, msg.air, msg.bands, msg.spec));
       const RT = GEOM.rays(G, src, msg.recs, { n: msg.rays, c: msg.c, seed: 1000 + 7919 * msg.seeds[i], tLate: tLateOf(src, msg) }, msg.mats, msg.air);
       res[i] = { ism: I.map((L) => L.map(slim)), H: RT.H, W: RT.W, escaped: RT.escaped, n: RT.n };
       progress(++i); if (i < msg.srcs.length) setTimeout(step, 0); else ok(res);
@@ -1840,6 +1900,10 @@ async function geomRebuild(srcs, seats) {
 }
 // raw image-source list + ray histogram per source and seat, so aiming a PA re-renders without recomputing the hall
 const GC = {};
+// drawn and 3D halls: discrete arrivals are rendered up to this time after the first arrival (brir_proto.discrete_ms)
+const DISCRETE_MS = 250;
+// 3D halls: higher-order specular paths found with rays (brir_proto.spec_on, specpaths.py)
+const SPEC = { order: 3, rays: 20000 };
 // energy histogram of one path from its image-source list and ray histogram (also used for the ray-tracing spread)
 function geomHist(o, raw) {
   const dm = dmOf(o), nb = D.praBands.length;
@@ -1859,9 +1923,14 @@ function geomHist(o, raw) {
 function renderGeom(o, s) {
   const key = s.id + "|" + o.id, raw = GC[key]; if (!raw) return false;
   const { list, tD, hist, resid } = geomHist(o, raw);
-  const earlyList = list.filter((q) => q.t <= tD + (D.earlyMs + D.xfadeMs) / 1000);
+  // discrete arrivals up to DISCRETE_MS after the first arrival (brir_proto.early_binaural); the noise carries only the
+  // energy they do not explain
+  const span = Math.max(D.earlyMs + D.xfadeMs, DISCRETE_MS) / 1000, earlyList = list.filter((q) => q.t <= tD + span);
+  const nb = D.praBands.length, Hd = Array.from({ length: nb }, () => new Float64Array(ENG.HN));
+  for (const q of earlyList) { const bin = Math.floor(q.t / ENG.HB); if (bin < ENG.HN) for (let b = 0; b < nb; b++) Hd[b][bin] += q.dif ? q.eb[b] : q.g[b] * q.g[b]; }
+  const histLate = hist.map((h, b) => h.map((v, j) => Math.max(0, v - Math.max(0, Hd[b][j]))));
   if (raw.W && ENG.hasLateDir && !raw.late) raw.late = ENG.lateDir(raw.W, key);   // directional late field, kept while the hall is unchanged
-  HIST[key] = hist; BR[key] = ENG.compose(ENG.renderList(earlyList, ENG.NL), tD, pathIndex(o), hist, resid, raw.late);
+  HIST[key] = hist; BR[key] = ENG.compose(ENG.renderList(earlyList, ENG.NL), tD, pathIndex(o), histLate, resid, raw.late, true);
   ARR[key] = ENG.arrivalsFromList(list.filter((q) => q.t <= tD + 0.15));
   return true;
 }

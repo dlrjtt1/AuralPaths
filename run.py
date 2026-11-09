@@ -44,15 +44,16 @@ def main(cfg_path="config.json"):
         omni = {k: np.pad(v, (0, max(0, n_len - len(v))))[:n_len] for k, v in omni.items()}
         say(f"[omni] 고차 ISM(order {cfg['binaural']['ism_order_omni']}) RIR {len(omni)}개 산출")
     hist, resid = {}, {}
+    spec = bp.spec_on(cfg)      # mesh halls: higher-order specular paths found with rays (specpaths.py)
     if bp.has_geometry(cfg) and cfg["geometry"].get("shared_rays"):     # one ray-tracing run per source, all seats
         for s in srcs:
-            h, centers, rs = bp.energy_hists(cfg, s, recs, return_resid=True)
+            h, centers, rs = bp.energy_hists(cfg, s, recs, return_resid=True, spec=spec)
             for r in recs:
                 hist[(s, r)], resid[(s, r)] = h[r], rs[r]
     else:
         for r in recs:
             for s in srcs:
-                hist[(s, r)], centers, resid[(s, r)] = bp.energy_hist(cfg, s, r, return_resid=True)
+                hist[(s, r)], centers, resid[(s, r)] = bp.energy_hist(cfg, s, r, return_resid=True, spec=spec)
     say(f"[hist] octave-band image-energy histograms: {len(hist)} paths")
 
     # 2) 바이노럴(SOFA 있을 때)
@@ -77,7 +78,7 @@ def main(cfg_path="config.json"):
         for i, r in enumerate(recs):
             for j, s in enumerate(srcs):
                 brir[(s, r)], info[(s, r)] = bp.path_brir(cfg, s, r, hrir, hist[(s, r)], centers, n_len, seed=100 * i + j,
-                                                          dirw=dirw[s][i] if s in dirw else None, resid=resid[(s, r)])
+                                                          dirw=dirw[s][i] if s in dirw else None, resid=resid[(s, r)], spec=spec)
                 sf.write(os.path.join(out, "brir", f"{r}_{s}.wav"), brir[(s, r)].T.astype(np.float32), fs, subtype="FLOAT")
                 if hpcf is not None:   # same BRIR through the headphone compensation filter, for headphone listening
                     from scipy.signal import fftconvolve

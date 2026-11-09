@@ -194,9 +194,9 @@ def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None, mater
     out = {}
     for j, s in enumerate(srcs):
         t = time.time()
-        hist, centers, resid = bp.energy_hist(cfg, s, "MP6", return_resid=True)
+        hist, centers, resid = bp.energy_hist(cfg, s, "MP6", return_resid=True, spec=True)
         dirw = bp.late_directions(cfg, s, ["MP6"], centers, air)[0] if bp.late_on(cfg) else None
-        out[s], _ = bp.path_brir(cfg, s, "MP6", hrir, hist, centers, n_len, seed=j, dirw=dirw, resid=resid)
+        out[s], _ = bp.path_brir(cfg, s, "MP6", hrir, hist, centers, n_len, seed=j, dirw=dirw, resid=resid, spec=True)
         if k8:      # the K8's on-axis response (the balloon carries the pattern only)
             from scipy import signal as sg
             out[s] = sg.fftconvolve(out[s], k8_onaxis_fir(k8, fs)[None, :])[:, :n_len]

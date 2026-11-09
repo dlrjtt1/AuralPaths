@@ -476,7 +476,8 @@ const GEOM = (() => {
   }
 
   // ---------- image sources. mats: { name: { R:[nb], s } }, air: [nb]
-  function ism(G, src, recs, order, tWindow, c, mats, air, bands) { // bands (Hz): with them, reflections get specFactor
+  function ism(G, src, recs, order, tWindow, c, mats, air, bands, spec) { // bands (Hz): with them, reflections get specFactor
+    // spec = { order, rays } (mesh halls): higher-order specular paths found with rays, as specpaths.py
     const NB = air.length, out = recs.map(() => []);
     // each image once per receiver: on a mesh a reflection point on the shared edge of two coplanar (or nearly coplanar)
     // triangles, e.g. on the symmetry plane of a hall for a centred source and listener, is valid for both triangles;
@@ -531,7 +532,64 @@ const GEOM = (() => {
       }
     }
     rec([src.slice()], []);
+    if (spec && spec.order >= 2 && G.mesh) specPaths();
     return out;
+
+    // ray-guided image sources (specpaths.py): specular rays from the source nominate panel sequences of orders
+    // 2 .. spec.order that pass near a receiver; each is checked exactly (images in the panel planes, back-traced
+    // reflection points on a surface of the panel, both neighbours on the room side, no leg blocked)
+    function specPaths() {
+      const { pid, members } = panels(G), n = spec.rays, dth = Math.sqrt(4 * Math.PI / n), Lmax = maxAll;
+      const found = recs.map(() => new Set());
+      for (let k = 0; k < n; k++) {
+        const z = 1 - 2 * (k + 0.5) / n, ph = Math.PI * (1 + Math.sqrt(5)) * (k + 0.5), sr = Math.sqrt(Math.max(0, 1 - z * z));
+        let o = src.slice(), d = [sr * Math.cos(ph), sr * Math.sin(ph), z], L = 0, last = -1; const sq = [];
+        for (let b = 0; b <= spec.order; b++) {
+          let best = Infinity, bi = -1;
+          const test = (i) => {
+            if (i === last) return;
+            const s = G.S[i], den = s.n[0] * d[0] + s.n[1] * d[1] + s.n[2] * d[2];
+            if (den >= -1e-12) return;
+            const t = (s.d - (s.n[0] * o[0] + s.n[1] * o[1] + s.n[2] * o[2])) / den;
+            if (t > 1e-7 && t < best && inSurface(s, [o[0] + t * d[0], o[1] + t * d[1], o[2] + t * d[2]])) { best = t; bi = i; return t; }
+          };
+          if (G.bvh) bvhWalk(G.bvh, o, d, Infinity, test); else for (let i = 0; i < G.S.length; i++) test(i);
+          if (b >= 2) recs.forEach((r, m) => {
+            const wx = r[0] - o[0], wy = r[1] - o[1], wz = r[2] - o[2], tc = wx * d[0] + wy * d[1] + wz * d[2], d2 = wx * wx + wy * wy + wz * wz - tc * tc;
+            const rad = Math.max(0.3, 1.5 * (L + Math.max(tc, 0)) * dth);
+            if (tc > 0 && tc < best && d2 < rad * rad && L + tc < maxD[m]) found[m].add(sq.map((f) => pid[f]).join(","));
+          });
+          if (b === spec.order || bi < 0) break;
+          o = [o[0] + best * d[0], o[1] + best * d[1], o[2] + best * d[2]];
+          const nn = G.S[bi].n, dn = d[0] * nn[0] + d[1] * nn[1] + d[2] * nn[2];
+          d = [d[0] - 2 * dn * nn[0], d[1] - 2 * dn * nn[1], d[2] - 2 * dn * nn[2]];
+          L += best; last = bi; sq.push(bi);
+          if (L > Lmax) break;
+        }
+      }
+      recs.forEach((r, m) => {
+        const keys = [...found[m]].map((s) => s.split(",").map(Number)).sort((a, b) => a.length - b.length);
+        for (const ps of keys) {
+          const pl = ps.map((p) => G.S[members.get(p)[0]]), ims = [src];
+          for (const s of pl) { const im = ims[ims.length - 1], side = s.n[0] * im[0] + s.n[1] * im[1] + s.n[2] * im[2] - s.d; ims.push([im[0] - 2 * side * s.n[0], im[1] - 2 * side * s.n[1], im[2] - 2 * side * s.n[2]]); }
+          let p = r, ok = true; const pts = [], faces = [];
+          for (let k = ps.length - 1; k >= 0 && ok; k--) {
+            const s = pl[k], im = ims[k + 1], dx = im[0] - p[0], dy = im[1] - p[1], dz = im[2] - p[2], den = s.n[0] * dx + s.n[1] * dy + s.n[2] * dz;
+            if (Math.abs(den) < 1e-12) { ok = false; break; }
+            const t = (s.d - (s.n[0] * p[0] + s.n[1] * p[1] + s.n[2] * p[2])) / den;
+            if (!(t > 1e-6 && t < 1 - 1e-9)) { ok = false; break; }
+            const q = [p[0] + t * dx, p[1] + t * dy, p[2] + t * dz], f = members.get(ps[k]).find((i) => inSurface(G.S[i], q));
+            if (f === undefined) { ok = false; break; }
+            pts.unshift(q); faces.unshift(f); p = q;
+          }
+          if (!ok) continue;
+          const path = [src].concat(pts, [r]);
+          for (let k = 0; k < ps.length && ok; k++) { const s = pl[k], a = s.n[0] * path[k][0] + s.n[1] * path[k][1] + s.n[2] * path[k][2] - s.d, b = s.n[0] * path[k + 2][0] + s.n[1] * path[k + 2][1] + s.n[2] * path[k + 2][2] - s.d; if (a * b <= 0) ok = false; }
+          for (let k = 0; k + 1 < path.length && ok; k++) if (occluded(G, path[k], path[k + 1], k > 0 ? faces[k - 1] : -1, k < faces.length ? faces[k] : -1)) ok = false;
+          if (ok) push(m, ims[ims.length - 1], faces, r, pts);
+        }
+      });
+    }
   }
 
   // Fibonacci sphere of 64 directions (same sequence as dirrays.fib_dirs)

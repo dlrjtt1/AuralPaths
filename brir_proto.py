@@ -641,7 +641,69 @@ def diffraction_arrivals(cfg, src, rec, centers, air, t_max):
     return A
 
 
-def energy_hist(cfg, src, rec, t_max=2.5, return_resid=False):
+# ---------------------------------------------------------------- discrete arrivals beyond the early window
+_SPEC_CACHE = {}
+
+
+def spec_on(cfg):
+    """Higher-order specular paths found with rays (specpaths.py): OBJ mesh halls, where the image-source search
+    stops at order 1. "geometry": {"spec_order": 0} switches it off (default 3)."""
+    return has_geometry(cfg) and is_mesh(cfg) and int(cfg["geometry"].get("spec_order", 3)) >= 2
+
+
+def discrete_ms(cfg):
+    """Drawn and mesh halls: specular arrivals (images, ray-found paths, diffraction) are rendered as discrete
+    arrivals up to this time after the direct sound ("geometry": {"discrete_ms": ...}, default 250 ms); only the
+    energy they do not explain becomes noise there. Shoebox: None (early window only, as before)."""
+    return float(cfg["geometry"].get("discrete_ms", 250.0)) if has_geometry(cfg) else None
+
+
+def spec_arrivals(cfg, src, recs, centers, air):
+    """{rec: [{"t", "image", "eb" [n_bands], "order"}]}: ray-found specular paths of orders 2 .. spec_order (mesh
+    halls) up to discrete_ms after the direct sound, with the energy model of the first-order images (absorption,
+    scattering loss, finite reflector, air, 1 / d^2, source directivity at the emission direction). The paths are
+    cached per geometry and positions (they do not depend on the materials)."""
+    import hashlib
+    import specpaths
+    G = _geom(cfg)
+    g = cfg["geometry"]
+    c = cfg["c"]
+    s = np.asarray(cfg["sources"][src]["pos"], float)
+    R = np.array([cfg["receivers"][r] for r in recs], float)
+    tmx = np.linalg.norm(R - s, axis=1) / c + discrete_ms(cfg) / 1000
+    order, rays = int(g.get("spec_order", 3)), int(g.get("spec_rays", 20000))
+    if "_gid" not in G:
+        mesh = g["mesh"]
+        txt = mesh.get("obj_text") or open(mesh["obj"], encoding="utf-8", errors="ignore").read()
+        G["_gid"] = hashlib.sha1((txt + json.dumps(mesh.get("axes", ""))).encode()).hexdigest()
+    key = (G["_gid"], tuple(np.round(s, 6)), tuple(map(tuple, np.round(R, 6))), order, rays, round(c, 3),
+           tuple(np.round(tmx, 6)))
+    if key not in _SPEC_CACHE:
+        _SPEC_CACHE[key] = specpaths.find_paths(G, s, R, order=order, t_max=tmx, c=c, n_rays=rays)
+    found = _SPEC_CACHE[key]
+    dm = dir_model(cfg, src, centers)
+    fin, sca = g.get("finite_reflectors", True), g.get("specular_scatter_loss", True)
+    out = {}
+    for m, r in enumerate(recs):
+        lst = []
+        for q in found[m]:
+            eb = specpaths.path_energy(G, g["materials"], q, s, R[m], centers, air, c, fin, sca)
+            if dm is not None:
+                e = np.asarray(q["pts"][0], float) - s
+                eb = eb * dir_amp(dm, (e / np.linalg.norm(e))[:, None])[:, 0] ** 2
+            lst.append({"t": q["dist"] / c, "image": np.asarray(q["image"], float), "eb": eb, "order": q["order"]})
+        out[r] = lst
+    return out
+
+
+def _add_spec(h, arr):
+    for q in arr:
+        k = int(q["t"] / HIST_BIN)
+        if k < h.shape[1]:
+            h[:, k] += q["eb"]
+
+
+def energy_hist(cfg, src, rec, t_max=2.5, return_resid=False, spec=False):
     """Octave-band energy per 1 ms bin. Returns (hist [n_bands, n_bins], band_centres).
 
     Shoebox: incoherent sum over the full image lattice (order <= ism_order_omni). Summing image
@@ -650,6 +712,7 @@ def energy_hist(cfg, src, rec, t_max=2.5, return_resid=False):
     Geometry: specular images to geometry.ism_order (pyroomacoustics, visibility checked) plus the
     part of the pyroomacoustics ray-tracing histogram the images do not explain:
         H = H_ism + max(0, smooth(H_rt) - smooth(H_ism)),  10 ms smoothing.
+    spec=True (mesh halls, spec_on): the ray-found higher-order specular paths count as images (spec_arrivals).
     """
     c = cfg["c"]
     if not has_geometry(cfg):
@@ -671,6 +734,8 @@ def energy_hist(cfg, src, rec, t_max=2.5, return_resid=False):
             if i < h_ism.shape[1]:
                 h_ism[:, i] += q["eb"]
         h_ism = np.maximum(h_ism, 0.0)
+    if spec and spec_on(cfg):
+        _add_spec(h_ism, spec_arrivals(cfg, src, [rec], room.octave_bands.centers, room.air_absorption)[rec])
     rt = make_room(cfg, 0, ray_tracing=True)
     rt.set_ray_tracing(n_rays=int(g.get("rays", 50000)), receiver_radius=0.5, hist_bin_size=HIST_BIN,
                        time_thres=t_max, energy_thres=RT_ENERGY_THRES)
@@ -732,7 +797,11 @@ def visible_images(room, i=0):
     return vis
 
 
-def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len):
+def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len, spec=False):
+    """Discrete arrivals: visible image sources, diffraction and (spec=True, mesh halls) the ray-found higher-order
+    specular paths, each through the HRIR of its arrival direction. Shoebox: up to the early window (+ crossfade).
+    Drawn / mesh halls: up to discrete_ms after the direct sound, and info["h_disc"] holds their energy per band
+    and 1 ms bin, so that path_brir can leave it out of the noise."""
     fs, c = cfg["fs"], cfg["c"]
     b = cfg["binaural"]
     room = make_room(cfg, early_order(cfg))
@@ -747,7 +816,10 @@ def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len):
     v = imgs - m[:, None]
     dist = np.linalg.norm(v, axis=0)
     t_dir = dist.min() / c
-    t_end = t_dir + (b["early_window_ms"] + b["crossfade_ms"]) / 1000
+    span = (b["early_window_ms"] + b["crossfade_ms"]) / 1000
+    if has_geometry(cfg):
+        span = max(span, discrete_ms(cfg) / 1000)
+    t_end = t_dir + span
     keep = dist / c <= t_end
     v, dist, damp, sel = v[:, keep], dist[keep], damp[:, keep], sel[keep]
 
@@ -767,10 +839,16 @@ def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len):
     if dm is not None:
         amp = amp * dir_amp(dm, emission_dirs(cfg, room, cfg["sources"][src]["pos"], sel))
 
+    if spec and spec_on(cfg):        # ray-found higher-order specular paths: like images (position, band amplitude)
+        sp = [q for q in spec_arrivals(cfg, src, [rec], band_f, room.air_absorption)[rec] if q["t"] <= t_end]
+        if sp:
+            vs = np.stack([q["image"] for q in sp], axis=1) - m[:, None]
+            v, dist = np.c_[v, vs], np.r_[dist, np.linalg.norm(vs, axis=0)]
+            amp = np.c_[amp, np.sqrt(np.stack([q["eb"] for q in sp], axis=1))]
     diff = diffraction_arrivals(cfg, src, rec, band_f, room.air_absorption, None) if diffraction_on(cfg) else []
     if diff:
         t_dir = min(t_dir, min(q["t"] for q in diff))
-        t_end = t_dir + (b["early_window_ms"] + b["crossfade_ms"]) / 1000
+        t_end = t_dir + span
         diff = [q for q in diff if q["t"] <= t_end]
 
     front, left, up = head_frame(cfg, rec)
@@ -823,6 +901,16 @@ def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len):
                 out[:, lo:hi] += y[:, lo - a:hi - a]
     info = {"n_images": int(dist.size), "n_diffracted": len(diff), "max_order_in_window": int(max_ord_in),
             "order_limit": int(early_order(cfg)), "t_direct": t_dir}
+    if has_geometry(cfg):
+        hd = np.zeros((len(band_f), int(np.ceil((t_end + 0.01) / HIST_BIN))))
+        idx_t = np.floor(dist / c / HIST_BIN).astype(int)
+        for bb in range(len(band_f)):
+            np.add.at(hd[bb], idx_t, amp[bb] ** 2)
+        for q in diff:
+            k = int(q["t"] / HIST_BIN)
+            if k < hd.shape[1]:
+                hd[:, k] += q["eb"]
+        info["h_disc"] = np.maximum(hd, 0.0)
     return out, info
 
 
@@ -958,17 +1046,36 @@ def late_directions(cfg, src, recs, centers, air, n_rays=None):
                                          seed=zlib.crc32(f"late|{src}".encode()))
 
 
-def path_brir(cfg, src, rec, hrir, hist, centers, n_len, seed, dirw=None, resid=None):
-    """early * w_early + late * w_late. With resid (drawn hall: ray energy the image sources do not explain), noise
-    shaped by resid is added to the early part, so the first 100 ms carry the scattered energy too (as in the
-    browser: noise * (env_late * w_late + env_resid * w_early))."""
-    early, info = early_binaural(cfg, src, rec, hrir, n_len)
+def path_brir(cfg, src, rec, hrir, hist, centers, n_len, seed, dirw=None, resid=None, spec=False):
+    """Shoebox: early * w_early + late * w_late. With resid (drawn hall: ray energy the image sources do not
+    explain), noise shaped by resid is added to the early part, so the first 100 ms carry the scattered energy too
+    (as in the browser: noise * (env_late * w_late + env_resid * w_early)).
+    Drawn / mesh halls (discrete_ms): the discrete arrivals are not windowed (they reach discrete_ms after the
+    direct sound) and the late noise carries only the energy they do not explain:
+        discrete + noise(resid) * w_early + noise(max(0, hist - h_disc)) * w_late.
+    spec=True: hist must come from energy_hist(..., spec=True) (the same set of paths)."""
+    early, info = early_binaural(cfg, src, rec, hrir, n_len, spec=spec)
+    hd = info.get("h_disc")
+    if hd is not None:
+        h2 = np.zeros_like(hist)
+        n = min(hd.shape[1], hist.shape[1])
+        h2[:, :n] = hd[:, :n]
+        hist = np.maximum(hist - h2, 0.0)
     late = late_binaural(cfg, hist, centers, hrir, n_len, seed, dirw, resid)
+    late_r = None
     if resid is not None:
         late, late_r = late
-        early = early + late_r
     t0 = info["t_direct"] + cfg["binaural"]["early_window_ms"] / 1000
     we, wl = crossfade_windows(n_len, cfg["fs"], t0, cfg["binaural"]["crossfade_ms"])
+    if hd is not None:
+        early_w = early + (late_r * we if late_r is not None else 0.0)
+        late_w = late * wl
+        sel = (we > 0) & (wl > 0)
+        info["xfade_energy_ratio_early_over_late"] = float(np.sum(early_w[:, sel] ** 2) / (np.sum(late_w[:, sel] ** 2) + 1e-30))
+        info["parts"] = (early_w, late_w)   # already windowed: the BRIR is their sum
+        return early_w + late_w, info
+    if late_r is not None:
+        early = early + late_r
     # 연결부 에너지 점검(교차 구간에서 초기부/후기부 에너지 비)
     sel = (we > 0) & (wl > 0)
     ratio = float(np.sum(early[:, sel] ** 2) / (np.sum(late[:, sel] ** 2) + 1e-30))
@@ -1021,7 +1128,7 @@ def seat_direct(cfg, pts, centers, band_idx=(2, 3)):
 
 
 # ---------------------------------------------------------------- 지표
-def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None, return_resid=False):
+def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None, return_resid=False, spec=False):
     """energy_hist for several receivers at once (one image-source run and one ray-tracing run shared by all
     receivers; same model as energy_hist). Used for room-criteria checks over many seats (validate_fratoni.py) and by
     run.py when geometry.shared_rays is set. Returns ({rec: hist [n_bands, n_bins]}, band_centres), with
@@ -1048,6 +1155,7 @@ def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None, return_resid
     pra.libroom.set_rng_seed(int(seed) if seed is not None else zlib.crc32(f"{src}|*".encode()))
     rt.ray_tracing()
     dm = dir_model(cfg, src, room.octave_bands.centers)
+    sp_arr = spec_arrivals(cfg, src, recs, room.octave_bands.centers, room.air_absorption) if spec and spec_on(cfg) else {}
     for i, r in enumerate(recs):
         h_ism = _image_energy_hist(room, pos[i], c, t_max, visible_images(room, i), cfg, src)
         if diffraction_on(cfg):
@@ -1056,6 +1164,8 @@ def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None, return_resid
                 if k < h_ism.shape[1]:
                     h_ism[:, k] += q["eb"]
             h_ism = np.maximum(h_ism, 0.0)
+        if r in sp_arr:
+            _add_spec(h_ism, sp_arr[r])
         h_rt = np.zeros_like(h_ism)
         raw = np.asarray(rt.rt_histograms[i][0][0])
         n = min(raw.shape[1], h_rt.shape[1])
