@@ -150,9 +150,16 @@ def k8_onaxis_fir(path, fs, n=1024):
     return sg.minimum_phase(np.fft.fftshift(np.fft.irfft(mag ** 2, 4 * n)), method="homomorphic")[:n]
 
 
-def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None):
+def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None, materials=None):
     scene = os.path.join(bras, SCENES[hall])
     mats = vb.read_bras_materials(os.path.join(bras, "3 Surface descriptions"), hall, "fitted")
+    if materials:   # calibrated absorption (calibrate.py output); scattering stays as fitted
+        cal = json.load(open(materials, encoding="utf-8"))["geometry"]["materials"]
+        missing = sorted(set(mats) - set(cal))
+        if missing:
+            sys.exit(f"{materials}: no calibrated values for {', '.join(missing)}")
+        for k in mats:
+            mats[k]["alpha"] = list(cal[k]["alpha"][:6])
     obj = rotate_obj(open(os.path.join(scene, "Geometry", f"{hall}.obj"), encoding="utf-8", errors="ignore").read())
     P = POS[hall]
     cfg = {"name": f"BRAS {hall} binaural check", "fs": fs, "c": 343.5,
@@ -204,10 +211,12 @@ def main():
                     help="model the sources as the generic directional pattern of brir_proto.dir_model with this "
                          "nominal -6 dB angle (deg), aimed at the listener (QSC K8: 105); 0 = omnidirectional")
     ap.add_argument("--k8-mps", default=None, help="BRAS QSCK8_1x1_64442_MPS_front_pole.csv: measured K8 directivity")
+    ap.add_argument("--materials", default=None,
+                    help="calibrated config (calibrate.py output) whose material absorption replaces the fitted estimates")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     out = a.out or os.path.join(HERE, f"bras_brir_{a.hall}")
-    sim = simulate(a.bras, a.hall, a.rays, a.hrir, coverage=a.coverage, k8=a.k8_mps)
+    sim = simulate(a.bras, a.hall, a.rays, a.hrir, coverage=a.coverage, k8=a.k8_mps, materials=a.materials)
     rows, lines = [], []
     for k in range(3, 8):
         x, fs = sf.read(os.path.join(a.bras, SCENES[a.hall], "BRIRs", "wav", f"{a.hall}_BRIR_LS{k}_MP6_HATO0.wav"))
@@ -215,8 +224,10 @@ def main():
         sf.write(f"{out}_LS{k}_sim.wav", np.asarray(sim[f"LS{k}"]).T.astype(np.float32), 44100, subtype="FLOAT")
         rows.append((k, me, si))
     md = [f"# BRAS {a.hall}: binaural check, AuralPaths (Python engine, KU100) vs measured BRIRs (FABIAN)", "",
-          "Five loudspeakers LS3 - LS7 to listener MP6 (= RIR position MP1), head facing LS7. Materials: BRAS fitted "
-          f"estimates, unchanged (not calibrated). {a.rays} rays per source, image sources order 1. Sources: "
+          "Five loudspeakers LS3 - LS7 to listener MP6 (= RIR position MP1), head facing LS7. Materials: "
+          + (f"BRAS fitted estimates with absorption calibrated on measured T30 (`{os.path.basename(a.materials)}`, "
+             "calibrate.py; scattering as fitted). " if a.materials else "BRAS fitted estimates, unchanged (not calibrated). ")
+          + f"{a.rays} rays per source, image sources order 1. Sources: "
           + ("measured QSC K8 directivity of the BRAS release (balloon, pattern only; LS3 - LS6 aimed at the head, "
              "LS7 horizontal). " if a.k8_mps else "")
           + (f"generic directional pattern, {a.coverage:.0f} deg nominal, aimed at the listener (an approximation of the "
