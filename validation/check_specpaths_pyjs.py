@@ -8,6 +8,9 @@ distance) and their band energies (absorption, scattering loss, finite reflector
 
 e.g. the BRAS CR4 calibration config of validation/bras_calibration.py with source LS7 and listener MP6 of
 validation/check_bras_brir.py (AuralPaths frame).
+
+Result on 2026-11-09 (BRAS CR4, LS7 at (0, 1.5, 1.5) to MP6 at (0, -8.5, 1.09), orders 2 - 3, 20000 rays, 250 ms):
+22 paths in both engines, all matched, largest relative energy difference 2.5e-12.
 """
 import argparse
 import json
