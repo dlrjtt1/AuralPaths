@@ -1312,12 +1312,8 @@ def image_arrivals(cfg, src, rec, window_ms=150.0, order=None):
     dm = dir_model(cfg, src, room.octave_bands.centers)
     if dm is not None:
         amp = amp * dir_amp(dm, emission_dirs(cfg, room, cfg["sources"][src]["pos"], sel))
-    diff = diffraction_arrivals(cfg, src, rec, band_f, room.air_absorption, None) if diffraction_on(cfg) else []
-    if diff:
-        t_dir = min(t_dir, min(q["t"] for q in diff))
-        t_end = t_dir + (b["early_window_ms"] + b["crossfade_ms"]) / 1000
-        diff = [q for q in diff if q["t"] <= t_end]
-
+    # image sources only; diffracted arrivals: diffraction_arrivals() (this block referenced undefined names and
+    # was removed; the function has no callers in the repository)
     front, left, up = head_frame(cfg, rec)
     u = v / dist
     az = np.degrees(np.arctan2(u.T @ left, u.T @ front))

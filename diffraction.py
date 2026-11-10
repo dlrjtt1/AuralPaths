@@ -24,7 +24,7 @@ specular reflection before and/or after it (refl_order=1; image source / image r
 planar faces, or thin-plate edges (n = 2) where two faces lie back to back within THIN_M (a free-standing panel, a
 partition); second order (two edges in sequence, thick obstacles) in diffract2, opt-in; no higher orders (no seat
 dip), diffraction from edge end points ignored, hard-face UTD with a reflection-factor heuristic. Checked against
-BRAS RS5 (validation/bras_rs5.md) and RS1 - RS4, RS6, RS7 (validation/bras_rs.md). The diffracted arrival is rendered with the HRIR of the apex direction; its energy enters
+BRAS RS5 (validation/bras_rs5_engine.md) and RS1 - RS4, RS6, RS7 (validation/bras_rs.md). The diffracted arrival is rendered with the HRIR of the apex direction; its energy enters
 the image-source histogram with its interference with the geometrical arrivals of the same boundary.
 """
 from __future__ import annotations

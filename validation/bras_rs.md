@@ -2,7 +2,7 @@
 
 Data: BRAS (Aspoeck et al., https://doi.org/10.14279/depositonce-6726.3, CC BY-SA 4.0), scene drawings and SOFA
 positions; materials from the BRAS surface descriptions (initial estimates). Script: `validation/bras_rs.py`
-(geometry of each scene in its docstring); RS5 is in `validation/bras_rs5.md`. The round-robin comparison uses the
+(geometry of each scene in its docstring); RS5 is in `validation/bras_rs5_engine.md`. The round-robin comparison uses the
 curves of SuppPub2 of Brinkmann et al. (2019), https://doi.org/10.1121/1.5096178, read from the PDF's vector
 graphics (`validation/rr_extract.py`, `validation/rr_compare.py`).
 

@@ -43,7 +43,7 @@ By LABO 1557 (Dong-Gyun You).
 - Diffraction check against BRAS scene RS5 (a 2.07 m partition on a hard floor, 16 positions): mean absolute
   difference 1.8 dB in third-octave bands 500 Hz–2 kHz (2.2 dB at the 11 shadow positions). This is one simple
   scene, not a measure of whole-hall accuracy. Details: `validation/`, `docs/MODEL_en.md`. The same scene given to
-  the engine as geometry (`validation/bras_rs5.md`): 2.1–2.7 dB mean absolute difference at 125 Hz–4 kHz behind the
+  the engine as geometry (`validation/bras_rs5_engine.md`): 2.1–2.7 dB mean absolute difference at 125 Hz–4 kHz behind the
   partition, in the range of the better of the two round-robin simulators that handled this scene. Reference scenes
   RS1–RS4 (reflections on floors, plates, arrays): spectral shape between the round-robin participants
   (`validation/bras_rs.md`); thick obstacles need `diffraction_order` 2 (BRAS RS6: within about 3 dB behind a 0.72 m
@@ -72,7 +72,8 @@ pip install fast-simplification openpyxl            # optional: large meshes, da
 python obj_to_hall.py mesh_config.json             # -> mesh_config_2p5d.json
 ```
 Full description of the model, the checks and the outputs: `docs/MODEL_en.md` (Korean: `docs/MODEL_ko.md`, Japanese: `docs/MODEL_ja.md`). What the
-checks support and what they do not, in two pages: `docs/VALIDITY_en.md` (`_ko`, `_ja`). Literature and data used:
+checks support and what they do not, in two pages: `docs/VALIDITY_en.md` (`_ko`, `_ja`). Scores against public measured
+data (BRAS, the 2019 round robin, Detmold): `docs/BENCHMARK_en.md` (`_ko`, `_ja`). Literature and data used:
 `docs/REFERENCES_ko.md` (Korean).
 
 ## Checks and citing

@@ -4,6 +4,10 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- `docs/BENCHMARK_en.md` (`_ko`, `_ja`): all scores against public measured data on one page, with how to rerun
+  them; a one-line summary with a link at the bottom of the page. `validation/bras_rs5.md` renamed to
+  `validation/bras_rs5_engine.md` (it clashed with `bras_RS5.md` on case-insensitive file systems, e.g. macOS).
+  Fix: `brir_proto.image_arrivals` referenced undefined names when diffraction was on (no callers); `run.py --help`.
 - Diffraction over rows of edges in sight of the source: the engine added a first-order term for every edge near its
   boundary, and over 15 block rows at grazing incidence (BRAS RS7) these added up to 5–20 dB too much. Now, with
   the source in sight, only the edge nearest to its boundary keeps its boundary term (plus the edges of a face that
@@ -16,7 +20,7 @@ files.
   `"geometry": {"diffraction_refl": 1}`: diffraction combined with one specular reflection before and/or after the
   edge (both engines, checked against each other; new regression check `diffraction_plate`). RS5 with the
   round-robin post-processing: 2.1–2.7 dB mean absolute difference per 1/3-octave band behind the partition,
-  spectral shape in the range of the better of the two round-robin simulators (`validation/bras_rs5.md`).
+  spectral shape in the range of the better of the two round-robin simulators (`validation/bras_rs5_engine.md`).
 - BRAS reference scenes RS1–RS4, RS6, RS7 (`validation/bras_rs.py`, `validation/bras_rs.md`) and the round-robin
   simulators' spectra read from SuppPub2 (`validation/rr_extract.py`, `validation/rr_compare.py`): over the 15
   figures the spectral-shape error of AuralPaths (median 1.9 dB) lies between the round-robin participants

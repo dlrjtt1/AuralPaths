@@ -238,7 +238,7 @@ in a perfectly conducting surface", Proc. IEEE 62, 1448–1461
 투과로 보이며(BRAS 문서에도 언급), 이는 모델링하지 않는다. LS4-MP2는 창도 1 ms뿐이다. 그 밖의 경우 도달 시간은
 0.1 ms 이내로 일치한다.
 
-같은 장면을 엔진에 형상으로 넣은 경우(`validation/bras_rs5.py`, `validation/bras_rs5.md`; 칸막이를 바닥 면 위의 25 mm
+같은 장면을 엔진에 형상으로 넣은 경우(`validation/bras_rs5.py`, `validation/bras_rs5_engine.md`; 칸막이를 바닥 면 위의 25 mm
 상자로, 라운드 로빈 후처리 적용): 얇은 판 모서리 도입 전에는 그림자 위치 11개 중 10개에서 소리가 전혀 없었다(상자가
 자기 1차 경로를 가림). 얇은 판 모서리와 `diffraction_refl` 1을 쓰면 125 Hz–4 kHz 1/3옥타브 대역 평균 절대 차이
 2.1–2.7 dB, 스펙트럼 형태 2.4–2.7 dB rms로, 이 장면을 처리한 라운드 로빈 시뮬레이터 둘 중 나은 쪽과 비슷한 범위다

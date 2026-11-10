@@ -198,7 +198,8 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
 .guide :lang(ko) { word-break: keep-all; overflow-wrap: anywhere; }
 .guide :lang(ja) { line-break: strict; }
 @media (max-width: 520px) { .guide dl.gbtns { grid-template-columns: minmax(0, 1fr); gap: 2px; } .guide dl.gbtns dd { margin-bottom: 6px; } }
-#credits { text-align: center; text-wrap: balance; max-width: 120ch; margin-inline: auto; padding-bottom: 20px; line-height: 1.6; }
+#benchNote .nowrap { white-space: nowrap; }
+#credits, #benchNote { text-align: center; text-wrap: balance; max-width: 120ch; margin-inline: auto; padding-bottom: 20px; line-height: 1.6; }
 </style>
 
 <header class="toolbar">
@@ -415,7 +416,9 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
     <div><span class="k">Studio</span><span class="v">LABO 1557</span></div>
   </div></div>
 </footer>
-<div class="wrap"><p class="note" id="credits">HRIRs and headphone filter: B. Bernschütz, <i>Spherical Far-Field HRIR Compilation of the Neumann KU100</i> (TH Köln), Zenodo 3928297, licensed CC BY 3.0 (creativecommons.org/licenses/by/3.0) — resampled to 48 kHz, about 4° direction spacing, 16-bit. AuralPaths code: MIT licence, LABO 1557. Simulation results are model estimates, not a reproduction of any real hall; see README and NOTICE in the repository.</p></div>
+<div class="wrap"><p class="note" id="benchNote">Accuracy, checked against public measurements (BRAS, the 2019 round robin, Detmold Konzerthaus): median spectral error 1.5 dB over 15 round-robin cases, within the range of the participating programs <span class="nowrap">(1.0–2.8 dB)</span>. Known weak spot: sound passing just above seat rows behind the first row is <span class="nowrap">5–11 dB</span> too loud. <a href="https://github.com/dlrjtt1/AuralPaths/blob/main/docs/BENCHMARK_en.md" target="_blank" rel="noopener">Details</a></p>
+<p class="note" id="credits">HRIRs and headphone filter: B. Bernschütz, <i>Spherical Far-Field HRIR Compilation of the Neumann KU100</i> (TH Köln), Zenodo 3928297, licensed CC BY 3.0 (creativecommons.org/licenses/by/3.0) — resampled to 48 kHz, about 4° direction spacing, 16-bit. AuralPaths code: MIT licence, LABO 1557. Simulation results are model estimates, not a reproduction of any real hall; see README and NOTICE in the repository.</p>
+</div>
 <div class="overlay" id="guideOverlay" hidden>
   <div class="dialog guide" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
     <div class="ghead"><h2 id="guideTitle">Quick guide</h2><div class="seg" id="segGuideLang" role="group" aria-label="Language"><button type="button" data-l="ko" aria-pressed="false">한국어</button><button type="button" data-l="ja" aria-pressed="false">日本語</button><button type="button" data-l="en" aria-pressed="true">English</button></div></div>

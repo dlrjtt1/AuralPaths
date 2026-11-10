@@ -23,7 +23,7 @@ Variants (what is switched on):
   box+floor+d2      no thin-plate edges: the 25 mm box with its two top edges in sequence (second-order diffraction,
                     diffraction.diffract2) and the floor reflections; a check of the thin-plate approximation
   thin+floor+tl     thin+floor, plus sound transmission through the partition (mass law, limp plate; not in the
-                    engine: it changes nothing here, see validation/bras_rs5.md)
+                    engine: it changes nothing here, see validation/bras_rs5_engine.md)
 
 Writes bands.csv (1/3-octave levels measured and simulated, 100 Hz - 5 kHz) and summary.md to --out (out/ is
 gitignored: the outputs are derived from BRAS, CC BY-SA 4.0).

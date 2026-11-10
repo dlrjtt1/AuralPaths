@@ -262,7 +262,7 @@ source or receiver at floor level (LS4-MP1, LS1-MP2, LS4-MP2) show sound arrivin
 before the diffracted path — most likely transmission through the partition (the BRAS documentation notes it),
 which is not modelled; LS4-MP2 also has only a 1 ms window. Arrival times agree within 0.1 ms elsewhere.
 
-The same scene given to the engine as geometry (`validation/bras_rs5.py`, `validation/bras_rs5.md`; partition as a
+The same scene given to the engine as geometry (`validation/bras_rs5.py`, `validation/bras_rs5_engine.md`; partition as a
 25 mm box on a floor face, round-robin post-processing): before the thin-plate edges, 10 of the 11 shadow positions
 got no sound (the box blocked its own first-order paths). With thin-plate edges and `diffraction_refl` 1: mean
 absolute difference 2.1–2.7 dB per 1/3-octave band at 125 Hz–4 kHz, spectral shape 2.4–2.7 dB rms, which is in
