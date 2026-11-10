@@ -23,6 +23,37 @@ Shape error: rms over 1/3-octave bands of simulated minus measured level after r
 Mean abs. difference: absolute levels. The loudspeaker is modelled as a flat point source with its documented
 calibration; the round-robin participants had the loudspeaker's directivity data, these runs do not.
 
+### Strengths and weaknesses at a glance
+
+Strong:
+
+- Direct sound and source direction: direct-sound ITD within a few microseconds; lateralization error 0.3 - 0.6 deg
+  in the three round-robin rooms (programs A 0.2 - 0.8, B 1.0 - 1.2, E 0.6 - 0.9, C 7.2 - 14.2 deg).
+- Tone colour of binaural responses: 1.4 dB in 37 gammatone bands in all three rooms (programs E 1.3, B and C 2.2,
+  A 3.2 dB).
+- Reverberation at low frequencies: T20 +34 % at 125 Hz and +7 % at 250 Hz, where the programs average +58 % and
+  +35 %.
+- Prediction from material data alone in medium and large halls: best of seven in CR3, second with C in CR4.
+- Single reflections and finite plates: median shape error 1.5 dB (programs 1.0 - 2.8 dB).
+- Late spatial impression: IACC_L3 within 0.075 at 96 % of 136 seats (Detmold).
+
+Weak:
+
+- Rooms coupled through a narrow opening: the late decay from the second room is about 13 dB too low (CR1, door
+  4.1 deg), worse than every program.
+- Small rooms with uncalibrated material data: CR2 reverberates 30 - 35 % too short (sixth of seven); calibrate to a
+  measured reverberation time where one exists.
+- Grazing sound over seat rows behind the first row: 5 - 11 dB too loud, no seat dip (RS7).
+- Early spatial impression in concert halls: IACC_E3 about 0.15 low; C80 slightly low (Detmold).
+- High frequencies of binaural responses: 4 - 6 dB too much energy at 9 - 15 kHz.
+- Shadowed positions behind objects need the slower diffraction options (section 3); with the defaults, four of
+  eight positions behind the RS6 object receive no sound.
+
+How to read this: the round-robin scores are a comparison after the fact (the participants submitted blind; here
+the measurements were available). The tone-colour and lateralization rows use the fitted materials. All checks are
+physical; whether the result sounds plausible (the paper's listening tests) has not been tested, and none of this
+shows that laboratory findings carry over to a real hall or sound system.
+
 ## 2. The 2019 round robin
 
 Brinkmann et al. (2019), "A round robin on room acoustical simulation and auralization", J. Acoust. Soc. Am. 145,
