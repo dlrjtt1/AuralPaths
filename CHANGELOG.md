@@ -4,6 +4,12 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Diffraction over rows of edges in sight of the source: the engine added a first-order term for every edge near its
+  boundary, and over 15 block rows at grazing incidence (BRAS RS7) these added up to 5–20 dB too much. Now, with
+  the source in sight, only the edge nearest to its boundary keeps its boundary term (plus the edges of a face that
+  reflects to the receiver), both engines: RS7 in sight −0.7 … −4.7 dB, round-robin median shape error
+  1.9 → 1.5 dB, other scenes unchanged or within 0.4 dB. Behind the first row still 5–11 dB too loud
+  (`validation/bras_rs.md` section 5).
 - Diffraction at thin plates: two faces back to back closer than 5 cm (a partition, a free-standing panel) now end
   in one thin-plate edge (n = 2). Before, behind such a box the first-order paths were blocked by the box itself:
   in BRAS RS5 given as geometry, 10 of 11 positions behind the partition got no sound. New opt-in

@@ -276,8 +276,11 @@ sound with first-order diffraction; with second-order diffraction (`"diffraction
 two edges, the hard-face coefficient halved at grazing incidence on the second edge after Kouyoumjian & Pathak,
 NASA CR-2401, 1974, [ntrs.nasa.gov](https://ntrs.nasa.gov/api/citations/19740020597/downloads/19740020597.pdf)) all 8
 are within −0.6 … +1.6 dB level bias and 2.3–2.8 dB mean absolute difference per 1/3-octave band. Over 15 low
-blocks at grazing incidence (RS7, a seat-dip set-up) the simulation is 5–20 dB too loud, with or without second
-order.
+blocks at grazing incidence (RS7, a seat-dip set-up) the first-order terms of the 30 block edges added up to 5–20
+dB too much; with the source in sight the engine now keeps the boundary term of one edge only (the nearest, plus
+the edges of a face that reflects to the receiver; an engineering rule, first-order UTD has no interaction between
+edges): −0.7 … −4.7 dB there, while behind the first block the simulation is still 5–11 dB too loud and the 500 Hz
+seat dip is not produced. Second order makes rows worse (7–31 dB too loud); it is for isolated thick obstacles.
 
 Not modelled: higher-order paths (diffraction combined with reflections, edge to edge), diffraction from edge
 end points, edges of objects the 2.5D model does not have (seats, balcony fronts, reflectors). The

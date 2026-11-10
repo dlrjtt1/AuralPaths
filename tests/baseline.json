@@ -38,7 +38,7 @@
  "diffraction": {
   "arrivals": {
    "tol": 0,
-   "value": 132
+   "value": 98
   },
   "max_energy_diff": {
    "max": 1e-08

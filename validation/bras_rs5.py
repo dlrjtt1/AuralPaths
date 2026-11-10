@@ -189,6 +189,7 @@ def main():
     G = scene_geometry()
     if a.variant in ("before", "box+floor+d2"):
         dif.THIN_M = 0.0
+    dif.LIT_SINGLE = a.variant != "before"
     E = dif.edges(G)
     taper = np.clip((10000 - f) / 2000, 0, 1)          # model evaluated to 8 kHz, tapered to 10 kHz
     rows, summ = [], []

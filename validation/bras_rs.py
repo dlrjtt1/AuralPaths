@@ -377,6 +377,7 @@ def run(root, name, cfg, variant, out):
     M = Mats(root, f)
     G = scene(name, cfg)
     dif.THIN_M = 0.0 if variant in ("before", "box_d2") else 0.05
+    dif.LIT_SINGLE = variant != "before"
     E = dif.edges(G)
     taper = np.clip((12000 - f) / 2000, 0, 1)
     rows, summ, onset_err = [], [], []

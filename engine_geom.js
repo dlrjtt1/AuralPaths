@@ -905,10 +905,25 @@ const GEOM = (() => {
       });
       const first = Ps || Qp, last = Pr || Qp, lr = nrm(sub(last, R)), lf = nrm(sub(first, S));
       const hw = [(last[0] - R[0]) / lr, (last[1] - R[1]) / lr, (last[2] - R[2]) / lr];
+      const sb = Math.min(Math.abs(ph - (ph0 + Math.PI)), Math.abs(ph - (Math.PI - ph0)), Math.abs(ph - ((2 * e.n - 1) * Math.PI - ph0)));
       out.push({ d: L, t: L / c, o: 1 + refl.length, dif: 1, refl, h: [hw[1], -hw[0], hw[2]], e: [(first[0] - S[0]) / lf, (first[1] - S[1]) / lf, (first[2] - S[2]) / lf],
-        ga, g, eb, dr: Dl.map((x) => x[0]), di: Dl.map((x) => x[1]) });
+        ga, g, eb, dr: Dl.map((x) => x[0]), di: Dl.map((x) => x[1]), edge: [e.i0, e.i1], sb });
     }
-    return out;
+    return direct && LIT_SINGLE ? litSingle(G, S, R, out) : out;
+  }
+  // in sight of the source: among the plain paths within LIT_NEAR of a boundary of their edge, keep one edge's
+  // boundary diffraction (the nearest) plus the edges of faces that reflect specularly to R (diffraction._lit_single)
+  const LIT_SINGLE = true, LIT_NEAR = 20 * Math.PI / 180;
+  function litSingle(G, S, R, out) {
+    const plain = out.map((q, i) => i).filter((i) => !out[i].refl.length && out[i].sb < LIT_NEAR);
+    if (plain.length < 2) return out;
+    const rf = new Map(), keep = new Set();
+    const refl = (k) => { if (!rf.has(k)) rf.set(k, !!reflPartner(G, S, R, k, [1])); return rf.get(k); };
+    for (const i of plain) { const [a, b] = out[i].edge; if (refl(a) || refl(b)) keep.add(i); }
+    const rest = plain.filter((i) => !keep.has(i));
+    if (rest.length) keep.add(rest.reduce((m, i) => (out[i].sb < out[m].sb ? i : m), rest[0]));
+    const pl = new Set(plain);
+    return out.filter((q, i) => !pl.has(i) || keep.has(i));
   }
 
   // second order: S -> edge 1 -> edge 2 -> R (same as diffraction.diffract2; see its docstring for the method)

@@ -36,6 +36,8 @@ import numpy as np
 DF = np.geomspace(16.0, 24000.0, 32)        # frequency grid of the complex coefficient (shared with the browser)
 MIN_ANGLE_DEG = 2.0                        # skip edges whose faces are within 2 deg of coplanar
 THIN_M = 0.05                              # faces closer than this, back to back, end in one thin-plate edge (n = 2)
+LIT_SINGLE = True                          # in sight of the source: boundary diffraction of one edge only (_lit_single)
+LIT_NEAR = math.radians(20.0)              # ... among the edges whose receiver lies within 20 deg of a boundary
 SQPI2 = math.sqrt(math.pi) / 2
 
 
@@ -435,8 +437,42 @@ def diffract(G, E, S, R, c, Rmat, air, bands, t_max=None, refl_order=0):
             eb[b] = float(np.mean(acc)) * ga[b] ** 2
         first, last = (Ps if Ps is not None else Qp), (Pr if Pr is not None else Qp)
         out.append(dict(d=L, t=L / c, h=(last - R) / np.linalg.norm(last - R), e=(first - S) / np.linalg.norm(first - S),
-                        ga=ga, D=D, eb=eb, g=np.sqrt(ed), edge=(e["i0"], e["i1"]), refl=refl))
+                        ga=ga, D=D, eb=eb, g=np.sqrt(ed), edge=(e["i0"], e["i1"]), refl=refl,
+                        sb=_sb_kind(n, ph, ph0)))
+    if LIT_SINGLE and not occluded(G, S, R):
+        out = _lit_single(G, S, R, out)
     return out
+
+
+def _sb_kind(n, ph, ph0):
+    """Angular distance (rad) of the receiver from the nearest shadow or reflection boundary of the edge:
+    phi = phi0 + pi, pi - phi0, (2n - 1) pi - phi0."""
+    return min(abs(ph - (ph0 + math.pi)), abs(ph - (math.pi - ph0)), abs(ph - ((2 * n - 1) * math.pi - ph0)))
+
+
+def _lit_single(G, S, R, out):
+    """With the direct sound in sight, among the plain paths whose receiver lies within LIT_NEAR of a boundary of
+    their edge (where the UTD term is large), keep the boundary diffraction of one edge only (the one nearest to
+    its boundary), plus the edges of a face that gives a specular reflection to R (a finite
+    reflector: its edge diffraction completes the truncated reflection). Over a row of parallel edges at grazing
+    incidence (seat rows, BRAS RS7) every edge contributes a term of up to half the direct sound and first-order
+    terms of independent edges add up to many times the direct sound, while the measurement shows the direct sound
+    nearly unchanged above 1 kHz (validation/bras_rs.md). Paths with reflections are kept. Engineering rule
+    (first-order UTD has no interaction between edges); checked on BRAS RS1 - RS7 (validation/bras_rs.md section 5)."""
+    plain = [i for i, q in enumerate(out) if not q["refl"] and q["sb"] < LIT_NEAR]
+    if len(plain) < 2:
+        return out
+    refl_face = {}
+    keep = set()
+    for i in plain:
+        e = out[i]["edge"]
+        if any(refl_face.setdefault(k, _refl(G, S, R, k, None) is not None) for k in e):
+            keep.add(i)
+    rest = [i for i in plain if i not in keep]
+    if rest:
+        keep.add(min(rest, key=lambda i: out[i]["sb"]))
+    near = set(plain)
+    return [q for i, q in enumerate(out) if i not in near or i in keep]
 
 
 # ---------------------------------------------------------------- second order: two edges in sequence

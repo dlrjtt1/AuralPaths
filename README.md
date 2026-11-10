@@ -47,7 +47,8 @@ By LABO 1557 (Dong-Gyun You).
   partition, in the range of the better of the two round-robin simulators that handled this scene. Reference scenes
   RS1–RS4 (reflections on floors, plates, arrays): spectral shape between the round-robin participants
   (`validation/bras_rs.md`); thick obstacles need `diffraction_order` 2 (BRAS RS6: within about 3 dB behind a 0.72 m
-  body); grazing incidence over seat rows is not modelled (too loud there).
+  body); behind seat rows at grazing incidence the simulation is
+  still 5–11 dB too loud and the seat dip is not produced.
 - Room-criteria check against two measured halls (Fratoni dataset, inputs from the authors' Odeon calibration,
   unchanged): raked lecture hall (ULH) EDT / T30 / C50 / Ts within about 1 JND at 500 Hz–4 kHz, T30 1–2 JND short
   at 125–250 Hz; elliptical domed hall (STC) T30 about 15 % too long at all bands (non-diffuse field; calibrate

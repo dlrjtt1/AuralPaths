@@ -24,9 +24,9 @@ round-robin participants had them.
 | RS2 1 m plate, rigid / absorbing | 15 / 15 | 1.3 / 1.5 dB | 1.3 / 1.3 dB | incl. 6 pairs behind the plate |
 | RS2 2 m plate, rigid / absorbing | 15 / 9 | 1.6 / 1.5 dB | 1.4 / 1.5 dB | one pair 7 cm inside the shadow boundary is 7 dB louder measured (positioning tolerance 5.5 cm, BRAS documentation) |
 | RS3 two parallel plates, 600 ms | 1 | 1.8 dB | 2.6 dB | see section 3 |
-| RS4 reflector array, on / off centre | 9 / 9 | 2.1 / 1.5 dB | 2.0 / 1.6 dB | |
+| RS4 reflector array, on / off centre | 9 / 9 | 1.8 / 1.5 dB | 2.4 / 1.2 dB | |
 | RS6 body 0.72 x 0.72 m | 9 | 4.1 dB | - | **4 of 8 positions behind the body get no sound**; with second-order diffraction 3.2 / 2.7 dB (section 4) |
-| RS7 15 blocks (seat dip) | 8 | 5.5 dB | 9.0 dB | **simulated 5 - 20 dB too loud** (section 5) |
+| RS7 15 blocks (seat dip) | 8 | 5.6 dB | 6.0 dB | in sight of the source -0.7 ... -4.7 dB (5 - 20 dB too loud before the fix of section 5); behind the first block 5 - 11 dB too loud |
 
 ## 2. Against the round-robin simulators (shape error on the 15 figures of SuppPub2)
 
@@ -45,14 +45,15 @@ round-robin participants had them.
 | S2-14 | RS2 1 m rigid | LS5-MP4 | 0.1 | - | 1.1 | 1.7 | 1.2 | 1.0 | 1.1 |
 | S2-15 | RS2 2 m rigid | LS5-MP4 | 0.2 | - | 1.4 | 2.3 | 1.4 | 1.4 | 1.1 |
 | S2-19 | RS3 | LS1-MP1 | 0.9 | 1.7 | 0.6 | 1.3 | 0.7 | 0.7 | 0.8 |
-| S2-22 | RS4 on centre | LS2-MP2 | 0.5 | 3.0 | 0.8 | 2.7 | - | - | 2.2 |
-| S2-23 | RS4 off centre | LS5-MP5 | 0.2 | 4.5 | 1.1 | 2.8 | - | - | 2.1 |
-| **median** | | | | **2.3** (9) | **1.0** (15) | **2.8** (15) | **1.3** (13) | **1.4** (13) | **1.9** (15) |
+| S2-22 | RS4 on centre | LS2-MP2 | 0.5 | 3.0 | 0.8 | 2.7 | - | - | 2.3 |
+| S2-23 | RS4 off centre | LS5-MP5 | 0.2 | 4.5 | 1.1 | 2.8 | - | - | 1.4 |
+| **median** | | | | **2.3** (9) | **1.0** (15) | **2.8** (15) | **1.3** (13) | **1.4** (13) | **1.5** (15) |
 
 All values in dB. Reading check: the round-robin measured curve against the measured RIR processed here (0.1 -
 0.9 dB, so the reading and the windowing agree). The round robin is anonymous; the letters are its own.
 
-AuralPaths ranks between the two groups: better than A and D, worse than C, E and F. In RS1 (rigid floor, direct
+AuralPaths ranks between the two groups: better than A and D, close to E and F (1.3 / 1.4), worse than C. (Before
+the fix of section 5 the median was 1.9 dB.) In RS1 (rigid floor, direct
 sound 30 - 60 degrees off the loudspeaker axis) the gap to C / E is largest; the loudspeaker directivity, which the
 participants modelled and this comparison does not, is the most likely cause (not tested: the Genelec 8020c data
 are a separate 1.17 GB BRAS archive).
@@ -62,8 +63,8 @@ are a separate 1.17 GB BRAS archive).
 | | RS2 (4 configs) | RS3 | RS4 on / off | round-robin figures |
 |---|---|---|---|---|
 | before 2026-11-10 (no thin-plate edges) | 1.3 - 1.7 | 2.0 | 1.7 / 1.7 | 1.9 |
-| current engine (thin-plate edges) | 1.3 - 1.6 | 1.8 | 2.1 / 1.5 | 1.9 |
-| without the Kirchhoff factor, with diffraction + reflection (`diffraction_refl` 1) | 1.3 - 1.6 | 0.9 | 1.7 / 1.5 | 1.8 |
+| current engine (thin-plate edges, one boundary edge in sight of the source, section 5) | 1.3 - 1.6 | 1.8 | 1.8 / 1.5 | 1.5 |
+| as current, without the Kirchhoff factor, with diffraction + reflection (`diffraction_refl` 1) | 1.3 - 1.6 | 0.9 | 1.7 / 1.5 | 1.5 |
 
 Shape error in dB. Free-standing plates get both the Kirchhoff-Fresnel factor on the specular reflection and UTD
 at their edges, which counts the edge effect twice in principle; the measured differences between the variants are
@@ -105,11 +106,28 @@ Checks of the method:
 - Cost: in the drawn fan-hall example 0.5 s per source-receiver pair in Python (105 arrivals), 38 s with
   `diffraction_refl` 1 as well (2549 arrivals).
 
-## 5. Not modelled: grazing incidence over rows (RS7)
+## 5. Grazing incidence over rows (RS7): fixed in sight of the source, not behind the rows
 
-Source and receivers just above the tops of 15 blocks 0.12 m deep (a seat-dip set-up). The engine treats the
-direct sound as unobstructed and adds single-edge diffraction at each block; the measured level is 5 - 20 dB lower.
-Second-order diffraction does not help: with it (and diffraction with floor reflections) the simulation is 7 - 28
-dB too loud, because the seat-dip attenuation comes from diffraction over many edges in sequence and from blocks
-narrower than the wavelength at low frequencies. **Levels and spectra over the audience at grazing incidence (seat
-rows, balcony fronts and stage risers seen from just above) are not reliable; the simulation is too loud there.**
+Source and receivers just above the tops of 15 blocks 0.12 m deep (a seat-dip set-up). Measured against the free
+field (same window): with the source in sight (LS2) the level above 1 kHz is within +-2 dB of the free field, with a
+dip of -7 ... -13 dB around 500 Hz (the seat dip) and +5 dB at 250 Hz; behind the first block (LS1) it is 8 - 17 dB
+below the free field above 500 Hz.
+
+The engine added one first-order diffraction term for each of the 30 block edges. Each lies near its edge's
+boundary, where the UTD term reaches half the direct sound, and terms of independent edges add up: 5 - 20 dB too
+loud. First-order UTD has no interaction between edges, so the engine now keeps, when the source is in sight, the
+boundary diffraction of one edge only (`diffraction._lit_single` / `litSingle` in engine_geom.js, both engines): among
+the plain paths whose receiver lies within 20 degrees of a boundary of its edge, the nearest one, plus the edges of a
+face that reflects specularly to the receiver (a finite reflector). Engineering rule. Effect:
+
+| | RS7 in sight (4 pairs) | RS7 behind the first block (4) | other scenes |
+|---|---|---|---|
+| level bias meas - sim, before | -7.9 ... -19.8 dB | -5.3 ... -11.0 dB | |
+| level bias meas - sim, now | -0.7 ... -4.7 dB | unchanged | RS1, RS2, RS3, RS5, RS6 unchanged within 0.1 dB; RS4 on centre shape 2.1 -> 1.8 dB but mean abs. difference 2.0 -> 2.4 dB, off centre 1.6 -> 1.2 dB; round-robin median 1.9 -> 1.5 dB |
+
+The remaining errors: the 500 Hz seat dip in sight of the source is not produced (no model for it), and behind the
+first block the simulation is still 5 - 11 dB too loud (the attenuation over the following rows needs diffraction
+over many edges in sequence). Second-order diffraction does not help over rows: with it the simulation is 7 - 31
+dB too loud (pairs of near-grazing edges add up the same way); use it for isolated thick obstacles only. In the
+drawn fan-hall example the rule reduces the diffracted arrivals of the 12 source-receiver pairs from 132 to 98.
+**Behind seat rows, balcony fronts or riser steps seen at grazing incidence the simulation is still too loud.**
