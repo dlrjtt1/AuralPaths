@@ -45,27 +45,37 @@ sys.path.insert(0, os.path.join(HERE, ".."))
 import brir_proto as bp                    # noqa: E402
 import validate_bras_cr as vb              # noqa: E402
 
-SCENES = {"CR3": "CR3 medium room (chamber music hall)", "CR4": "CR4 large room (auditorium)"}
+SCENES = {"CR2": "CR2 small room (seminar room)", "CR3": "CR3 medium room (chamber music hall)",
+          "CR4": "CR4 large room (auditorium)"}
 # CRn_BRIRs.sofa (EmitterPosition, ListenerPosition), room frame of the BRAS RIRs
-POS = {"CR3": dict(L=(7.84, 0.0, 1.23), LS={3: (-2.02, -1.5, 2.03), 4: (-3.32, -0.75, 2.03), 5: (-3.32, 0.75, 2.03),
+POS = {"CR2": dict(L=(0.0, 2.026, 1.23), LS={3: (1.498, -1.974, 1.026), 4: (0.758, -3.17, 1.026),
+                                             5: (-0.746, -3.17, 1.03), 6: (-1.502, -1.974, 0.816), 7: (0.0, -1.974, 1.5)}),
+       "CR3": dict(L=(7.84, 0.0, 1.23), LS={3: (-2.02, -1.5, 2.03), 4: (-3.32, -0.75, 2.03), 5: (-3.32, 0.75, 2.03),
                                              6: (-2.02, 1.5, 1.81), 7: (-2.02, 0.0, 2.5)}),
        "CR4": dict(L=(8.5, 0.0, 1.09), LS={3: (-1.5, -1.5, 1.03), 4: (-2.8, -0.75, 1.03), 5: (-2.8, 0.75, 1.03),
                                             6: (-1.5, 1.5, 0.82), 7: (-1.5, 0.0, 1.5)})}
+# direction the BRIR listener faces in the BRAS frame (CR2: listener view 270 deg, CR2_BRIR.png of the BRAS release)
+FACING = {"CR2": "-y", "CR3": "-x", "CR4": "-x"}
 OCT = [125, 250, 500, 1000, 2000, 4000]
 
 
-def rot(p):
-    """BRAS frame (listener looks along -x, left = -y) -> AuralPaths head frame (front +y, left -x)."""
+def rot(p, hall=None):
+    """BRAS frame -> AuralPaths head frame (front +y, left -x). Listener looking along -x (left = -y): (y, -x, z);
+    along -y (left = +x, CR2): (-x, -y, z)."""
+    if FACING.get(hall) == "-y":
+        return [-p[0], -p[1], p[2]]
     return [p[1], -p[0], p[2]]
 
 
-def rotate_obj(text):
-    """y-up OBJ: vertex (X, Y, Z) is (x, y, z) = (X, -Z, Y); x, y -> y, -x  means  (X, Y, Z) -> (-Z, Y, X)."""
+def rotate_obj(text, hall=None):
+    """y-up OBJ: vertex (X, Y, Z) is (x, y, z) = (X, -Z, Y); x, y -> y, -x  means  (X, Y, Z) -> (-Z, Y, X);
+    x, y -> -x, -y (CR2) means (X, Y, Z) -> (-X, Y, -Z). Same rotation as rot(p, hall)."""
+    m = FACING.get(hall) == "-y"
     out = []
     for line in text.splitlines():
         if line.startswith("v "):
             X, Y, Z = map(float, line.split()[1:4])
-            out.append(f"v {-Z:.6f} {Y:.6f} {X:.6f}")
+            out.append(f"v {-X:.6f} {Y:.6f} {-Z:.6f}" if m else f"v {-Z:.6f} {Y:.6f} {X:.6f}")
         else:
             out.append(line)
     return "\n".join(out) + "\n"
@@ -162,13 +172,13 @@ def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None, mater
             mats[k]["alpha"] = list(cal[k]["alpha"])
             if isinstance(cal[k].get("s"), list):
                 mats[k]["s_oct"] = list(cal[k]["s"])
-    obj = rotate_obj(open(os.path.join(scene, "Geometry", f"{hall}.obj"), encoding="utf-8", errors="ignore").read())
+    obj = rotate_obj(open(os.path.join(scene, "Geometry", f"{hall}.obj"), encoding="utf-8", errors="ignore").read(), hall)
     P = POS[hall]
     cfg = {"name": f"BRAS {hall} binaural check", "fs": fs, "c": 343.5,
            "room": {"dims_m": [10, 10, 5], "absorption_octave": {"values": [0.2] * 6}, "air_absorption": True},
-           "sources": {f"LS{k}": dict({"pos": rot(p)}, **({"coverage": coverage, "aim": aim_at(rot(p), rot(P["L"]))}
+           "sources": {f"LS{k}": dict({"pos": rot(p, hall)}, **({"coverage": coverage, "aim": aim_at(rot(p, hall), rot(P["L"], hall))}
                                                          if coverage else {})) for k, p in P["LS"].items()},
-           "receivers": {"MP6": rot(P["L"])},
+           "receivers": {"MP6": rot(P["L"], hall)},
            "geometry": {"mesh": {"obj": f"{hall}_rotated.obj", "obj_text": obj, "axes": "y-up", "groups": {k: k for k in mats}},
                         "materials": {k: {"alpha": list(map(float, v["alpha"])), "s": list(map(float, v["s_oct"]))}
                                       for k, v in mats.items()},
@@ -182,7 +192,7 @@ def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None, mater
     if k8:
         bal = k8_balloon(k8, [float(x) for x in bp.make_room(cfg, 0).octave_bands.centers])
         for k, p in P["LS"].items():
-            aim = aim_at(rot(p), rot(P["L"]))
+            aim = aim_at(rot(p, hall), rot(P["L"], hall))
             if k == 7:
                 aim["el"] = 0.0
             cfg["sources"][f"LS{k}"].update({"directivity": bal, "aim": aim})

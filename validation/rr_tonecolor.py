@@ -2,7 +2,7 @@
 Tone colour as in the round robin (Brinkmann et al. 2019, https://doi.org/10.1121/1.5096178, sec. II.D and III.B.2,
 Fig. 6): energetic differences between simulated and measured BRIRs in 37 auditory (gammatone) filter bands between
 80 Hz and 16 kHz, averaged across the source positions and both ears, head in neutral orientation, for the BRAS rooms
-CR3 and CR4 (five loudspeakers LS3 - LS7 to listener MP6).
+CR2, CR3 and CR4 (five loudspeakers LS3 - LS7 to listener MP6; rooms without simulated BRIRs are skipped).
 
     python validation/rr_tonecolor.py <BRAS folder> --sim out/rs/tc [--tag ""]
 
@@ -57,7 +57,9 @@ def main():
     fc = centres()
     ref = (fc >= 200) & (fc <= 1000)
     tot = []
-    for hall in ("CR3", "CR4"):
+    for hall in ("CR2", "CR3", "CR4"):
+        if not os.path.exists(os.path.join(a.sim, f"{hall}{a.tag}_LS7_sim.wav")):
+            continue
         D = []
         for k in range(3, 8):
             x, fs = sf.read(os.path.join(a.bras, SCENES[hall], "BRIRs", "wav", f"{hall}_BRIR_LS{k}_MP6_HATO0.wav"))
@@ -73,7 +75,7 @@ def main():
         print(f"{hall}: mean |difference averaged over sources and ears| {np.mean(np.abs(avg)):.1f} dB; "
               f"mean |difference| per source and ear {np.mean(np.abs(D)):.1f} dB")
         print("   band (Hz) / difference (dB): " + ", ".join(f"{f:.0f} {v:+.1f}" for f, v in zip(fc[::4], avg[::4])))
-    print(f"both rooms: {np.mean(np.abs(np.array(tot))):.1f} dB")
+    print(f"all rooms: {np.mean(np.abs(np.array(tot))):.1f} dB")
 
 
 if __name__ == "__main__":
