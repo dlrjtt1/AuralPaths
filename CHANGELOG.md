@@ -4,6 +4,12 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Round robin, all the objective comparisons of Brinkmann et al. 2019 (https://doi.org/10.1121/1.5096178) that do not
+  need listeners: room acoustical parameters of the three rooms (`validation/rr_extract_ra.py`,
+  `validation/rr_complex.py`), energy decay in the coupled rooms (`validation/rr_coupled.py`) and source
+  lateralization (`validation/rr_lateral.py`); results in `docs/BENCHMARK_*` sections 2.2 - 2.4. New mesh option
+  `"seeds"` (both engines): further points inside the room, for a coupled room behind a gap narrower than the voxel
+  band (in BRAS CR1 at 4.1 deg the flood fill from the source missed the reverberation chamber).
 - `docs/BENCHMARK_en.md` (`_ko`, `_ja`): all scores against public measured data on one page, with how to rerun
   them; a one-line summary with a link at the bottom of the page. `validation/bras_rs5.md` renamed to
   `validation/bras_rs5_engine.md` (it clashed with `bras_RS5.md` on case-insensitive file systems, e.g. macOS).

@@ -246,6 +246,8 @@ inward normal (n_z < -0.3 ceiling, > 0.3 floor, otherwise wall), for a tag that 
 Group names are matched as case-insensitive substrings of the OBJ "g" / "o" / "usemtl" names (the SketchUp ->
 Blender path writes the SketchUp tag into the group name, e.g. "_(Loose_Entity).004__(Loose_Entity)_Seats").
 "axes": "y-up" (Blender / SketchUp OBJ default) maps OBJ (x, y, z) to AuralPaths (x, -z, y); "z-up" keeps them.
+"seeds": [[x, y, z], ...] marks further points inside the room (same frame as the sources), for a space that is
+joined to the source's only through an opening narrower than the voxel band (a door ajar between coupled rooms).
 "shared_rays": true makes run.py trace rays once per source for all receivers (brir_proto.energy_hists) instead of
 once per source-receiver pair; faster for many seats, with a different (equally valid) random ray set per path.
 
@@ -331,7 +333,8 @@ def _newell_np(P):
 
 
 def voxel_room(V, T, seed, h=0.05, dilate=1):
-    """Flood-fill the free space connected to `seed`. Returns dict(origin, h, inside [bool grid], volume)."""
+    """Flood-fill the free space connected to `seed` (a point, or a list of points whose spaces are all room).
+    Returns dict(origin, h, inside [bool grid], volume)."""
     from scipy import ndimage
     lo, hi = V.min(0) - 3 * h, V.max(0) + 3 * h
     shape = tuple(np.ceil((hi - lo) / h).astype(int) + 1)
@@ -342,10 +345,13 @@ def voxel_room(V, T, seed, h=0.05, dilate=1):
     if dilate:
         solid = ndimage.binary_dilation(solid, iterations=dilate)
     lab, _ = ndimage.label(~solid)
-    s = tuple(np.floor((np.asarray(seed, float) - lo) / h).astype(int))
-    if solid[s]:
-        raise ValueError(f"mesh seed {seed} lies in the surface band; move it away from surfaces")
-    room = lab == lab[s]
+    seeds = [seed] if np.ndim(seed) == 1 else list(seed)
+    room = np.zeros(shape, bool)
+    for sd in seeds:
+        s = tuple(np.floor((np.asarray(sd, float) - lo) / h).astype(int))
+        if solid[s]:
+            raise ValueError(f"mesh seed {list(sd)} lies in the surface band; move it away from surfaces")
+        room |= lab == lab[s]
     if room[0, 0, 0]:
         raise ValueError("the mesh is not closed: the room leaks to the outside (gap wider than the voxel band)")
     vol = float(room.sum() + 0.5 * (ndimage.binary_dilation(room) & solid).sum()) * h ** 3
@@ -374,7 +380,7 @@ def build_mesh(geom, seed):
         V, F, names = simplify_mesh(V, F, names, int(spec["max_faces"]))
     T, owner = _tri_fan(F)
     h = float(spec.get("voxel", 0.05))
-    vr = voxel_room(V, T, seed, h)
+    vr = voxel_room(V, T, [list(seed)] + [list(map(float, p)) for p in spec.get("seeds", [])], h)
     off = 2.5 * h                                       # beyond the dilated surface band (1.5 h half-width)
     two_sided = bool(spec.get("two_sided", True))
     inflate = float(spec.get("inflate_mm", 1.0)) / 1000

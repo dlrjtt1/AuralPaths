@@ -14,8 +14,10 @@ that every hall is simulated equally well; the weak spots are listed in section 
 | Spectra of 15 reference cases of the 2019 round robin (reflections on floors, plates, arrays, parallel plates) | median shape error **1.5 dB**; the five participating programs with results there scored 1.0 - 2.8 dB | section 2 |
 | Single reflections and finite plates (BRAS RS1, RS2, RS4) | 1.2 - 3.4 dB mean abs. difference per 1/3-octave band | section 3 |
 | Diffraction behind a partition and behind a thick body (BRAS RS5, RS6) | 2.6 dB (RS5), 2.3 - 2.8 dB (RS6) mean abs. difference, with the diffraction options of section 3 | section 3 |
+| Rooms of the 2019 round robin (BRAS CR2 - CR4): T20, EDT, C80, D50 averaged over 10 source-receiver pairs, from the BRAS material data alone | mean error 2.2 - 4.0 JND; the six programs 1.3 - 6.4 JND (best of seven in CR3, second with C in CR4, sixth in CR2) | section 2.2 |
+| Coupled rooms (CR1), energy decay at 1 kHz | door 30.4 deg: 7.6 dB with the BRAS initial data, 1.7 dB with the fitted data (programs 2.5 - 7.5 dB); door 4.1 deg: 6.6 - 8.2 dB, worse than every program (4.1 - 5.1 dB) | section 2.3 |
 | Concert hall, 136 binaural source-seat pairs (Detmold Konzerthaus) | late spaciousness (IACC_L3) within 0.075 at 96 % of the pairs; EDT bias 0 - 3 %; C80 0.3 - 0.8 dB low | section 4 |
-| Known weak spots | sound just above seat rows behind the first row: 5 - 11 dB too loud; early IACC too low | section 5 |
+| Known weak spots | sound just above seat rows behind the first row: 5 - 11 dB too loud; early IACC too low; coupled rooms joined by a narrow gap | section 5 |
 
 Shape error: rms over 1/3-octave bands of simulated minus measured level after removing the mean difference.
 Mean abs. difference: absolute levels. The loudspeaker is modelled as a flat point source with its documented
@@ -31,11 +33,67 @@ computed here. Their spectra in the supplementary material (SuppPub2) were read 
 scored against the measured curve of each figure; AuralPaths against the measured impulse response, with the same
 windowing (the two measured curves agree within 0.1 - 0.9 dB).
 
+### 2.1 Reflection spectra
+
 | | A | C | D | E | F | AuralPaths |
 |---|---|---|---|---|---|---|
 | median shape error, dB (figures) | 2.3 (9) | 1.0 (15) | 2.8 (15) | 1.3 (13) | 1.4 (13) | **1.5** (15) |
 
 Per figure: [validation/bras_rs.md](../validation/bras_rs.md), section 2.
+
+### 2.2 Rooms: reverberation and clarity
+
+Scenes 9 - 11 of the round robin are BRAS CR2 (seminar room), CR3 (chamber music hall) and CR4 (auditorium). The
+paper's supplementary figure S3-1 (SuppPub3) shows T20, EDT, C80 and D50 in the octave bands 125 Hz - 4 kHz,
+averaged over the 10 source-receiver pairs, for the measurement and each program; the programs' values were read
+from the figure, the measured ones computed here from the BRAS impulse responses (they agree with the figure within
+0.1 - 0.4 JND). Score: mean absolute difference from the measurement in JND (5 % for T20 and EDT, 1 dB for C80,
+5 percentage points for D50, as in the figure; ISO 3382-1:2009 Annex A) over the 4 parameters x 6 bands. The score
+is defined here, not in the paper. AuralPaths uses the BRAS "initial" material data: the participants also had
+material data only, no measured responses (sec. II.C of the paper); the paper does not say which BRAS version of the
+data they received.
+
+| room | A | B | C | D | E | F | AuralPaths |
+|---|---|---|---|---|---|---|---|
+| CR2 seminar room | 5.5 | 1.8 | 3.0 | 1.9 | 3.5 | 3.3 | **4.0** |
+| CR3 chamber music hall | 6.4 | 4.9 | 3.6 | 2.9 | 4.4 | 4.6 | **2.8** |
+| CR4 auditorium | 3.5 | 4.3 | 2.2 | 1.3 | 2.5 | 2.4 | **2.2** |
+
+In CR2 the reverberation is 30 - 35 % too short from 250 Hz up with the initial data. With the BRAS "fitted" data
+(absorption adjusted to the measured reverberation times, so not a prediction) the score is 2.3 (CR2) and 1.2 (CR3).
+Ray tracing with 6000 rays and first-order image sources, flat point sources.
+
+### 2.3 Coupled rooms
+
+Scene 8 is BRAS CR1, a laboratory coupled to a reverberation chamber by a door. SuppPub2 figures S2-34 - S2-37 show
+the energy decay curve (1 kHz octave) for one source and two microphones, door open 4.1 deg and 30.4 deg; the
+curves were read from the vector graphics (the measured curve computed here agrees within 0.4 - 0.9 dB). Score: mean
+absolute EDC difference over 0 - 1.2 s down to -50 dB, defined here. Mean of the two microphones:
+
+| door | A | B | C | D | E | F | AuralPaths, initial data | AuralPaths, fitted data |
+|---|---|---|---|---|---|---|---|---|
+| 30.4 deg | 2.5 | 3.0 | 5.8 | 5.3 | 7.5 | 4.4 | **7.6** | **1.7** |
+| 4.1 deg | 4.5 | 4.5 | 5.0 | 5.1 | 4.6 | 4.1 | **8.2** | **6.6** |
+
+At 4.1 deg the late, slower decay from the chamber is missing: the door gap of a few centimetres passes too little
+energy in the ray tracing (40 000 rays instead of 6000 give the same result). The chamber had to be marked as part
+of the room with the new mesh option `seeds`, since the flood fill from the source does not pass such a gap.
+
+### 2.4 Source lateralization
+
+SuppPub3 section 2 (figure S3-33) estimates the left/right position of five loudspeakers heard at one seat in CR3
+and CR4 from the ITD of the direct sound. Mean absolute deviation from the geometric direction (ITD by
+cross-correlation, here; the round robin read its BRIR ITDs by eye):
+
+| hall | measured BRIR | AuralPaths | measured (figure) | A | B | C | E |
+|---|---|---|---|---|---|---|---|
+| CR3 | 0.8 deg | **1.3 deg** | 1.0 deg | 0.6 deg | 1.2 deg | 7.9 deg | 0.7 deg |
+| CR4 | 0.3 deg | **1.2 deg** | 0.7 deg | 0.2 deg | 1.2 deg | 7.2 deg | 0.6 deg |
+
+### 2.5 Not compared
+
+The listening tests of the round robin (plausibility and the SAQI quality ratings, SuppPub3 sections 3 - 4) need
+listeners and were not repeated.
 
 ## 3. BRAS reference scenes
 
@@ -77,17 +135,25 @@ accompanies the Detmold data (no primary source checked).
   frequencies with the default finite-reflector factor (RS3) and a ceiling-aisle flutter was underestimated in CR4.
 - Diffraction from edge end points, third and higher orders, plates between 5 cm and a few tenths of a metre thick:
   not checked.
+- **Coupled rooms joined by a narrow opening** (a door ajar): the late decay from the second room is missing (CR1,
+  4.1 deg). Mark the second room with the mesh option `seeds`; results with a wide opening are good.
+- **Material data matter more than the engine**: with the BRAS initial data, CR2 reverberates 30 - 35 % too short;
+  calibrate to a measured reverberation time where one exists.
 - No listening test yet: these checks are physical, not perceptual.
 
 ## 6. Rerun it
 
-Data: BRAS scene descriptions RS1 - RS7 and surface descriptions, Detmold SRIR database (download from the links
+Data: BRAS scene descriptions RS1 - RS7 and CR1 - CR4, surface descriptions, the paper's supplementary material, Detmold SRIR database (download from the links
 above). Then:
 
     python validation/bras_rs.py <BRAS folder> --scene RS2          # RS1 - RS4, RS6, RS7
     python validation/bras_rs5.py <BRAS folder> --variant thin+floor
     python validation/rr_extract.py <SuppPub2.pdf> out/rs/rr_curves.csv
     python validation/rr_compare.py
+    python validation/rr_extract_ra.py <SuppPub3.pdf> out/rs/rr_ra.csv
+    python validation/rr_complex.py <BRAS folder> CR3 --coeffs initial   # CR2, CR3, CR4; then --table out/rs
+    python validation/rr_coupled.py --extract <SuppPub2.pdf>; python validation/rr_coupled.py <BRAS folder>
+    python validation/rr_lateral.py <BRAS folder> --fabian <FABIAN HRIR SOFA> --ku100 hrir/KU100.sofa
     python validation/detmold_kh.py ...                              # see the script's docstring
 
 Outputs go to `out/` (not in the repository: they are derived from the measured data).

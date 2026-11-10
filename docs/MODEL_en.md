@@ -420,7 +420,8 @@ are wanted.
 - Mesh: faces have no reliable winding, so the room is found by a voxel flood fill (5 cm) from a source position;
   each face's inward normal is the side where the room is, faces with no room on either side are dropped, and
   every kept face also gets a back-facing twin 2 mm behind it (a ray that slips behind a face is reflected instead
-  of lost). OBJ group names select the materials (case-insensitive substring match, so the SketchUp tags that
+  of lost). A space joined to the source's room only by a gap narrower than the voxel band (a door ajar between
+  coupled rooms) is not reached by the fill; mark it with `"mesh": {"seeds": [[x, y, z]]}`. OBJ group names select the materials (case-insensitive substring match, so the SketchUp tags that
   Blender writes into the group names work). Large meshes are decimated (`max_faces`, fast-simplification, MIT).
   Image sources to order 1 only (pyroomacoustics enumerates N^order images), no diffraction (a tessellated curved
   surface has thousands of shallow edges that are not wedges), isotropic late field above 3000 surfaces.

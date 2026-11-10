@@ -209,11 +209,14 @@ const GEOM = (() => {
       const q = id(i, j, k);
       if (solid0[q] || (i > 0 && solid0[q - ny * nz]) || (i < nx - 1 && solid0[q + ny * nz]) || (j > 0 && solid0[q - nz]) || (j < ny - 1 && solid0[q + nz]) || (k > 0 && solid0[q - 1]) || (k < nz - 1 && solid0[q + 1])) solid[q] = 1;
     }
-    const si = Math.floor((seed[0] - lo[0]) / h), sj = Math.floor((seed[1] - lo[1]) / h), sk = Math.floor((seed[2] - lo[2]) / h);
-    if (si < 0 || sj < 0 || sk < 0 || si >= nx || sj >= ny || sk >= nz) throw new Error("the first source lies outside the model");
-    if (solid[id(si, sj, sk)]) throw new Error("the first source lies in the surface band of the model; move it away from surfaces");
     const room = new Uint8Array(N), queue = new Int32Array(N); let qh = 0, qt = 0;
-    room[id(si, sj, sk)] = 1; queue[qt++] = id(si, sj, sk);
+    (Array.isArray(seed[0]) ? seed : [seed]).forEach((sd, n) => {   // the first source, then any extra spec.seeds
+      const si = Math.floor((sd[0] - lo[0]) / h), sj = Math.floor((sd[1] - lo[1]) / h), sk = Math.floor((sd[2] - lo[2]) / h);
+      const what = n ? "seed " + JSON.stringify(sd) : "the first source";
+      if (si < 0 || sj < 0 || sk < 0 || si >= nx || sj >= ny || sk >= nz) throw new Error(what + " lies outside the model");
+      if (solid[id(si, sj, sk)]) throw new Error(what + " lies in the surface band of the model; move it away from surfaces");
+      if (!room[id(si, sj, sk)]) { room[id(si, sj, sk)] = 1; queue[qt++] = id(si, sj, sk); }
+    });
     while (qh < qt) {
       const q = queue[qh++], k = q % nz, j = ((q - k) / nz) % ny, i = (q - k - j * nz) / (ny * nz);
       const nb = [i > 0 ? q - ny * nz : -1, i < nx - 1 ? q + ny * nz : -1, j > 0 ? q - nz : -1, j < ny - 1 ? q + nz : -1, k > 0 ? q - 1 : -1, k < nz - 1 ? q + 1 : -1];
@@ -255,7 +258,8 @@ const GEOM = (() => {
     });
   }
   // spec = { obj (parsed by loadObj), groups: { substring: materialKey }, default, axes: "y-up" | "z-up", voxel (m),
-  //          twoSided (default true), inflateMm (default 1), maxVoxels (default 2e7) }, seed = first source position
+  //          twoSided (default true), inflateMm (default 1), maxVoxels (default 2e7),
+  //          seeds: further points inside the room, e.g. a coupled room behind a door ajar }, seed = first source position
   function buildMesh(spec, seed) {
     const obj = spec.obj, axes = spec.axes || "y-up";
     // page frame (optional): turn by rot degrees about z, then shift (the page moves the model to x, y, z >= 0)
@@ -269,7 +273,7 @@ const GEOM = (() => {
     // voxel size: as given, but never more than 2.5 x maxVoxels cells (browser memory); auto: >= 5 cm within maxVoxels
     const box = (ext[0] + 0.3) * (ext[1] + 0.3) * (ext[2] + 0.3), mv = spec.maxVoxels || 2e7;
     const h = spec.voxel ? Math.max(spec.voxel, Math.cbrt(box / (2.5 * mv))) : Math.max(0.05, Math.cbrt(box / mv));
-    const vx = voxelRoom(V, T, seed, h), off = 2.5 * h, inflate = (spec.inflateMm == null ? 1 : spec.inflateMm) / 1000, twoSided = spec.twoSided !== false;
+    const vx = voxelRoom(V, T, [seed].concat(spec.seeds || []), h), off = 2.5 * h, inflate = (spec.inflateMm == null ? 1 : spec.inflateMm) / 1000, twoSided = spec.twoSided !== false;
     const triOf = new Map(); owner.forEach((k, i) => { if (!triOf.has(k)) triOf.set(k, []); triOf.get(k).push(T[i]); });
     const S = [], unmatched = new Set(); let dropped = 0;
     obj.F.forEach((f, k) => {
