@@ -171,8 +171,14 @@ def _metrics(x, fs):
         mid = len(r) - 1
         return float(np.max(np.abs(c[mid - m:mid + m + 1])) / n)
     out = {"IACC_E": iacc(x[:n80]), "IACC_L": iacc(x[n80:]), "IACC_80_200": iacc(x[n80:int(0.2 * fs)])}
+    # per octave band 500 Hz - 2 kHz, averaged: independent of the loudspeaker's spectrum, which the broadband values
+    # weight (the measured IRs include the KH 120 response, the simulation a flat source)
+    xb = {fc: sosfiltfilt(butter(4, [fc / 2 ** 0.5, fc * 2 ** 0.5], "band", fs=fs, output="sos"), x, axis=0)
+          for fc in (500, 1000, 2000)}
+    out["IACC_E3"] = float(np.mean([iacc(y[:n80]) for y in xb.values()]))
+    out["IACC_L3"] = float(np.mean([iacc(y[n80:]) for y in xb.values()]))
     for fc in (500, 1000, 2000):
-        e = (sosfiltfilt(butter(4, [fc / 2 ** 0.5, fc * 2 ** 0.5], "band", fs=fs, output="sos"), x, axis=0) ** 2).sum(1)
+        e = (xb[fc] ** 2).sum(1)
         out[f"C80_{fc}"] = float(10 * np.log10(e[:n80].sum() / e[n80:].sum()))
         s = np.cumsum(e[::-1])[::-1]
         s = 10 * np.log10(s / s[0] + 1e-30)
