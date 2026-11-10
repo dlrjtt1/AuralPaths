@@ -60,7 +60,26 @@ list the unmodelled steel structure behind the ceiling panels).
   predictive. The ways to get it right at such a position are geometry detail or measured data (e.g. a measured
   binaural late part).
 
-## 5. Consequence for use
+## 5. Is CR4 typical? Another concert hall (2026-11-10)
+
+Detmold Konzerthaus (about 600 seats), dummy-head BRIRs of the dense receiver grid, Set C of the Detmold SRIR
+database (Detmold University of Music, https://zenodo.org/records/4116247, CC BY 4.0), stage sources S2 (35 seats)
+and S3 (12 seats), same analysis as above:
+
+| | IACC 80 - 200 ms | same, above 400 Hz | IACC_L |
+|---|---|---|---|
+| Detmold, seats near the centre line | 0.15 - 0.18 (0.10 - 0.20) | 0.06 - 0.07 | 0.15 - 0.17 |
+| Detmold, other seats | 0.16 - 0.17 (0.09 - 0.26) | 0.07 - 0.08 | 0.16 - 0.17 |
+| BRAS CR3 measured | 0.09 - 0.13 | | 0.09 - 0.12 |
+| BRAS CR4 measured | 0.30 - 0.43 | 0.19 - 0.33 | 0.23 - 0.38 |
+| AuralPaths (CR3, CR4) | 0.08 - 0.10 | 0.04 - 0.06 | 0.07 - 0.10 |
+
+No Detmold seat reaches 0.30 in the 80 - 200 ms window; above 400 Hz the late field there is close to diffuse, like
+CR3 and like the simulation. CR4 is the exception (two halls of three), not the rule. The broadband values of
+Detmold are somewhat higher than the simulation (0.15 - 0.17 vs 0.07 - 0.10), mostly below 400 Hz; different
+dummy heads (Detmold vs FABIAN) make a part of that.
+
+## 6. Consequence for use
 
 A listener in an aisle under a flat hard ceiling can hear a vertical flutter echo (here about 85 - 100 ms and
 170 ms) that the simulation reproduces in timing but underestimates in level; late spaciousness (IACC_L) is then
