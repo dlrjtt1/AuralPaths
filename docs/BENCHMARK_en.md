@@ -17,7 +17,7 @@ that every hall is simulated equally well; the weak spots are listed in section 
 | Rooms of the 2019 round robin (BRAS CR2 - CR4): T20, EDT, C80, D50 averaged over 10 source-receiver pairs, from the BRAS material data alone | mean error 2.2 - 4.0 JND; the six programs 1.3 - 6.4 JND (best of seven in CR3, second with C in CR4, sixth in CR2) | section 2.2 |
 | Coupled rooms (CR1), energy decay at 1 kHz | door 30.4 deg: 7.6 dB with the BRAS initial data, 1.7 dB with the fitted data (programs 2.5 - 7.5 dB); door 4.1 deg: 6.6 - 8.2 dB, worse than every program (4.1 - 5.1 dB) | section 2.3 |
 | Concert hall, 136 binaural source-seat pairs (Detmold Konzerthaus) | late spaciousness (IACC_L3) within 0.075 at 96 % of the pairs; EDT bias 0 - 3 %; C80 0.3 - 0.8 dB low | section 4 |
-| Known weak spots | sound just above seat rows behind the first row: 5 - 11 dB too loud; early IACC too low; coupled rooms joined by a narrow gap | section 5 |
+| Known weak spots | sound just above seat rows behind the first row: 5 - 11 dB too loud; early IACC too low; coupled rooms joined by a narrow gap (late decay 13 dB low) | section 5 |
 
 Shape error: rms over 1/3-octave bands of simulated minus measured level after removing the mean difference.
 Mean abs. difference: absolute levels. The loudspeaker is modelled as a flat point source with its documented
@@ -43,11 +43,11 @@ The numbers for the programs are quoted from the paper or read from its suppleme
 |---|---|---|
 | Spectra of the simple scenes (Figs. 1 - 3, SuppPub2) | compared by eye only; no number | no number either; our shape error in 2.1 |
 | Coupled rooms, 1 kHz EDC, door 30.4 deg (Fig. 4) | measured transition "at approximately t = 0.3 s"; most programs "only a weakly double sloped EDC"; A both decay rates but the wrong transition time | double slope with the fitted data: transition 0.37 - 0.40 s (measured 0.25 - 0.28 s; programs 0.40 - 0.55 s), late decay rate T = 2.9 - 3.0 s (measured 3.7 s; programs 1.7 - 2.1 s, A 4.4 s). With the initial data like most programs: 0.54 - 0.58 s, 2.0 - 2.2 s |
-| Coupled rooms, door 4.1 deg (SuppPub2) | figures only | no second slope (single decay, T = 1.1 - 1.4 s; measured late T 4.0 - 4.2 s) |
+| Coupled rooms, door 4.1 deg (SuppPub2) | figures only | second slope about 13 dB too low: EDC -51 ... -53 dB at 1.0 s (measured -38 dB), so within the figure's range (down to -50 dB) a single decay with T = 1.1 - 1.4 s (measured late T 4.0 - 4.2 s) |
 | T20, mean of 10 source-receiver pairs, octave bands (Fig. 5, S3-1) | measured T20 "on average, overestimated by 58% (125 Hz) and 35% (250 Hz)"; at 500 Hz - 2 kHz "still above the JND in most cases" | +34 % (125 Hz), +7 % (250 Hz), -6 / -12 / -20 / -17 % (500 Hz - 4 kHz), mean over the three rooms; 14 of 18 room-bands beyond the 5 % JND (programs 14 - 17). Read from S3-1, the six programs average +58 % and +35 %, as the paper says |
 | Correlation of measured and simulated parameters over the 10 pairs, 1 kHz | not significant, "with the exception of C80 and D50" in the large room (r = 0.7 - 0.9) | the same pattern: large room C80 r = 0.77, D50 r = 0.85 (p < 0.05); all others not significant |
 | Tone colour: energy differences in 37 gammatone bands 80 Hz - 16 kHz, BRIRs, mean over sources and ears (Fig. 6) | mean error E 1.3 dB, B and C 2.2 dB, A 3.2 dB | CR2 1.4 dB, CR3 1.4 dB, CR4 1.4 dB (FABIAN HRIRs, fitted materials, K8 directivity) |
-| ITD of the direct sound (discussion) | "well preserved in the simulations (except for C)" | within a few microseconds; lateralization 1.2 - 1.3 deg from the geometric direction (2.4) |
+| ITD of the direct sound (discussion; lateralization in SuppPub3 Fig. S3-33) | "well preserved in the simulations (except for C)"; mean absolute lateralization error A 0.2 - 0.8, B 1.0 - 1.2, E 0.6 - 0.9, C 7.2 - 14.2 deg | 0.3 - 0.6 deg (2.4) |
 | Authenticity, plausibility, SAQI (listening tests, Figs. 7 - 10) | no program authentic; B, C, E plausible | not tested |
 
 The paper leaves some details open; choices made here: the transition time and decay rates are from a two-line fit
@@ -96,20 +96,28 @@ absolute EDC difference over 0 - 1.2 s down to -50 dB, defined here. Mean of the
 | 30.4 deg | 2.5 | 3.0 | 5.8 | 5.3 | 7.5 | 4.4 | **7.6** | **1.7** |
 | 4.1 deg | 4.5 | 4.5 | 5.0 | 5.1 | 4.6 | 4.1 | **8.2** | **6.6** |
 
-At 4.1 deg the late, slower decay from the chamber is missing: the door gap of a few centimetres passes too little
-energy in the ray tracing (40 000 rays instead of 6000 give the same result). The chamber had to be marked as part
-of the room with the new mesh option `seeds`, since the flood fill from the source does not pass such a gap.
+At 4.1 deg the late, slower decay from the chamber comes out about 13 dB too low (EDC at 1.0 s: -51 ... -53 dB,
+measured -38 dB; 40 000 rays, three ray sets), so it only shows below the range of the figure. This is not ray
+noise and not a closed gap: the chamber itself fills as expected (its level is 17 dB below the laboratory's), and the
+energy that returns agrees within a few dB with the statistical two-room estimate for the opening of the model (about
+0.2 m2). The measured coupling is stronger than the modelled gap alone gives; why (sound through the door leaf,
+other leaks, diffraction at the slit) was not examined. The chamber had to be marked as part of the room with the
+new mesh option `seeds`, since the flood fill from the source does not pass such a gap.
 
 ### 2.4 Source lateralization
 
-SuppPub3 section 2 (figure S3-33) estimates the left/right position of five loudspeakers heard at one seat in CR3
-and CR4 from the ITD of the direct sound. Mean absolute deviation from the geometric direction (ITD by
-cross-correlation, here; the round robin read its BRIR ITDs by eye):
+SuppPub3 section 2 (figure S3-33) estimates the left/right position of five loudspeakers heard at one seat from
+the ITD of the direct sound, and prints the mean absolute deviation from the geometric direction per program. Here
+the ITD is taken by cross-correlation (the round robin read its BRIR ITDs by eye); AuralPaths rendered with the
+FABIAN HRIRs, as the programs were:
 
-| hall | measured BRIR | AuralPaths | measured (figure) | A | B | C | E |
+| room | measured BRIR, here | measured (figure) | A | B | C | E | AuralPaths |
 |---|---|---|---|---|---|---|---|
-| CR3 | 0.8 deg | **1.3 deg** | 1.0 deg | 0.6 deg | 1.2 deg | 7.9 deg | 0.7 deg |
-| CR4 | 0.3 deg | **1.2 deg** | 0.7 deg | 0.2 deg | 1.2 deg | 7.2 deg | 0.6 deg |
+| CR2 | 1.4 deg | 2.3 deg | 0.8 deg | 1.0 deg | 14.2 deg | 0.9 deg | **0.6 deg** |
+| CR3 | 0.8 deg | 1.0 deg | 0.6 deg | 1.2 deg | 7.9 deg | 0.7 deg | **0.3 deg** |
+| CR4 | 0.3 deg | 0.7 deg | 0.2 deg | 1.2 deg | 7.2 deg | 0.6 deg | **0.5 deg** |
+
+Rendered with the KU100 HRIRs instead (the page's default head), the deviation is 1.2 - 1.3 deg (CR3, CR4).
 
 ### 2.5 Not compared
 
@@ -156,7 +164,7 @@ accompanies the Detmold data (no primary source checked).
   frequencies with the default finite-reflector factor (RS3) and a ceiling-aisle flutter was underestimated in CR4.
 - Diffraction from edge end points, third and higher orders, plates between 5 cm and a few tenths of a metre thick:
   not checked.
-- **Coupled rooms joined by a narrow opening** (a door ajar): the late decay from the second room is missing (CR1,
+- **Coupled rooms joined by a narrow opening** (a door ajar): the late decay from the second room is about 13 dB too low (CR1,
   4.1 deg). Mark the second room with the mesh option `seeds`; results with a wide opening are good.
 - **Material data matter more than the engine**: with the BRAS initial data, CR2 reverberates 30 - 35 % too short;
   calibrate to a measured reverberation time where one exists.

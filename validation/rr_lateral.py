@@ -1,10 +1,13 @@
 """
 Source lateralization as in the round robin (Brinkmann et al. 2019, https://doi.org/10.1121/1.5096178, SuppPub3
 section 2, figure S3-33): the left/right position of each source estimated from the ITD of the direct sound, compared
-with the position given by the scene geometry, for the five loudspeakers LS3 - LS7 heard at MP6 in BRAS CR3 and CR4.
+with the position given by the scene geometry, for the five loudspeakers LS3 - LS7 heard at MP6 in BRAS CR2 - CR4.
+The figure prints the mean absolute deviations of the round robin: small room Ref 2.3, A 0.8, B 1, C 14.2, E 0.9;
+medium room Ref 1, A 0.6, B 1.2, C 7.9, E 0.7; large room Ref 0.7, A 0.2, B 1.2, C 7.2, E 0.6 (degrees).
 
     python validation/rr_lateral.py <BRAS folder> --fabian <FABIAN HRIR SOFA> --ku100 hrir/KU100.sofa
-        [--sim validation]          (folder with bras_brir_CRn_FABIAN_K8data_cal16_LSk_sim.wav from check_bras_brir.py)
+        [--sim validation] [--pattern "bras_brir_{hall}_FABIAN_K8data_cal16_LS{k}_sim.wav"] [--sim-hrir ku100|fabian]
+        (simulated BRIRs from check_bras_brir.py and the HRIR set they were rendered with)
 
 ITD: on the 10 times upsampled impulse response low-passed at 3 kHz (8th-order Butterworth), as in SuppPub3; then
 either the onset of each ear at -20 dB re its maximum (--mode onset, the round robin's rule for the HRIRs; it read
@@ -27,7 +30,7 @@ from scipy import signal
 HERE = os.path.dirname(os.path.abspath(__file__))
 MODE = "xcorr"           # "onset" (the round robin's rule for HRIRs) or "xcorr" (cross-correlation, +-1 ms)
 sys.path[:0] = [HERE]
-from check_bras_brir import POS, SCENES     # noqa: E402
+from check_bras_brir import POS, SCENES, rot     # noqa: E402
 
 
 def itd(x, fs, n=None):
@@ -72,18 +75,22 @@ def main():
     ap.add_argument("--ku100", required=True)
     ap.add_argument("--sim", default=HERE)
     ap.add_argument("--mode", default="xcorr", choices=["xcorr", "onset"])
+    ap.add_argument("--pattern", default="bras_brir_{hall}_FABIAN_K8data_cal16_LS{k}_sim.wav")
+    ap.add_argument("--sim-hrir", default="ku100", choices=["ku100", "fabian"])
     a = ap.parse_args()
     global MODE
     MODE = a.mode
     lines = ["| hall | source | geometry (deg) | measured BRIR (deg) | AuralPaths (deg) |", "|---|---|---|---|---|"]
     summ = []
-    for hall in ("CR3", "CR4"):
+    for hall in ("CR2", "CR3", "CR4"):
         P = POS[hall]
-        L = np.array(P["L"])
+        if not os.path.isdir(os.path.join(a.bras, SCENES[hall], "BRIRs", "wav")):
+            continue
+        L = np.array(rot(P["L"], hall))                             # head frame: front +y, left -x
         dm, ds = [], []
         for k, p in P["LS"].items():
-            d = np.array(p) - L
-            az_g = float(np.degrees(np.arctan2(-d[1], -d[0])))     # listener faces -x, left = -y
+            d = np.array(rot(p, hall)) - L
+            az_g = float(np.degrees(np.arctan2(-d[0], d[1])))      # positive = left
             el = float(np.degrees(np.arctan2(d[2], np.hypot(d[0], d[1]))))
             x, fs = sf.read(os.path.join(a.bras, SCENES[hall], "BRIRs", "wav", f"{hall}_BRIR_LS{k}_MP6_HATO0.wav"))
             x = x.T
@@ -91,13 +98,13 @@ def main():
             seg = x[:, max(0, on - int(0.001 * fs)): on + int(0.003 * fs)]
             azF, itF, _ = hrir_table(a.fabian, el)
             az_m = az_from_itd(itd(seg, fs), azF, itF)
-            simf = glob.glob(os.path.join(a.sim, f"bras_brir_{hall}_FABIAN_K8data_cal16_LS{k}_sim.wav"))
+            simf = glob.glob(os.path.join(a.sim, a.pattern.format(hall=hall, k=k)))
             az_s = np.nan
             if simf:
                 y, fs2 = sf.read(simf[0])
                 y = y.T
                 on2 = int(np.argmax(np.abs(y).max(0) > 0.1 * np.abs(y).max()))
-                azK, itK, _ = hrir_table(a.ku100, el)
+                azK, itK, _ = hrir_table(a.fabian if a.sim_hrir == "fabian" else a.ku100, el)
                 az_s = az_from_itd(itd(y[:, max(0, on2 - int(0.001 * fs2)): on2 + int(0.003 * fs2)], fs2), azK, itK)
             dm.append(abs(az_m - az_g)); ds.append(abs(az_s - az_g))
             lines.append(f"| {hall} | LS{k} | {az_g:+.1f} | {az_m:+.1f} | {az_s:+.1f} |")
