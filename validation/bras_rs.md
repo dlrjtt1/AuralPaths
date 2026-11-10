@@ -25,8 +25,8 @@ round-robin participants had them.
 | RS2 2 m plate, rigid / absorbing | 15 / 9 | 1.6 / 1.5 dB | 1.4 / 1.5 dB | one pair 7 cm inside the shadow boundary is 7 dB louder measured (positioning tolerance 5.5 cm, BRAS documentation) |
 | RS3 two parallel plates, 600 ms | 1 | 1.8 dB | 2.6 dB | see section 3 |
 | RS4 reflector array, on / off centre | 9 / 9 | 2.1 / 1.5 dB | 2.0 / 1.6 dB | |
-| RS6 body 0.72 x 0.72 m | 9 | 4.1 dB | - | **4 of 8 positions behind the body get no sound** (section 4) |
-| RS7 15 blocks (seat dip) | 8 | 5.5 dB | 9.0 dB | **simulated 5 - 20 dB too loud** (section 4) |
+| RS6 body 0.72 x 0.72 m | 9 | 4.1 dB | - | **4 of 8 positions behind the body get no sound**; with second-order diffraction 3.2 / 2.7 dB (section 4) |
+| RS7 15 blocks (seat dip) | 8 | 5.5 dB | 9.0 dB | **simulated 5 - 20 dB too loud** (section 5) |
 
 ## 2. Against the round-robin simulators (shape error on the 15 figures of SuppPub2)
 
@@ -76,14 +76,40 @@ too little. At 1 and 4 kHz the arrival-by-arrival differences scatter by +-10 - 
 (overlapping arrivals of the two image series; not analysed further). The whole-window spectrum is dominated by the
 first arrivals, hence the small shape errors above.
 
-## 4. Not modelled: thick obstacles and grazing incidence over rows (RS6, RS7)
+## 4. Thick obstacles (RS6): second-order diffraction (added 2026-11-10)
 
-- RS6: sound reaches a receiver behind a 0.72 m thick body only over two edges in sequence (top front, top back).
-  The engine has first-order diffraction only, so 4 of the 8 positions behind the body get nothing; the others get
-  one edge's path and are 1.4 - 6 dB off.
-- RS7: source and receivers just above the tops of 15 blocks (a seat-dip set-up). The engine treats the direct
-  sound as unobstructed and adds single-edge diffraction at each block; the measured level is 5 - 20 dB lower (the
-  seat-dip attenuation needs diffraction over many edges in sequence).
-- Consequence for use: levels and spectra **over the audience at grazing incidence** (seat rows, balcony fronts,
-  stage risers seen from just above) are not reliable; the simulation is too loud there. Double diffraction would be
-  the next step (not started).
+Before, the engine had first-order diffraction only: behind the 0.72 m body 4 of the 8 positions got no sound
+(the path needs both top edges in sequence), the others were 1.4 - 6 dB off. New: `diffraction.diffract2` /
+`GEOM.diffract2` (opt-in, `"geometry": {"diffraction_order": 2}`), UTD applied to the sequence of two edges with
+the hard-face coefficient halved at grazing incidence on the second edge (Kouyoumjian & Pathak, NASA CR-2401,
+1974, https://ntrs.nasa.gov/api/citations/19740020597/downloads/19740020597.pdf, sec. III.A). Variant `d2` of
+`validation/bras_rs.py` (second order, diffraction with one floor reflection before / after, no Kirchhoff factor):
+
+| pairs | level bias meas - sim | mean abs. difference | shape error |
+|---|---|---|---|
+| 8 behind the body | -0.6 ... +1.6 dB | 2.3 - 2.8 dB | 3.0 - 3.5 dB |
+| 1 with line of sight 8 cm above the top | +0.3 dB | 2.7 dB (3.4 dB before) | 4.0 dB |
+
+Checks of the method:
+- Without the grazing factor 1/2 the four positions with source and receiver below the top are 5 - 6.5 dB too
+  loud, as the factor predicts.
+- With the Kirchhoff factor on the specular reflection off the 0.72 m top, the pair with line of sight drops to
+  -5.0 dB (both the factor and the UTD reflection terms account for the finite face); without it +0.3 dB. The
+  engine default keeps the factor (section 3); for scenes like this, `d2` drops it.
+- The RS5 partition given as a 25 mm box with second-order diffraction over its two top edges (instead of one
+  thin-plate edge; `validation/bras_rs5.py --variant box+floor+d2`) is 4 - 10 dB too loud behind it: the product
+  of two UTD coefficients does not reduce to one knife edge when the edges are much closer than a wavelength (the
+  w -> 0 limit discussed by Chu, Stanton & Pierce 2007, https://doi.org/10.1121/1.2783001). Plates thinner than
+  5 cm therefore stay thin-plate edges; between 5 cm and a few tenths of a metre the second-order result has not
+  been checked.
+- Cost: in the drawn fan-hall example 0.5 s per source-receiver pair in Python (105 arrivals), 38 s with
+  `diffraction_refl` 1 as well (2549 arrivals).
+
+## 5. Not modelled: grazing incidence over rows (RS7)
+
+Source and receivers just above the tops of 15 blocks 0.12 m deep (a seat-dip set-up). The engine treats the
+direct sound as unobstructed and adds single-edge diffraction at each block; the measured level is 5 - 20 dB lower.
+Second-order diffraction does not help: with it (and diffraction with floor reflections) the simulation is 7 - 28
+dB too loud, because the seat-dip attenuation comes from diffraction over many edges in sequence and from blocks
+narrower than the wavelength at low frequencies. **Levels and spectra over the audience at grazing incidence (seat
+rows, balcony fronts and stage risers seen from just above) are not reliable; the simulation is too loud there.**

@@ -38,15 +38,16 @@ By LABO 1557 (Dong-Gyun You).
   positions): `examples/bras_cr3/`.
 - Drawn halls are 2.5D (the cross-section is the same across the width); 3D models get image sources to order 2
   (browser; order 1 in Python) and no diffraction (browser and Python ray tracers agree within about 2 % in T30 on two real halls); diffraction
-  at one edge per path (optionally with one reflection before and after it), no double diffraction and no seat-dip
-  effect; scattering as a random (Lambert) model; nearest-direction HRIRs; non-individual (dummy-head) HRTFs.
+  at one edge per path (optionally with one reflection before and after it, or two edges in sequence with
+  `diffraction_order` 2), no seat-dip effect; scattering as a random (Lambert) model; nearest-direction HRIRs; non-individual (dummy-head) HRTFs.
 - Diffraction check against BRAS scene RS5 (a 2.07 m partition on a hard floor, 16 positions): mean absolute
   difference 1.8 dB in third-octave bands 500 Hz–2 kHz (2.2 dB at the 11 shadow positions). This is one simple
   scene, not a measure of whole-hall accuracy. Details: `validation/`, `docs/MODEL_en.md`. The same scene given to
   the engine as geometry (`validation/bras_rs5.md`): 2.1–2.7 dB mean absolute difference at 125 Hz–4 kHz behind the
   partition, in the range of the better of the two round-robin simulators that handled this scene. Reference scenes
   RS1–RS4 (reflections on floors, plates, arrays): spectral shape between the round-robin participants
-  (`validation/bras_rs.md`); thick obstacles and grazing incidence over seat rows are not modelled (too loud there).
+  (`validation/bras_rs.md`); thick obstacles need `diffraction_order` 2 (BRAS RS6: within about 3 dB behind a 0.72 m
+  body); grazing incidence over seat rows is not modelled (too loud there).
 - Room-criteria check against two measured halls (Fratoni dataset, inputs from the authors' Odeon calibration,
   unchanged): raked lecture hall (ULH) EDT / T30 / C50 / Ts within about 1 JND at 500 Hz–4 kHz, T30 1–2 JND short
   at 125–250 Hz; elliptical domed hall (STC) T30 about 15 % too long at all bands (non-diffuse field; calibrate

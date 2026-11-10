@@ -17,6 +17,12 @@ files.
   (1.0–2.8 dB), without the loudspeaker directivity they had. Not modelled: thick obstacles (RS6: 4 of 8 positions
   behind a 0.72 m body get no sound) and grazing incidence over rows (RS7: 5–20 dB too loud, no seat dip).
   Thin-plate edges are no longer found where another surface meets the edge or inside a panel (mesh twin faces).
+- Second-order edge diffraction (two edges in sequence, e.g. over a thick obstacle), opt-in with
+  `"geometry": {"diffraction_order": 2}`, both engines (new regression check `diffraction_order2`): UTD on the edge
+  sequence with the hard-face coefficient halved at grazing incidence (Kouyoumjian & Pathak 1974). BRAS RS6 (0.72 m
+  body on a floor): the 4 positions behind it that got no sound now agree with the other 4 within −0.6 … +1.6 dB
+  level bias, 2.3–2.8 dB mean absolute difference per 1/3-octave band. Does not fix the seat dip (RS7) and is not
+  for plates thinner than 5 cm (those stay thin-plate edges).
 - BRAS binaural check with the FABIAN HRIRs of the BRAS release (`tools/fabian_to_sofa.py`) and the K8 on-axis
   response: the 2–4 kHz spectrum difference (−6 … −13 dB with the KU100) drops to within 1.4 dB, ITD within 5 µs;
   low IACC_E3 and C80 remain (room model). Stimulus builder and protocol draft for a listening test

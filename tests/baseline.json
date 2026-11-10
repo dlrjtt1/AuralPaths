@@ -44,6 +44,15 @@
    "max": 1e-08
   }
  },
+ "diffraction_order2": {
+  "arrivals": {
+   "tol": 0,
+   "value": 110
+  },
+  "max_energy_diff": {
+   "max": 1e-08
+  }
+ },
  "diffraction_plate": {
   "arrivals": {
    "tol": 0,

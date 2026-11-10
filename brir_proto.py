@@ -615,7 +615,8 @@ def diffraction_on(cfg):
 
 
 def diffraction_arrivals(cfg, src, rec, centers, air, t_max):
-    """First-order UTD edge diffraction (diffraction.py) from source src to receiver rec, arrivals up to t_max (s).
+    """UTD edge diffraction (diffraction.py) from source src to receiver rec, arrivals up to t_max (s); second order
+    (diffract2) with "geometry": {"diffraction_order": 2}.
     Band quantities are on `centers` (pyroomacoustics octave bands); directivity of src applied to ga, g and eb."""
     import diffraction
     key = json.dumps([cfg["geometry"], stage_y(cfg)], sort_keys=True)
@@ -631,9 +632,12 @@ def diffraction_arrivals(cfg, src, rec, centers, air, t_max):
         a = list(mats[G["S"][k]["mat"]]["alpha"])
         a = [a[i] if i < len(a) else a[-1] for i in range(nb)]
         return np.sqrt(np.maximum(1e-6, 1 - np.asarray(a, float)))
-    A = diffraction.diffract(G, E, cfg["sources"][src]["pos"], cfg["receivers"][rec], cfg["c"], Rmat,
-                             np.asarray(air, float) if air is not None and len(air) else np.zeros(nb), centers, t_max,
-                             refl_order=int(cfg["geometry"].get("diffraction_refl", 0)))
+    args = (G, E, cfg["sources"][src]["pos"], cfg["receivers"][rec], cfg["c"], Rmat,
+            np.asarray(air, float) if air is not None and len(air) else np.zeros(nb), centers, t_max)
+    ro = int(cfg["geometry"].get("diffraction_refl", 0))
+    A = diffraction.diffract(*args, refl_order=ro)
+    if int(cfg["geometry"].get("diffraction_order", 1)) >= 2:          # two edges in sequence (thick obstacles)
+        A = A + diffraction.diffract2(*args, refl_order=ro)
     dm = dir_model(cfg, src, centers)
     if dm is not None and A:
         k = dir_amp(dm, np.array([q["e"] for q in A]).T)

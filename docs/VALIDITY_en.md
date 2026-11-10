@@ -39,7 +39,8 @@ criteria averaged over receivers. That is a small sample; the results describe t
 
 - Whether listeners hear simulated and measured BRIRs of the same hall as equivalent: no listening test has
   compared them. The checks above are physical, not perceptual.
-- Seat dip, diffraction beyond first order, edge end points, seats as geometry.
+- Seat dip (BRAS RS7: the simulation is 5–20 dB too loud at grazing incidence over rows), diffraction beyond
+  second order (second order is opt-in and checked only on BRAS RS6), edge end points, seats as geometry.
 - Loudspeaker frequency responses (only directivity patterns are modelled); individual HRTFs (KU100 only, nearest
   HRIR, no interpolation).
 - Halls other than the six above, and seat positions other than those measured.

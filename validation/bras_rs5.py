@@ -5,7 +5,7 @@ https://doi.org/10.1121/1.5096178, SuppPub2 section 5: Hann window from -6 / -3 
 detected direct-sound peak, then the spectrum).
 
     python validation/bras_rs5.py <folder holding "1 Scene descriptions" and "3 Surface descriptions">
-        [--variant before|thin|thin+floor|thin+floor+tl] [--out out/rs5]
+        [--variant before|thin|thin+floor|thin+floor+tl|box+floor+d2] [--out out/rs5]
 
 Scene (BRAS documentation, Aspoeck et al., https://doi.org/10.14279/depositonce-6726.3, CC BY-SA 4.0): MDF partition
 25 mm thick, 2.066 m high, 4.75 m wide, front face at x = 5.487 m, centred at y = 2.985 m, on the tiled floor of the
@@ -20,6 +20,8 @@ Variants (what is switched on):
   thin              thin-plate edges (diffraction.THIN_M, wedge index n = 2), the engine default since 2026-11-10
   thin+floor        thin, plus diffraction combined with one specular reflection before and/or after the edge
                     (diffraction.diffract refl_order=1, "geometry": {"diffraction_refl": 1} in a hall config)
+  box+floor+d2      no thin-plate edges: the 25 mm box with its two top edges in sequence (second-order diffraction,
+                    diffraction.diffract2) and the floor reflections; a check of the thin-plate approximation
   thin+floor+tl     thin+floor, plus sound transmission through the partition (mass law, limp plate; not in the
                     engine: it changes nothing here, see validation/bras_rs5.md)
 
@@ -108,6 +110,8 @@ def model_tf(G, E, S, R, f, refl_amp, variant):
         if "floor" in variant:
             kw["refl_order"] = 1
         arr = dif.diffract(G, E, S, R, C, Rmat, [0.0], [1000.0], **kw)
+        if "d2" in variant:
+            arr = arr + dif.diffract2(G, E, S, R, C, Rmat, [0.0], [1000.0], **kw)
     finally:
         dif.DF = old
     for q in arr:
@@ -171,7 +175,7 @@ def third_levels(x):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("root")
-    ap.add_argument("--variant", default="thin+floor", choices=["before", "thin", "thin+floor", "thin+floor+tl"])
+    ap.add_argument("--variant", default="thin+floor", choices=["before", "thin", "thin+floor", "thin+floor+tl", "box+floor+d2"])
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
     out = a.out or os.path.join(HERE, "..", "out", "rs5", a.variant.replace("+", "_"))
@@ -183,7 +187,7 @@ def main():
     fm2, am2 = read_mat(a.root, "mat_MDF25mmB_plane_00deg")
     refl_amp["mdf"] = np.sqrt(1 - np.interp(np.log(np.maximum(f, 20)), np.log(fm2), am2))
     G = scene_geometry()
-    if a.variant == "before":
+    if a.variant in ("before", "box+floor+d2"):
         dif.THIN_M = 0.0
     E = dif.edges(G)
     taper = np.clip((10000 - f) / 2000, 0, 1)          # model evaluated to 8 kHz, tapered to 10 kHz

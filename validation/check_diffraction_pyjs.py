@@ -4,6 +4,8 @@ and receiver of a drawn hall, without source directivity.
     python validation/check_diffraction_pyjs.py examples/fan_hall_config.json      (needs node on the PATH)
     python validation/check_diffraction_pyjs.py --rs5   (BRAS RS5 partition on a floor: thin-plate edges and
                                                          diffraction combined with floor reflections, refl_order 1)
+    python validation/check_diffraction_pyjs.py --rs6   (BRAS RS6 body on a floor: second-order diffraction,
+                                                         diffract2 / GEOM.diffract2, refl_order 1)
 Every Python arrival must have a browser arrival at the same path length (1e-6 m); the band energies (with the
 interference terms) are compared. Prints the number of arrivals and the largest relative and absolute differences.
 """
@@ -19,28 +21,39 @@ HERE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 sys.path.insert(0, HERE)
 import brir_proto as bp     # noqa: E402
 
-if sys.argv[1] == "--rs5":
+if sys.argv[1] in ("--rs5", "--rs6"):
     sys.path.insert(0, os.path.join(HERE, "validation"))
-    import bras_rs5        # noqa: E402
     import diffraction     # noqa: E402
-    G = bras_rs5.scene_geometry()
-    E = diffraction.edges(G)
     cen = [125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0]
-    Rb = {"tiles": [0.99, 0.99, 0.99, 0.99, 0.98, 0.98, 0.98], "mdf": [0.97, 0.98, 0.99, 0.99, 0.99, 0.99, 0.99]}
-    S0 = [[2.487, 2.985, z] for z in (0.135, 1.235, 2.0, 3.0)]
-    R0 = [[8.512, 2.985, z] for z in (0.006, 1.235, 2.0, 3.0)] + [[8.512, 4.6, 1.5]]
+    Rb = {"tiles": [0.99, 0.99, 0.99, 0.99, 0.98, 0.98, 0.98], "mdf": [0.97, 0.98, 0.99, 0.99, 0.99, 0.99, 0.99],
+          "mdf12": [0.96, 0.97, 0.98, 0.99, 0.99, 0.99, 0.99]}
+    if sys.argv[1] == "--rs5":
+        import bras_rs5    # noqa: E402
+        G = bras_rs5.scene_geometry()
+        S0 = [[2.487, 2.985, z] for z in (0.135, 1.235, 2.0, 3.0)]
+        R0 = [[8.512, 2.985, z] for z in (0.006, 1.235, 2.0, 3.0)] + [[8.512, 4.6, 1.5]]
+        order = 1
+    else:                  # BRAS RS6: a 0.72 m body on a floor, second-order diffraction over its two top edges
+        import bras_rs     # noqa: E402
+        G = bras_rs.scene("RS6", "")
+        S0 = [[2.487, 2.985, z] for z in (0.176, 0.8)] + [[2.487, 3.9, 0.4]]
+        R0 = [[8.512, 2.985, z] for z in (0.006, 0.4, 0.8)] + [[8.512, 1.5, 0.3]]
+        order = 2
+    E = diffraction.edges(G)
     pairs = [[s, r] for s in S0 for r in R0]
+    fn = diffraction.diffract if order == 1 else diffraction.diffract2
     py = [[[float(q["d"]), [float(x) for x in q["eb"]]] for q in
-           diffraction.diffract(G, E, s, r, 343.0, lambda k: np.array(Rb[G["S"][k]["mat"]]), np.zeros(7), cen, 0.3,
-                                refl_order=1)] for s, r in pairs]
+           fn(G, E, s, r, 343.0, lambda k: np.array(Rb[G["S"][k]["mat"]]), np.zeros(7), cen, 0.3,
+              refl_order=1)] for s, r in pairs]
     surf = [{"verts": s["verts"].tolist(), "n": s["n"].tolist(), "mat": s["mat"]} for s in G["S"]]
     js = """const fs = require('fs'); const GEOM = eval(fs.readFileSync(process.argv[1], 'utf8') + ';GEOM');
 const j = JSON.parse(fs.readFileSync(0, 'utf8')); const G = { S: j.S.map((s) => GEOM.makeSurface(s.verts, s.n, s.mat, 'wall')) };
 const E = GEOM.edges(G);
-console.log(JSON.stringify(j.pairs.map(([s, r]) => GEOM.diffract(G, E, s, r, 343, j.mats, j.air, j.bands, 0.3, 1).map((q) => [q.d, q.eb]))));"""
+const fn = j.order === 2 ? GEOM.diffract2 : GEOM.diffract;
+console.log(JSON.stringify(j.pairs.map(([s, r]) => fn(G, E, s, r, 343, j.mats, j.air, j.bands, 0.3, 1).map((q) => [q.d, q.eb]))));"""
     J = json.loads(subprocess.run(["node", "-e", js, os.path.join(HERE, "engine_geom.js")], capture_output=True, text=True,
                                   check=True, input=json.dumps(dict(S=surf, pairs=pairs, mats={k: {"R": v} for k, v in Rb.items()},
-                                                                    air=[0.0] * 7, bands=cen))).stdout)
+                                                                    air=[0.0] * 7, bands=cen, order=order))).stdout)
     print(f"edges: Python {len(E)} ({sum(1 for e in E if e.get('thin'))} thin)")
 else:
     J = None

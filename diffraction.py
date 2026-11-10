@@ -1,5 +1,5 @@
 """
-First-order edge diffraction for AuralPaths drawn halls (Python twin of GEOM.edges / GEOM.diffract in engine_geom.js).
+Edge diffraction (first and second order) for AuralPaths drawn halls (Python twin of GEOM.edges / GEOM.diffract in engine_geom.js).
 
 Method: Uniform Theory of Diffraction (UTD), Kouyoumjian & Pathak (1974), "A uniform geometrical theory of diffraction for an edge in a perfectly
 conducting surface", Proc. IEEE 62, 1448-1461 (DOI not verified here; Google Scholar:
@@ -22,8 +22,9 @@ so the diffracted field is continuous and, added to the geometrical field, remov
 Scope (limitations, stated in the README): one edge per path (source -> edge -> receiver), optionally with one
 specular reflection before and/or after it (refl_order=1; image source / image receiver); straight edges between two
 planar faces, or thin-plate edges (n = 2) where two faces lie back to back within THIN_M (a free-standing panel, a
-partition); no double diffraction (thick obstacles), diffraction from edge end points ignored, hard-face UTD with a
-reflection-factor heuristic. Checked against BRAS RS5 in validation/bras_rs5.md. The diffracted arrival is rendered with the HRIR of the apex direction; its energy enters
+partition); second order (two edges in sequence, thick obstacles) in diffract2, opt-in; no higher orders (no seat
+dip), diffraction from edge end points ignored, hard-face UTD with a reflection-factor heuristic. Checked against
+BRAS RS5 (validation/bras_rs5.md) and RS1 - RS4, RS6, RS7 (validation/bras_rs.md). The diffracted arrival is rendered with the HRIR of the apex direction; its energy enters
 the image-source histogram with its interference with the geometrical arrivals of the same boundary.
 """
 from __future__ import annotations
@@ -435,4 +436,158 @@ def diffract(G, E, S, R, c, Rmat, air, bands, t_max=None, refl_order=0):
         first, last = (Ps if Ps is not None else Qp), (Pr if Pr is not None else Qp)
         out.append(dict(d=L, t=L / c, h=(last - R) / np.linalg.norm(last - R), e=(first - S) / np.linalg.norm(first - S),
                         ga=ga, D=D, eb=eb, g=np.sqrt(ed), edge=(e["i0"], e["i1"]), refl=refl))
+    return out
+
+
+# ---------------------------------------------------------------- second order: two edges in sequence
+GRAZE = 1e-6                    # incidence within this angle (rad) of a face counts as grazing
+
+
+def _keller(a, t, lo_hi, X, Y):
+    """Point on the line a + z t (z in lo_hi) on the shortest path X -> point -> Y (Keller cone): z or None."""
+    zx, zy = (X - a) @ t, (Y - a) @ t
+    rx = np.linalg.norm((X - a) - zx * t)
+    ry = np.linalg.norm((Y - a) - zy * t)
+    if rx + ry < 1e-12:
+        return None
+    return zx + (zy - zx) * rx / (rx + ry)
+
+
+def _pair_points(e1, e2, S, R, iters=60):
+    """Apex points Q1 on e1 and Q2 on e2 of the shortest path S -> Q1 -> Q2 -> R (the path length is convex in the
+    two edge coordinates; alternating Keller-cone updates converge to its minimum). None if outside the edges."""
+    a1, t1, L1 = e1["a"], e1["t"], float((e1["b"] - e1["a"]) @ e1["t"])
+    a2, t2, L2 = e2["a"], e2["t"], float((e2["b"] - e2["a"]) @ e2["t"])
+    z2 = 0.5 * L2
+    z1 = 0.5 * L1
+    for _ in range(iters):
+        Q2 = a2 + z2 * t2
+        n1 = _keller(a1, t1, None, S, Q2)
+        if n1 is None:
+            return None
+        n1 = min(max(n1, -1.0), L1 + 1.0)        # keep the iteration bounded; checked below
+        Q1 = a1 + n1 * t1
+        n2 = _keller(a2, t2, None, Q1, R)
+        if n2 is None:
+            return None
+        n2 = min(max(n2, -1.0), L2 + 1.0)
+        done = abs(n1 - z1) < 1e-7 and abs(n2 - z2) < 1e-7
+        z1, z2 = n1, n2
+        if done:
+            break
+    if not (-1e-9 <= z1 <= L1 + 1e-9 and -1e-9 <= z2 <= L2 + 1e-9):
+        return None
+    return a1 + z1 * t1, a2 + z2 * t2
+
+
+def _edge_angles(e, X, Y):
+    """(phi of Y, phi0 of X, sin beta0) at edge e for a ray X -> apex -> Y; None if X or Y is on the edge line."""
+    a, t = e["a"], e["t"]
+    wx = (X - a) - ((X - a) @ t) * t
+    wy = (Y - a) - ((Y - a) @ t) * t
+    if np.linalg.norm(wx) < 1e-9 or np.linalg.norm(wy) < 1e-9:
+        return None
+    return _angle(wy, e["t0"], e["n0"]), _angle(wx, e["t0"], e["n0"])
+
+
+def diffract2(G, E, S, R, c, Rmat, air, bands, t_max=None, refl_order=0):
+    """Second-order diffracted arrivals S -> edge 1 -> edge 2 -> R (e.g. over a thick obstacle), UTD applied to
+    the sequence of edges (Kouyoumjian & Pathak 1974; Tsingos et al. 2001 use UTD on sequences of diffracting
+    edges, https://doi.org/10.1145/383259.383323):
+
+        p = D1 D2 / sqrt(s0 s1 s2 (s0 + s1 + s2)) * exp(-j k (s0 + s1 + s2)) [* 1/2 at grazing incidence on edge 2]
+
+    D1 with source distance s0 and observation distance s1 (the second apex), D2 with the unfolded source distance
+    s0 + s1 and observation distance s2: the field diffracted by edge 1 is treated as a spherical wave from the image
+    of the source along the unfolded path (an approximation: the diffracted ray has a caustic at edge 1). When the
+    ray from edge 1 runs along a face of edge 2 (the top of a thick barrier: grazing incidence) the hard-face
+    coefficient is halved, Kouyoumjian & Pathak, NASA CR-2401 (1974),
+    https://ntrs.nasa.gov/api/citations/19740020597/downloads/19740020597.pdf, sec. III.A. Paths whose apex
+    points fall outside the edges are not counted (no end-point diffraction). refl_order=1 adds one specular
+    reflection before edge 1 and / or after edge 2 (image source / receiver), as in diffract().
+    Not a uniform double-diffraction solution: near grazing over both edges each receiver lies near the shadow
+    boundaries of both, where double-diffraction transition functions would be needed (Albani et al. 1995); checked
+    against BRAS RS6 (validation/bras_rs.md), including a receiver 8 cm above the line of the top.
+    Returns arrivals in the format of diffract()."""
+    S = np.asarray(S, float); R = np.asarray(R, float)
+    bands = np.asarray(bands, float)
+    BF = _band_freqs(bands)
+    lb = np.log(bands)
+    air = np.asarray(air, float)
+    combos = [(S, None, R, None)]
+    if refl_order >= 1:
+        imS = [(k, _mirror(G, S, k)) for k in range(len(G["S"]))]
+        imR = [(k, _mirror(G, R, k)) for k in range(len(G["S"]))]
+        imS = [(k, X) for k, X in imS if X is not None]
+        imR = [(k, X) for k, X in imR if X is not None]
+        combos += [(X, k, R, None) for k, X in imS] + [(S, None, X, k) for k, X in imR]
+        combos += [(X, k, Y, j) for k, X in imS for j, Y in imR]
+    out = []
+    for i1, e1 in enumerate(E):
+        for i2, e2 in enumerate(E):
+            if i1 == i2:
+                continue
+            for S1, ks, R1, kr in combos:
+                if ks is not None and (ks in (e1["i0"], e1["i1"]) or _on_plane(G, ks, e1)):
+                    continue
+                if kr is not None and (kr in (e2["i0"], e2["i1"]) or _on_plane(G, kr, e2)):
+                    continue
+                pp = _pair_points(e1, e2, S1, R1)
+                if pp is None:
+                    continue
+                Q1, Q2 = pp
+                s0, s1, s2 = (float(np.linalg.norm(S1 - Q1)), float(np.linalg.norm(Q2 - Q1)),
+                              float(np.linalg.norm(R1 - Q2)))
+                if min(s0, s1, s2) < 1e-6:
+                    continue
+                L = s0 + s1 + s2
+                if t_max is not None and L / c > t_max:
+                    continue
+                g1, g2 = _edge_angles(e1, S1, Q2), _edge_angles(e2, Q1, R1)
+                if g1 is None or g2 is None:
+                    continue
+                (ph1, ph01), (ph2, ph02) = g1, g2
+                if max(ph1, ph01) > e1["n"] * math.pi + 1e-9 or max(ph2, ph02) > e2["n"] * math.pi + 1e-9:
+                    continue
+                sk1, sk2 = (e1["i0"], e1["i1"]), (e2["i0"], e2["i1"])
+                Ps = Pr = None
+                if ks is not None:
+                    Ps = _via(G, S, S1, ks, Q1, sk1)
+                    if Ps is None:
+                        continue
+                elif occluded(G, S, Q1, sk1):
+                    continue
+                if kr is not None:
+                    Pr = _via(G, R, R1, kr, Q2, sk2)
+                    if Pr is None:
+                        continue
+                elif occluded(G, Q2, R, sk2):
+                    continue
+                if occluded(G, Q1, Q2, sk1 + sk2):
+                    continue
+                sinb1 = float(np.linalg.norm(np.cross(Q1 - S1, e1["t"]))) / s0
+                sinb2 = float(np.linalg.norm(np.cross(Q2 - Q1, e2["t"]))) / s1
+                graze = 0.5 if min(ph02, e2["n"] * math.pi - ph02) < GRAZE else 1.0
+                R01, Rn1 = np.asarray(Rmat(e1["i0"]), float), np.asarray(Rmat(e1["i1"]), float)
+                R02, Rn2 = np.asarray(Rmat(e2["i0"]), float), np.asarray(Rmat(e2["i1"]), float)
+                A = graze / math.sqrt(s0 * s1 * s2 * L)
+
+                def coef(fr):
+                    lf = np.log(fr)
+                    d1 = utd(e1["n"], ph1, ph01, s1, s0, sinb1, fr, c, np.interp(lf, lb, R01), np.interp(lf, lb, Rn1))
+                    d1 = d1 * math.sqrt(s1 * s0 * (s1 + s0))           # strip the first-order spreading
+                    s0b = s0 + s1
+                    d2 = utd(e2["n"], ph2, ph02, s2, s0b, sinb2, fr, c, np.interp(lf, lb, R02), np.interp(lf, lb, Rn2))
+                    d2 = d2 * math.sqrt(s2 * s0b * (s2 + s0b))
+                    return A * d1 * d2
+                D = coef(DF)
+                ga = np.exp(-0.5 * air * L)
+                refl = [k for k in (ks, kr) if k is not None]
+                for k in refl:
+                    ga = ga * np.asarray(Rmat(k), float)
+                ed = np.array([float(np.mean(np.abs(coef(fb)) ** 2)) for fb in BF]) * ga ** 2
+                first, last = (Ps if Ps is not None else Q1), (Pr if Pr is not None else Q2)
+                out.append(dict(d=L, t=L / c, h=(last - R) / np.linalg.norm(last - R),
+                                e=(first - S) / np.linalg.norm(first - S), ga=ga, D=D, eb=ed, g=np.sqrt(ed),
+                                edge=(e1["i0"], e1["i1"], e2["i0"], e2["i1"]), refl=refl, order=2))
     return out

@@ -26,6 +26,10 @@ coherent sum here is what its discrete part produces before the HRIRs):
   engine     the current default: as before, plus thin-plate edges (n = 2)
   ga_utd     image sources without the finite-reflector factor plus UTD at all edges incl. thin plates, diffraction
              combined with one reflection before / after (diffraction_refl 1): geometrical acoustics + diffraction
+  d2         ga_utd + second-order diffraction (two edges in sequence, diffraction.diffract2, with one reflection
+             before / after); without the Kirchhoff factor: with it, the UTD reflection terms and the factor both
+             account for the finite face (RS6 LS3 - MP3, grazing over the 0.72 m top: -5.0 dB with, -1.3 dB without)
+  box_d2     as d2 without thin-plate edges (thin plates as boxes, their two edges handled by second order)
 Writes bands.csv and summary.md per scene and variant (out/ is gitignored: outputs derived from BRAS).
 """
 import argparse
@@ -294,15 +298,29 @@ def model_tf(name, G, E, S, R, f, M, c, variant, air):
         dif.DF = np.maximum(f, 1.0)
         try:
             arr = dif.diffract(G, E, S, R, c, lambda i: np.ones(1), [0.0], [1000.0],
-                               refl_order=1 if variant == "ga_utd" else 0)
+                               refl_order=1 if variant in ("ga_utd", "d2", "box_d2") else 0)
         finally:
             dif.DF = old
+        if variant in ("d2", "box_d2"):
+            fg = np.geomspace(10.0, max(f[-1], 20.0), 160)   # second-order coefficients on a coarse grid
+            dif.DF = fg
+            try:
+                # RS7: 120 edges; with image sources in all 76 faces the pair search takes hours, so no reflections
+                arr2 = dif.diffract2(G, E, S, R, c, lambda i: np.ones(1), [0.0], [1000.0],
+                                     refl_order=0 if name == "RS7" else 1)
+            finally:
+                dif.DF = old
+            lf = np.log(np.maximum(f, 10.0))
+            for q in arr2:
+                mag = np.interp(lf, np.log(fg), np.abs(q["D"]))
+                ph = np.interp(lf, np.log(fg), np.unwrap(np.angle(q["D"])))
+                q["D"] = mag * np.exp(1j * ph)
+            arr = arr + arr2
         for q in arr:
             Ra = np.ones(len(f))
             for j in q.get("refl", ()):
                 Ra = Ra * M.get(G["S"][j]["mat"])[0]
-            # UTD reflection terms of the wedge faces with the faces' reflection amplitude: approximated by the
-            # mean of the two faces (dif.utd takes R0 / Rn; hard faces used, see the module docstring)
+            # hard faces in the UTD reflection terms (see the module docstring)
             H += Ra * q["D"] * np.exp(-1j * k * q["d"] - air * q["d"])
         narr = len(arr)
     return P1M * H, len(paths), narr
@@ -358,7 +376,7 @@ def run(root, name, cfg, variant, out):
     air = air_np(f, TEMP[name], HUM[name])
     M = Mats(root, f)
     G = scene(name, cfg)
-    dif.THIN_M = 0.0 if variant == "before" else 0.05
+    dif.THIN_M = 0.0 if variant in ("before", "box_d2") else 0.05
     E = dif.edges(G)
     taper = np.clip((12000 - f) / 2000, 0, 1)
     rows, summ, onset_err = [], [], []
@@ -397,7 +415,7 @@ def main():
     ap.add_argument("root")
     ap.add_argument("--scene", required=True, choices=sorted(FOLDER))
     ap.add_argument("--config", default=None)
-    ap.add_argument("--variant", default="all", choices=["all", "before", "engine", "ga_utd"])
+    ap.add_argument("--variant", default="all", choices=["all", "before", "engine", "ga_utd", "d2", "box_d2"])
     ap.add_argument("--out", default=os.path.join(HERE, "..", "out", "rs"))
     a = ap.parse_args()
     variants = ["before", "engine", "ga_utd"] if a.variant == "all" else [a.variant]
