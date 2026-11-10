@@ -49,7 +49,8 @@ round-robin participants had them.
 | S2-23 | RS4 off centre | LS5-MP5 | 0.2 | 4.5 | 1.1 | 2.8 | - | - | 1.4 |
 | **median** | | | | **2.3** (9) | **1.0** (15) | **2.8** (15) | **1.3** (13) | **1.4** (13) | **1.5** (15) |
 
-All values in dB. Reading check: the round-robin measured curve against the measured RIR processed here (0.1 -
+All values in dB. The shape error is defined here; the paper compares the spectra only as figures (sec. III.A)
+and gives no error measure. Reading check: the round-robin measured curve against the measured RIR processed here (0.1 -
 0.9 dB, so the reading and the windowing agree). The round robin is anonymous; the letters are its own.
 
 AuralPaths ranks between the two groups: better than A and D, close to E and F (1.3 / 1.4), worse than C. (Before

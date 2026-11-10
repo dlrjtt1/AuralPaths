@@ -25,7 +25,9 @@ calibration; the round-robin participants had the loudspeaker's directivity data
 
 Brinkmann et al. (2019), "A round robin on room acoustical simulation and auralization", J. Acoust. Soc. Am. 145,
 2746, https://doi.org/10.1121/1.5096178. Six programs took part (anonymous, letters A - F; B gave no results for
-these scenes). AuralPaths did not take part; it is scored afterwards on the same figures. Their spectra in the supplementary material (SuppPub2) were read from the PDF's vector graphics and
+these scenes). AuralPaths did not take part; it is scored afterwards on the same figures. The paper compares the
+spectra only as figures (sec. III.A) and gives no error measure; the shape error and its median are defined and
+computed here. Their spectra in the supplementary material (SuppPub2) were read from the PDF's vector graphics and
 scored against the measured curve of each figure; AuralPaths against the measured impulse response, with the same
 windowing (the two measured curves agree within 0.1 - 0.9 dB).
 

@@ -25,7 +25,8 @@
 
 Brinkmann et al. (2019), "A round robin on room acoustical simulation and auralization", J. Acoust. Soc. Am. 145,
 2746, https://doi.org/10.1121/1.5096178。6 本のプログラムが参加した(匿名、A – F; B はこれらの場面の結果なし)。
-AuralPaths は参加しておらず、同じ図に対して事後に評価した。補足資料(SuppPub2)のスペクトルを PDF のベクター図形から
+AuralPaths は参加しておらず、同じ図に対して事後に評価した。論文はスペクトルを図でのみ比較しており
+(III.A 節)、誤差指標を示していない。形状誤差とその中央値は本ページで定義・算出したものである。補足資料(SuppPub2)のスペクトルを PDF のベクター図形から
 読み取り、各図の実測曲線と比較した。AuralPaths は同じ窓処理を施した実測インパルス応答と比較した(2 つの実測曲線は
 0.1 – 0.9 dB 以内で一致)。
 

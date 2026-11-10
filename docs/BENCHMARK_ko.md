@@ -25,7 +25,8 @@
 
 Brinkmann et al. (2019), "A round robin on room acoustical simulation and auralization", J. Acoust. Soc. Am. 145,
 2746, https://doi.org/10.1121/1.5096178. 프로그램 6개가 참가했다(익명, 문자 A – F; B는 이 장면들에 결과가 없음).
-AuralPaths는 참가하지 않았고, 같은 그림에 대해 사후에 점수를 냈다. 부록(SuppPub2)의 스펙트럼을 PDF 벡터 그래픽에서 읽어
+AuralPaths는 참가하지 않았고, 같은 그림에 대해 사후에 점수를 냈다. 논문은 스펙트럼을 그림으로만
+비교하며(III.A절) 오차 지표를 제시하지 않는다. 형태 오차와 그 중앙값은 여기서 정의하고 계산한 것이다. 부록(SuppPub2)의 스펙트럼을 PDF 벡터 그래픽에서 읽어
 각 그림의 실측 곡선과 비교했고, AuralPaths는 같은 창 처리를 한 실측 임펄스 응답과 비교했다(두 실측 곡선은 0.1 – 0.9 dB
 이내로 일치).
 
