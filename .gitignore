@@ -11,3 +11,4 @@ out/*.log
 out/refl_*/
 out/detmold/
 out/rs5/
+out/rs/

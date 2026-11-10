@@ -11,6 +11,12 @@ files.
   edge (both engines, checked against each other; new regression check `diffraction_plate`). RS5 with the
   round-robin post-processing: 2.1–2.7 dB mean absolute difference per 1/3-octave band behind the partition,
   spectral shape in the range of the better of the two round-robin simulators (`validation/bras_rs5.md`).
+- BRAS reference scenes RS1–RS4, RS6, RS7 (`validation/bras_rs.py`, `validation/bras_rs.md`) and the round-robin
+  simulators' spectra read from SuppPub2 (`validation/rr_extract.py`, `validation/rr_compare.py`): over the 15
+  figures the spectral-shape error of AuralPaths (median 1.9 dB) lies between the round-robin participants
+  (1.0–2.8 dB), without the loudspeaker directivity they had. Not modelled: thick obstacles (RS6: 4 of 8 positions
+  behind a 0.72 m body get no sound) and grazing incidence over rows (RS7: 5–20 dB too loud, no seat dip).
+  Thin-plate edges are no longer found where another surface meets the edge or inside a panel (mesh twin faces).
 - BRAS binaural check with the FABIAN HRIRs of the BRAS release (`tools/fabian_to_sofa.py`) and the K8 on-axis
   response: the 2–4 kHz spectrum difference (−6 … −13 dB with the KU100) drops to within 1.4 dB, ITD within 5 µs;
   low IACC_E3 and C80 remain (room model). Stimulus builder and protocol draft for a listening test

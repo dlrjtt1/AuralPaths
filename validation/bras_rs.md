@@ -1,0 +1,89 @@
+# BRAS reference scenes RS1 - RS4, RS6, RS7: the engine against the measurements and the round robin (2026-11-10)
+
+Data: BRAS (Aspoeck et al., https://doi.org/10.14279/depositonce-6726.3, CC BY-SA 4.0), scene drawings and SOFA
+positions; materials from the BRAS surface descriptions (initial estimates). Script: `validation/bras_rs.py`
+(geometry of each scene in its docstring); RS5 is in `validation/bras_rs5.md`. The round-robin comparison uses the
+curves of SuppPub2 of Brinkmann et al. (2019), https://doi.org/10.1121/1.5096178, read from the PDF's vector
+graphics (`validation/rr_extract.py`, `validation/rr_compare.py`).
+
+Method: the arrivals the engine produces for each scene (direct sound, image sources with the material reflection
+factor, the (1 - s) loss and the Kirchhoff-Fresnel finite-reflector factor, UTD edge diffraction) are summed
+coherently and processed like the measured RIR: Hann window from -6 / -3 ms before the direct sound to the
+round-robin fade-out of the scene, then 1/3-octave levels. Shape error: rms of the band differences after removing
+their mean; mean abs. difference: absolute levels (source: flat point source with the documented calibration,
+0.4 Pa at 1 m). The Genelec 8020c response and directivity are not modelled (not in the downloaded data); the
+round-robin participants had them.
+
+## 1. Per scene (current engine, 125 Hz - 4 kHz, medians over the pairs)
+
+| scene | pairs | shape error | mean abs. difference | note |
+|---|---|---|---|---|
+| RS1 rigid floor | 10 | 2.3 dB | 2.3 dB | |
+| RS1 absorber (RockFon) | 9 | 3.1 dB | 3.2 dB | |
+| RS1 diffusor | 10 | 3.6 dB | 3.4 dB | the diffusor modelled as a plane with its measured specular loss; scattered sound not in the discrete part |
+| RS2 1 m plate, rigid / absorbing | 15 / 15 | 1.3 / 1.5 dB | 1.3 / 1.3 dB | incl. 6 pairs behind the plate |
+| RS2 2 m plate, rigid / absorbing | 15 / 9 | 1.6 / 1.5 dB | 1.4 / 1.5 dB | one pair 7 cm inside the shadow boundary is 7 dB louder measured (positioning tolerance 5.5 cm, BRAS documentation) |
+| RS3 two parallel plates, 600 ms | 1 | 1.8 dB | 2.6 dB | see section 3 |
+| RS4 reflector array, on / off centre | 9 / 9 | 2.1 / 1.5 dB | 2.0 / 1.6 dB | |
+| RS6 body 0.72 x 0.72 m | 9 | 4.1 dB | - | **4 of 8 positions behind the body get no sound** (section 4) |
+| RS7 15 blocks (seat dip) | 8 | 5.5 dB | 9.0 dB | **simulated 5 - 20 dB too loud** (section 4) |
+
+## 2. Against the round-robin simulators (shape error on the 15 figures of SuppPub2)
+
+| figure | scene | pair | reading check | A | C | D | E | F | AuralPaths |
+|---|---|---|---|---|---|---|---|---|---|
+| S2-1 | RS1 rigid | LS2-MP2 | 0.3 | 2.8 | 0.8 | 3.0 | 0.8 | 1.6 | 2.9 |
+| S2-2 | RS1 rigid | LS3-MP3 | 0.2 | 2.0 | 0.9 | 3.1 | 0.7 | 0.9 | 1.9 |
+| S2-3 | RS1 absorber | LS2-MP2 | 0.3 | 2.3 | 0.7 | 2.7 | 0.7 | 1.6 | 1.3 |
+| S2-4 | RS1 absorber | LS3-MP3 | 0.2 | 1.9 | 0.7 | 2.8 | 0.7 | 0.9 | 1.5 |
+| S2-5 | RS1 diffusor | LS2-MP2 | 0.2 | 4.2 | 4.4 | 3.3 | 2.8 | 2.9 | 2.8 |
+| S2-6 | RS1 diffusor | LS3-MP3 | 0.2 | 2.1 | 2.4 | 3.9 | 1.3 | 1.4 | 2.4 |
+| S2-10 | RS2 1 m rigid | LS2-MP2 | 0.1 | - | 0.8 | 2.5 | 2.5 | 2.0 | 2.0 |
+| S2-11 | RS2 2 m rigid | LS2-MP2 | 0.2 | - | 1.5 | 4.6 | 3.1 | 2.6 | 1.4 |
+| S2-12 | RS2 1 m absorbing | LS2-MP2 | 0.1 | - | 1.0 | 2.4 | 1.7 | 1.4 | 2.3 |
+| S2-13 | RS2 2 m absorbing | LS2-MP2 | 0.2 | - | 2.3 | 3.9 | 2.6 | 2.3 | 1.3 |
+| S2-14 | RS2 1 m rigid | LS5-MP4 | 0.1 | - | 1.1 | 1.7 | 1.2 | 1.0 | 1.1 |
+| S2-15 | RS2 2 m rigid | LS5-MP4 | 0.2 | - | 1.4 | 2.3 | 1.4 | 1.4 | 1.1 |
+| S2-19 | RS3 | LS1-MP1 | 0.9 | 1.7 | 0.6 | 1.3 | 0.7 | 0.7 | 0.8 |
+| S2-22 | RS4 on centre | LS2-MP2 | 0.5 | 3.0 | 0.8 | 2.7 | - | - | 2.2 |
+| S2-23 | RS4 off centre | LS5-MP5 | 0.2 | 4.5 | 1.1 | 2.8 | - | - | 2.1 |
+| **median** | | | | **2.3** (9) | **1.0** (15) | **2.8** (15) | **1.3** (13) | **1.4** (13) | **1.9** (15) |
+
+All values in dB. Reading check: the round-robin measured curve against the measured RIR processed here (0.1 -
+0.9 dB, so the reading and the windowing agree). The round robin is anonymous; the letters are its own.
+
+AuralPaths ranks between the two groups: better than A and D, worse than C, E and F. In RS1 (rigid floor, direct
+sound 30 - 60 degrees off the loudspeaker axis) the gap to C / E is largest; the loudspeaker directivity, which the
+participants modelled and this comparison does not, is the most likely cause (not tested: the Genelec 8020c data
+are a separate 1.17 GB BRAS archive).
+
+## 3. What the engine variants change
+
+| | RS2 (4 configs) | RS3 | RS4 on / off | round-robin figures |
+|---|---|---|---|---|
+| before 2026-11-10 (no thin-plate edges) | 1.3 - 1.7 | 2.0 | 1.7 / 1.7 | 1.9 |
+| current engine (thin-plate edges) | 1.3 - 1.6 | 1.8 | 2.1 / 1.5 | 1.9 |
+| without the Kirchhoff factor, with diffraction + reflection (`diffraction_refl` 1) | 1.3 - 1.6 | 0.9 | 1.7 / 1.5 | 1.8 |
+
+Shape error in dB. Free-standing plates get both the Kirchhoff-Fresnel factor on the specular reflection and UTD
+at their edges, which counts the edge effect twice in principle; the measured differences between the variants are
+small and not consistent in sign (better without the factor for the 2 m plate and RS3, worse for the 1 m plate), so
+the engine is not changed. RS3 arrival by arrival (octave bands, energy within +-1.5 ms of each path): at 250 Hz
+the arrivals with paths of 44 m and more are 14 - 63 dB stronger measured than with the Kirchhoff factor and 15 - 39
+dB weaker than without it: for repeated reflections between two finite plates the Kirchhoff-Fresnel factor of
+each reflection (with a1, a2 along the unfolded path) removes far too much at low frequencies, plain image sources
+too little. At 1 and 4 kHz the arrival-by-arrival differences scatter by +-10 - 40 dB without a clear pattern
+(overlapping arrivals of the two image series; not analysed further). The whole-window spectrum is dominated by the
+first arrivals, hence the small shape errors above.
+
+## 4. Not modelled: thick obstacles and grazing incidence over rows (RS6, RS7)
+
+- RS6: sound reaches a receiver behind a 0.72 m thick body only over two edges in sequence (top front, top back).
+  The engine has first-order diffraction only, so 4 of the 8 positions behind the body get nothing; the others get
+  one edge's path and are 1.4 - 6 dB off.
+- RS7: source and receivers just above the tops of 15 blocks (a seat-dip set-up). The engine treats the direct
+  sound as unobstructed and adds single-edge diffraction at each block; the measured level is 5 - 20 dB lower (the
+  seat-dip attenuation needs diffraction over many edges in sequence).
+- Consequence for use: levels and spectra **over the audience at grazing incidence** (seat rows, balcony fronts,
+  stage risers seen from just above) are not reliable; the simulation is too loud there. Double diffraction would be
+  the next step (not started).

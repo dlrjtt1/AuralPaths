@@ -269,6 +269,12 @@ absolute difference 2.1–2.7 dB per 1/3-octave band at 125 Hz–4 kHz, spectral
 the range of the better of the two round-robin simulators that handled this scene (Brinkmann et al. 2019,
 [doi:10.1121/1.5096178](https://doi.org/10.1121/1.5096178), SuppPub2 figures S2-28–S2-30).
 
+Reference scenes RS1–RS4, RS6, RS7 (`validation/bras_rs.py`, `validation/bras_rs.md`): over the 15 spectra of
+SuppPub2 for scenes 1–4 the shape error is 1.9 dB (median), between the round-robin participants (1.0–2.8 dB; they
+had the loudspeaker directivity, this check does not). Behind a 0.72 m thick body (RS6) 4 of 8 positions get no
+sound (two edges in sequence; first-order diffraction only), and over 15 low blocks at grazing incidence (RS7, a
+seat-dip set-up) the simulation is 5–20 dB too loud.
+
 Not modelled: higher-order paths (diffraction combined with reflections, edge to edge), diffraction from edge
 end points, edges of objects the 2.5D model does not have (seats, balcony fronts, reflectors). The
 reflection-factor weighting is not a solution for absorbing wedges.

@@ -798,6 +798,16 @@ const GEOM = (() => {
   }
   // free-standing plates: two antiparallel faces back to back within THIN_M -> one thin-plate edge (n = 2) on the
   // mid line; the wedges of the thin end face are dropped (same rule as diffraction._thin_edges)
+  // a side is inside a panel (e.g. a triangle diagonal) when a coplanar face facing the same way contains the point just across it
+  function continued(G, A, p) {
+    const nA = G.S[A].n;
+    if (Math.abs(dot(nA, p) - G.S[A].d) >= 2e-3) return false;
+    for (let k = 0; k < G.S.length; k++) {
+      const s = G.S[k];
+      if (k !== A && dot(s.n, nA) > 0.9994 && Math.abs(dot(s.n, p) - s.d) < 2e-3 && inSurface(s, p)) return true;
+    }
+    return false;
+  }
   function thinEdges(G, P, Q, own, T, out) {
     const thin = [];
     for (let i = 0; i < P.length; i++) {
@@ -815,16 +825,15 @@ const GEOM = (() => {
         const mA = [P[i][0] + 0.5 * (lo + hi) * t[0], P[i][1] + 0.5 * (lo + hi) * t[1], P[i][2] + 0.5 * (lo + hi) * t[2]];
         const tA = into(G.S[A], t, mA), tB = into(G.S[B], t, [mA[0] + off[0], mA[1] + off[1], mA[2] + off[2]]);
         if (!tA || !tB || dot(tA, tB) < 1 - 1e-6) continue;
+        if (continued(G, A, [mA[0] - 1e-3 * tA[0], mA[1] - 1e-3 * tA[1], mA[2] - 1e-3 * tA[2]]) ||
+            continued(G, B, [mA[0] + off[0] - 1e-3 * tB[0], mA[1] + off[1] - 1e-3 * tB[1], mA[2] + off[2] - 1e-3 * tB[2]])) continue;
         if (on > 0) continue;
         const a = [P[i][0] + 0.5 * off[0], P[i][1] + 0.5 * off[1], P[i][2] + 0.5 * off[2]];
-        const mid = [a[0] + 0.5 * (lo + hi) * t[0], a[1] + 0.5 * (lo + hi) * t[1], a[2] + 0.5 * (lo + hi) * t[2]], wd = nrm(off), h = wd / 2 + 1e-3;
-        let rests = false;
-        for (let k = 0; k < G.S.length && !rests; k++) {
-          const s = G.S[k];
-          if (k === A || k === B || Math.abs(dot(s.n, mid) - s.d) >= 1e-6) continue;
-          rests = inSurface(s, [mid[0] + h * nA[0], mid[1] + h * nA[1], mid[2] + h * nA[2]]) && inSurface(s, [mid[0] - h * nA[0], mid[1] - h * nA[1], mid[2] - h * nA[2]]);
-        }
-        if (rests) continue;
+        const mid = [a[0] + 0.5 * (lo + hi) * t[0], a[1] + 0.5 * (lo + hi) * t[1], a[2] + 0.5 * (lo + hi) * t[2]], wd = nrm(off), h = wd / 2 + 2e-3;
+        // another surface meets the edge (panel on the floor, twin-faced wall meeting the ceiling): not a free plate edge
+        const probes = [[mid[0] + h * nA[0], mid[1] + h * nA[1], mid[2] + h * nA[2]], [mid[0] - h * nA[0], mid[1] - h * nA[1], mid[2] - h * nA[2]],
+          [mid[0] - h * tA[0], mid[1] - h * tA[1], mid[2] - h * tA[2]]];
+        if (probes.some((pr) => G.S.some((s, k) => k !== A && k !== B && Math.abs(dot(s.n, pr) - s.d) < 2.5e-3 && inSurface(s, pr)))) continue;
         thin.push({ a: [a[0] + lo * t[0], a[1] + lo * t[1], a[2] + lo * t[2]], len: hi - lo, t, i0: A, i1: B, n: 2, t0: tA, n0: nA, thin: true, w: wd });
       }
     }

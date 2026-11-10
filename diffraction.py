@@ -208,6 +208,29 @@ def edges(G):
     return out
 
 
+def _continued(G, Nn, A, p):
+    """True if a face other than A, (nearly) coplanar with A and facing the same way, contains the point p (just
+    across a side of A): the side is then inside a panel, not at its boundary."""
+    nA = Nn[A]
+    dA = G["S"][A]["d"]
+    for k in np.flatnonzero(Nn @ nA > 0.9994):           # within 2 deg
+        if k != A and abs(Nn[k] @ p - G["S"][k]["d"]) < 2e-3 and abs(nA @ p - dA) < 2e-3 and in_surface(G["S"][k], p):
+            return True
+    return False
+
+
+def _touching(G, Nn, A, B, mid, nA, tA, h):
+    """True if a surface other than A, B meets the edge at `mid`: it holds one of the points just beside the edge on
+    either side of the plate (a panel standing on the floor, a twin-faced wall meeting the ceiling) or just beyond
+    it. A thin end face between A and B holds none of them."""
+    Dp = np.array([G["S"][k]["d"] for k in range(len(G["S"]))]) if "Dp" not in G else G["Dp"]
+    for pr in (mid + h * nA, mid - h * nA, mid - h * tA):
+        for k in np.flatnonzero(np.abs(Nn @ pr - Dp) < 2.5e-3):   # 2.5 mm: clear of the 1 / 1.5 / 3 mm steps of mesh twin faces
+            if k not in (A, B) and in_surface(G["S"][k], pr):
+                return True
+    return False
+
+
 def _thin_edges(G, P, Q, own, T, out):
     """Free-standing plates (a panel drawn as two faces back to back, or a box thinner than THIN_M): the boundary
     sides of two antiparallel faces that run parallel within THIN_M of each other, with both faces extending to the
@@ -215,14 +238,19 @@ def _thin_edges(G, P, Q, own, T, out):
     end face (e.g. the 25 mm top of a partition) are replaced by it: for a plate thin compared with the wavelength
     these two closely spaced wedges act as one half-plane edge (first-order UTD cannot combine two edges)."""
     thin = []
+    Nn = np.array([np.asarray(s["n"], float) for s in G["S"]])
     for i in range(len(P)):
         A = own[i]
-        nA = np.asarray(G["S"][A]["n"], float)
-        for jj in range(len(P)):
+        nA = Nn[A]
+        j = np.flatnonzero(own > A)                       # vectorised pre-selection (as in edges())
+        if not j.size:
+            continue
+        w = P[j] - P[i]
+        offn = np.linalg.norm(w - (w @ T[i])[:, None] * T[i], axis=1)
+        j = j[(np.abs(T[j] @ T[i]) > 1 - 1e-7) & (offn <= THIN_M) & (Nn[own[j]] @ nA <= -1 + 1e-6)]
+        for jj in j:
             B = own[jj]
-            if B <= A or abs(T[jj] @ T[i]) < 1 - 1e-7:
-                continue
-            nB = np.asarray(G["S"][B]["n"], float)
+            nB = Nn[B]
             if nA @ nB > -1 + 1e-6:
                 continue
             t = T[i]
@@ -238,15 +266,15 @@ def _thin_edges(G, P, Q, own, T, out):
             tA, tB = _into(G["S"][A], nA, t, midA), _into(G["S"][B], nB, t, midA + off)
             if tA is None or tB is None or tA @ tB < 1 - 1e-6:
                 continue
+            if _continued(G, Nn, A, midA - 1e-3 * tA) or _continued(G, Nn, B, midA + off - 1e-3 * tB):
+                continue                                   # interior side (e.g. a triangle diagonal), not a plate edge
             if (off @ nA) > 0:                             # back to back (not two faces looking at each other)
                 continue
             a = P[i] + 0.5 * off
             mid = a + 0.5 * (lo + hi) * t
             wd = float(np.linalg.norm(off))
-            if any(k not in (A, B) and abs(G["S"][k]["n"] @ mid - G["S"][k]["d"]) < 1e-6
-                   and in_surface(G["S"][k], mid + (wd / 2 + 1e-3) * nA) and in_surface(G["S"][k], mid - (wd / 2 + 1e-3) * nA)
-                   for k in range(len(G["S"]))):
-                continue                                   # the edge rests on a surface beyond both faces (panel on the floor)
+            if _touching(G, Nn, A, B, mid, nA, tA, wd / 2 + 2e-3):
+                continue                                   # another surface meets the edge: not a free plate edge
             thin.append(dict(a=a + lo * t, b=a + hi * t, t=t, i0=int(A), i1=int(B), n=2.0, t0=tA, n0=nA, thin=True,
                              w=float(np.linalg.norm(off))))
     if not thin:
