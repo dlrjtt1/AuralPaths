@@ -1,7 +1,7 @@
 """
 Seat-dip transfer function of seat rows on a rigid floor by a two-dimensional boundary element method (BEM), after
-the approach of Davies & Cox (2000), "Reducing seat dip attenuation", J. Acoust. Soc. Am. 108, 2211,
-https://doi.org/10.1121/1.1314318 (2-D BEM of the cross-section through the seating, rigid surfaces, Helmholtz-
+the approach of Davies & Cox (2000), "Reducing seat dip attenuation", J. Acoust. Soc. Am.
+108(5), 2211-2218, https://salford-repository.worktribe.com/output/1466149/reducing-seat-dip-attenuation (2-D BEM of the cross-section through the seating, rigid surfaces, Helmholtz-
 Kirchhoff integral equation with the 2-D Green's function, half-space image term for the floor).
 
 transfer(bodies, S, R, f) returns T(f) = p(R) / p_free(R): the 2-D pressure at R with the rows and the floor present,
