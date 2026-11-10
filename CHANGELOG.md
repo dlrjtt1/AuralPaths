@@ -4,6 +4,13 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Diffraction at thin plates: two faces back to back closer than 5 cm (a partition, a free-standing panel) now end
+  in one thin-plate edge (n = 2). Before, behind such a box the first-order paths were blocked by the box itself:
+  in BRAS RS5 given as geometry, 10 of 11 positions behind the partition got no sound. New opt-in
+  `"geometry": {"diffraction_refl": 1}`: diffraction combined with one specular reflection before and/or after the
+  edge (both engines, checked against each other; new regression check `diffraction_plate`). RS5 with the
+  round-robin post-processing: 2.1–2.7 dB mean absolute difference per 1/3-octave band behind the partition,
+  spectral shape in the range of the better of the two round-robin simulators (`validation/bras_rs5.md`).
 - BRAS binaural check with the FABIAN HRIRs of the BRAS release (`tools/fabian_to_sofa.py`) and the K8 on-axis
   response: the 2–4 kHz spectrum difference (−6 … −13 dB with the KU100) drops to within 1.4 dB, ITD within 5 µs;
   low IACC_E3 and C80 remain (room model). Stimulus builder and protocol draft for a listening test

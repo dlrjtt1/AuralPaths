@@ -44,6 +44,19 @@
    "max": 1e-08
   }
  },
+ "diffraction_plate": {
+  "arrivals": {
+   "tol": 0,
+   "value": 144
+  },
+  "max_energy_diff": {
+   "max": 1e-08
+  },
+  "thin_edges": {
+   "tol": 0,
+   "value": 3
+  }
+ },
  "page": {
   "up_to_date": {
    "min": 1

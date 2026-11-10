@@ -239,7 +239,8 @@ reflection terms are weighted by R = √(1 − α) of each face (a heuristic, as
 | Item | Choice |
 |---|---|
 | Edges | Every straight edge shared by two surfaces whose room-side angle exceeds 180° (riser tops, stage lip, ceiling steps, re-entrant plan corners, convex profile breaks ≥ 2°). Concave edges have no first-order term |
-| Path | Source → apex on the edge (Keller cone, shortest path) → receiver; both legs checked for occlusion |
+| Thin plates | Two faces back to back closer than 5 cm (a partition, a free-standing panel) end in one edge with n = 2 on their mid line; the right-angle edges of the thin end face are dropped (first-order UTD cannot chain two edges 25 mm apart) |
+| Path | Source → apex on the edge (Keller cone, shortest path) → receiver; both legs checked for occlusion. Opt-in `"diffraction_refl": 1`: also with one specular reflection before and/or after the edge (image source / receiver, reflection point checked) |
 | Coefficient | Complex UTD coefficient on 32 frequencies (16 Hz–24 kHz), transition function F(X) by its power series (X ≤ 16) and asymptotic series (X > 16) |
 | Rendering | One arrival per edge with the HRIR of the apex direction, complex spectrum applied with the path delay |
 | Energy | Added to the image-source histogram including its interference with the geometrical arrivals of the same boundary (direct sound, reflections in the two wedge faces), averaged over 8 frequencies per octave band |
@@ -260,6 +261,13 @@ pattern of the four paths (dips near 1 and 3 kHz with the low loudspeaker) is re
 source or receiver at floor level (LS4-MP1, LS1-MP2, LS4-MP2) show sound arriving at the straight-line time,
 before the diffracted path — most likely transmission through the partition (the BRAS documentation notes it),
 which is not modelled; LS4-MP2 also has only a 1 ms window. Arrival times agree within 0.1 ms elsewhere.
+
+The same scene given to the engine as geometry (`validation/bras_rs5.py`, `validation/bras_rs5.md`; partition as a
+25 mm box on a floor face, round-robin post-processing): before the thin-plate edges, 10 of the 11 shadow positions
+got no sound (the box blocked its own first-order paths). With thin-plate edges and `diffraction_refl` 1: mean
+absolute difference 2.1–2.7 dB per 1/3-octave band at 125 Hz–4 kHz, spectral shape 2.4–2.7 dB rms, which is in
+the range of the better of the two round-robin simulators that handled this scene (Brinkmann et al. 2019,
+[doi:10.1121/1.5096178](https://doi.org/10.1121/1.5096178), SuppPub2 figures S2-28–S2-30).
 
 Not modelled: higher-order paths (diffraction combined with reflections, edge to edge), diffraction from edge
 end points, edges of objects the 2.5D model does not have (seats, balcony fronts, reflectors). The
@@ -952,7 +960,8 @@ For other loudspeakers, use manufacturer data or your own measurements.
 - Drawn hall values come from ray tracing and carry random noise (see above); the shoebox ones do not
 - Shoebox: uniform absorption, no diffraction, diffuse late field, image sources without scattering loss or finite-size
   factor (drawn and OBJ halls have both, see *Specular reflection factors*)
-- Diffraction: first order only, straight edges of the drawn surfaces; no seats, no edge end points (see above)
+- Diffraction: one edge per path (optionally with one reflection before and after it), straight edges of the drawn
+  surfaces and thin plates; no double diffraction, no seats, no edge end points (see above)
 - No seat-dip effect (see above)
 - Level ratio is a BRIR energy ratio (white-input equivalent), not the stimulus RMS defined in the
   proposal. The simulator uses it only to set the PA gain; the listening-test program sets the

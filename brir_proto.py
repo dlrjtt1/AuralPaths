@@ -632,7 +632,8 @@ def diffraction_arrivals(cfg, src, rec, centers, air, t_max):
         a = [a[i] if i < len(a) else a[-1] for i in range(nb)]
         return np.sqrt(np.maximum(1e-6, 1 - np.asarray(a, float)))
     A = diffraction.diffract(G, E, cfg["sources"][src]["pos"], cfg["receivers"][rec], cfg["c"], Rmat,
-                             np.asarray(air, float) if air is not None and len(air) else np.zeros(nb), centers, t_max)
+                             np.asarray(air, float) if air is not None and len(air) else np.zeros(nb), centers, t_max,
+                             refl_order=int(cfg["geometry"].get("diffraction_refl", 0)))
     dm = dir_model(cfg, src, centers)
     if dm is not None and A:
         k = dir_amp(dm, np.array([q["e"] for q in A]).T)

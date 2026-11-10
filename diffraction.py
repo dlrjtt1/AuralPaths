@@ -19,9 +19,11 @@ F is evaluated by its power series for X <= 16 and its asymptotic series above (
 At a shadow or reflection boundary, a cot term is singular while F -> 0; the product has the finite limit used below,
 so the diffracted field is continuous and, added to the geometrical field, removes its jump.
 
-Scope (limitations, stated in the README): first order only (source -> edge -> receiver; no reflection-diffraction
-combinations), straight edges between two planar faces, diffraction from edge end points ignored, hard-face UTD with a
-reflection-factor heuristic. The diffracted arrival is rendered with the HRIR of the apex direction; its energy enters
+Scope (limitations, stated in the README): one edge per path (source -> edge -> receiver), optionally with one
+specular reflection before and/or after it (refl_order=1; image source / image receiver); straight edges between two
+planar faces, or thin-plate edges (n = 2) where two faces lie back to back within THIN_M (a free-standing panel, a
+partition); no double diffraction (thick obstacles), diffraction from edge end points ignored, hard-face UTD with a
+reflection-factor heuristic. Checked against BRAS RS5 in validation/bras_rs5.md. The diffracted arrival is rendered with the HRIR of the apex direction; its energy enters
 the image-source histogram with its interference with the geometrical arrivals of the same boundary.
 """
 from __future__ import annotations
@@ -32,6 +34,7 @@ import numpy as np
 
 DF = np.geomspace(16.0, 24000.0, 32)        # frequency grid of the complex coefficient (shared with the browser)
 MIN_ANGLE_DEG = 2.0                        # skip edges whose faces are within 2 deg of coplanar
+THIN_M = 0.05                              # faces closer than this, back to back, end in one thin-plate edge (n = 2)
 SQPI2 = math.sqrt(math.pi) / 2
 
 
@@ -200,7 +203,67 @@ def edges(G):
                 continue                                   # concave: no first-order diffraction term
             n = (math.pi + math.acos(max(-1.0, min(1.0, float(nA @ nB))))) / math.pi
             out.append(dict(a=P[i] + lo * t, b=P[i] + hi * t, t=t, i0=int(A), i1=int(B), n=n, t0=tA, n0=nA))
+    if THIN_M > 0:
+        out = _thin_edges(G, P, Q, own, T, out)
     return out
+
+
+def _thin_edges(G, P, Q, own, T, out):
+    """Free-standing plates (a panel drawn as two faces back to back, or a box thinner than THIN_M): the boundary
+    sides of two antiparallel faces that run parallel within THIN_M of each other, with both faces extending to the
+    same side, form one thin-plate edge (exterior angle 2 pi, n = 2) on their mid line. The convex edges of a thin
+    end face (e.g. the 25 mm top of a partition) are replaced by it: for a plate thin compared with the wavelength
+    these two closely spaced wedges act as one half-plane edge (first-order UTD cannot combine two edges)."""
+    thin = []
+    for i in range(len(P)):
+        A = own[i]
+        nA = np.asarray(G["S"][A]["n"], float)
+        for jj in range(len(P)):
+            B = own[jj]
+            if B <= A or abs(T[jj] @ T[i]) < 1 - 1e-7:
+                continue
+            nB = np.asarray(G["S"][B]["n"], float)
+            if nA @ nB > -1 + 1e-6:
+                continue
+            t = T[i]
+            w = P[jj] - P[i]
+            off = w - (w @ t) * t
+            if np.linalg.norm(off) > THIN_M or abs(off @ nA) < 1e-9 or np.linalg.norm(off - (off @ nA) * nA) > 1e-6:
+                continue                                   # the sides must be offset along the face normal only
+            u0, u1 = sorted([0.0, (Q[i] - P[i]) @ t]); w0, w1 = sorted([(P[jj] - P[i]) @ t, (Q[jj] - P[i]) @ t])
+            lo, hi = max(u0, w0), min(u1, w1)
+            if hi - lo < 1e-3:
+                continue
+            midA = P[i] + 0.5 * (lo + hi) * t
+            tA, tB = _into(G["S"][A], nA, t, midA), _into(G["S"][B], nB, t, midA + off)
+            if tA is None or tB is None or tA @ tB < 1 - 1e-6:
+                continue
+            if (off @ nA) > 0:                             # back to back (not two faces looking at each other)
+                continue
+            a = P[i] + 0.5 * off
+            mid = a + 0.5 * (lo + hi) * t
+            wd = float(np.linalg.norm(off))
+            if any(k not in (A, B) and abs(G["S"][k]["n"] @ mid - G["S"][k]["d"]) < 1e-6
+                   and in_surface(G["S"][k], mid + (wd / 2 + 1e-3) * nA) and in_surface(G["S"][k], mid - (wd / 2 + 1e-3) * nA)
+                   for k in range(len(G["S"]))):
+                continue                                   # the edge rests on a surface beyond both faces (panel on the floor)
+            thin.append(dict(a=a + lo * t, b=a + hi * t, t=t, i0=int(A), i1=int(B), n=2.0, t0=tA, n0=nA, thin=True,
+                             w=float(np.linalg.norm(off))))
+    if not thin:
+        return out
+    keep = []
+    for e in out:                                      # drop the wedges of the thin end faces
+        absorbed = False
+        for th in thin:
+            if abs(e["t"] @ th["t"]) < 1 - 1e-7:
+                continue
+            w = e["a"] - th["a"]
+            if np.linalg.norm(w - (w @ th["t"]) * th["t"]) <= th["w"] / 2 + 1e-6:
+                absorbed = True
+                break
+        if not absorbed:
+            keep.append(e)
+    return keep + thin
 
 
 def _angle(w, t0, n0):
@@ -232,8 +295,40 @@ def _refl(G, S, R, k, Rb):
     return float(np.linalg.norm(dv)), Rb
 
 
-def diffract(G, E, S, R, c, Rmat, air, bands, t_max=None):
+def _mirror(G, X, k):
+    s = G["S"][k]
+    n = np.asarray(s["n"], float)
+    side = float(n @ X - s["d"])
+    return None if side <= 1e-9 else X - 2 * side * n
+
+
+def _on_plane(G, k, e):
+    s = G["S"][k]
+    n = np.asarray(s["n"], float)
+    return abs(n @ e["a"] - s["d"]) < 1e-6 and abs(n @ e["b"] - s["d"]) < 1e-6
+
+
+def _via(G, X, Ximg, k, Qp, skip):
+    """Reflection point on face k of the unfolded segment Ximg -> Qp, if the path X -> P -> Qp is valid."""
+    s = G["S"][k]
+    n = np.asarray(s["n"], float)
+    dv = Qp - Ximg
+    den = n @ dv
+    if abs(den) < 1e-12:
+        return None
+    t = (s["d"] - n @ Ximg) / den
+    if not 1e-9 < t < 1 - 1e-9:
+        return None
+    P = Ximg + t * dv
+    if not in_surface(s, P) or occluded(G, X, P, (k,)) or occluded(G, P, Qp, (k,) + tuple(skip)):
+        return None
+    return P
+
+
+def diffract(G, E, S, R, c, Rmat, air, bands, t_max=None, refl_order=0):
     """Diffracted arrivals at receiver R from source S.
+    refl_order=1 adds the paths with one specular reflection before and/or after the edge (image source / image
+    receiver; faces whose plane holds the edge are left out, their reflections are part of the UTD terms).
     Rmat(face) -> amplitude reflection factors per band (len(bands)); air: energy attenuation per metre per band.
     Returns list of dicts {d, t, h (unit vector R -> apex, world), e (unit vector S -> apex), ga (band amplitude factor:
     air), D (complex p_d on DF, without delay), eb (band energy incl. interference with the boundary partners)}."""
@@ -241,10 +336,20 @@ def diffract(G, E, S, R, c, Rmat, air, bands, t_max=None):
     bands = np.asarray(bands, float)
     BF = _band_freqs(bands)
     out = []
-    for e in E:
+    combos = [(S, None, R, None)]
+    if refl_order >= 1:
+        imS = [(k, _mirror(G, S, k)) for k in range(len(G["S"]))]
+        imR = [(k, _mirror(G, R, k)) for k in range(len(G["S"]))]
+        imS = [(k, X) for k, X in imS if X is not None]
+        imR = [(k, X) for k, X in imR if X is not None]
+        combos += [(X, k, R, None) for k, X in imS] + [(S, None, X, k) for k, X in imR]
+        combos += [(X, k, Y, j) for k, X in imS for j, Y in imR]
+    for e, (S1, ks, R1, kr) in ((e, cb) for e in E for cb in combos):
+        if any(k is not None and (k in (e["i0"], e["i1"]) or _on_plane(G, k, e)) for k in (ks, kr)):
+            continue
         t, a = e["t"], e["a"]
-        zs, zr = (S - a) @ t, (R - a) @ t
-        ws, wr = (S - a) - zs * t, (R - a) - zr * t
+        zs, zr = (S1 - a) @ t, (R1 - a) @ t
+        ws, wr = (S1 - a) - zs * t, (R1 - a) - zr * t
         rs, rr = np.linalg.norm(ws), np.linalg.norm(wr)
         if rs < 1e-6 or rr < 1e-6:
             continue
@@ -252,7 +357,7 @@ def diffract(G, E, S, R, c, Rmat, air, bands, t_max=None):
         if z < -1e-9 or z > (e["b"] - a) @ t + 1e-9:
             continue
         Qp = a + z * t
-        s0, s1 = float(np.linalg.norm(S - Qp)), float(np.linalg.norm(R - Qp))
+        s0, s1 = float(np.linalg.norm(S1 - Qp)), float(np.linalg.norm(R1 - Qp))
         L = s0 + s1
         if t_max is not None and L / c > t_max:
             continue
@@ -261,7 +366,18 @@ def diffract(G, E, S, R, c, Rmat, air, bands, t_max=None):
         if ph0 > n * math.pi + 1e-9 or ph > n * math.pi + 1e-9:
             continue
         skip = (e["i0"], e["i1"])
-        if occluded(G, S, Qp, skip) or occluded(G, Qp, R, skip):
+        Ps = Pr = None
+        if ks is not None:
+            Ps = _via(G, S, S1, ks, Qp, skip)
+            if Ps is None:
+                continue
+        elif occluded(G, S, Qp, skip):
+            continue
+        if kr is not None:
+            Pr = _via(G, R, R1, kr, Qp, skip)
+            if Pr is None:
+                continue
+        elif occluded(G, Qp, R, skip):
             continue
         sinb = rs / s0
         R0b, Rnb = np.asarray(Rmat(e["i0"]), float), np.asarray(Rmat(e["i1"]), float)
@@ -269,11 +385,14 @@ def diffract(G, E, S, R, c, Rmat, air, bands, t_max=None):
         R0f = np.interp(np.log(DF), lb, R0b); Rnf = np.interp(np.log(DF), lb, Rnb)
         D = utd(n, ph, ph0, s1, s0, sinb, DF, c, R0f, Rnf)
         ga = np.exp(-0.5 * np.asarray(air, float) * L)
-        # band energy with the interference with the geometrical arrivals of the same boundaries
+        refl = [k for k in (ks, kr) if k is not None]
+        for k in refl:
+            ga = ga * np.asarray(Rmat(k), float)
+        # band energy with the interference with the geometrical arrivals of the same boundaries (plain paths only)
         partners = []
-        if not occluded(G, S, R):
+        if not refl and not occluded(G, S, R):
             partners.append((float(np.linalg.norm(R - S)), np.ones(len(bands))))
-        for k in skip:
+        for k in (skip if not refl else ()):
             r = _refl(G, S, R, k, np.asarray(Rmat(k), float))
             if r:
                 partners.append(r)
@@ -285,6 +404,7 @@ def diffract(G, E, S, R, c, Rmat, air, bands, t_max=None):
             for Lp, Gp in partners:
                 acc = acc + 2 * np.real(Gp[b] / Lp * np.exp(-2j * np.pi * fb * (Lp - L) / c) * np.conj(Db))
             eb[b] = float(np.mean(acc)) * ga[b] ** 2
-        out.append(dict(d=L, t=L / c, h=(Qp - R) / s1, e=(Qp - S) / s0, ga=ga, D=D, eb=eb, g=np.sqrt(ed),
-                        edge=(e["i0"], e["i1"])))
+        first, last = (Ps if Ps is not None else Qp), (Pr if Pr is not None else Qp)
+        out.append(dict(d=L, t=L / c, h=(last - R) / np.linalg.norm(last - R), e=(first - S) / np.linalg.norm(first - S),
+                        ga=ga, D=D, eb=eb, g=np.sqrt(ed), edge=(e["i0"], e["i1"]), refl=refl))
     return out

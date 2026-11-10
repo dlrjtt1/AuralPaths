@@ -14,6 +14,8 @@ Checks (name: what it guards):
                skipped if it is missing)
   specular     Python and browser image sources with specular factors agree (validation/check_specular_pyjs.py)
   diffraction  Python and browser UTD edge diffraction agree (validation/check_diffraction_pyjs.py)
+  diffraction_plate  the same on a free-standing partition on a floor (thin-plate edges, diffraction combined with
+               floor reflections; the BRAS RS5 geometry, no measured data needed)
   rays_split   the browser ray tracer gives the same histogram whether rays are traced in one run or split in parts
                (worker pool)
   box_js       browser ray tracer T30 on a tiled shoebox, against its baseline and its free-path prediction
@@ -92,6 +94,12 @@ def c_diffraction():
     return {"arrivals": num(r"(\d+) diffracted arrivals", out), "max_energy_diff": num(r"largest difference ([0-9.e+-]+)", out)}
 
 
+def c_diffraction_plate():
+    out = run([PY, "validation/check_diffraction_pyjs.py", "--rs5"])
+    return {"arrivals": num(r"(\d+) diffracted arrivals", out), "thin_edges": num(r"\((\d+) thin\)", out),
+            "max_energy_diff": num(r"largest difference ([0-9.e+-]+)", out)}
+
+
 def c_rays_split():
     js = r"""
 const fs = require('fs'); const GEOM = eval(fs.readFileSync('engine_geom.js', 'utf8') + ';GEOM');
@@ -149,6 +157,7 @@ def c_calibrate():
 
 
 CHECKS = {"page": c_page, "page_load": c_page_load, "specular": c_specular, "diffraction": c_diffraction,
+          "diffraction_plate": c_diffraction_plate,
           "rays_split": c_rays_split, "box_js": c_box_js, "box_py": c_box_py, "calibrate": c_calibrate}
 SLOW = {"calibrate"}
 

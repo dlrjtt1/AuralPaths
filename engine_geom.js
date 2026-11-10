@@ -362,12 +362,12 @@ const GEOM = (() => {
   }
 
   // segment a->b intersects a surface (excluding the ones in skip) strictly between the ends?
-  function occluded(G, a, b, skipA, skipB) {
+  function occluded(G, a, b, skipA, skipB, skipC) {
     const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
     if (G.bvh) {
       let hit = false;
       bvhWalk(G.bvh, a, [dx, dy, dz], 1, (i) => {
-        if (i === skipA || i === skipB) return;
+        if (i === skipA || i === skipB || i === skipC) return;
         const s = G.S[i], den = s.n[0] * dx + s.n[1] * dy + s.n[2] * dz;
         if (Math.abs(den) < EPS) return;
         const t = (s.d - (s.n[0] * a[0] + s.n[1] * a[1] + s.n[2] * a[2])) / den;
@@ -377,7 +377,7 @@ const GEOM = (() => {
       return hit;
     }
     for (let i = 0; i < G.S.length; i++) {
-      if (i === skipA || i === skipB) continue;
+      if (i === skipA || i === skipB || i === skipC) continue;
       const s = G.S[i], den = s.n[0] * dx + s.n[1] * dy + s.n[2] * dz;
       if (Math.abs(den) < EPS) continue;
       const t = (s.d - (s.n[0] * a[0] + s.n[1] * a[1] + s.n[2] * a[2])) / den;
@@ -736,7 +736,7 @@ const GEOM = (() => {
   // the formulas and references: Kouyoumjian & Pathak 1974, Proc. IEEE 62, 1448-1461; Tsingos et al. 2001,
   // doi:10.1145/383259.383323)
   const DF = (() => { const a = []; for (let i = 0; i < 32; i++) a.push(16 * Math.pow(24000 / 16, i / 31)); return a; })();
-  const MIN_ANGLE = 2 * Math.PI / 180, SQPI2 = Math.sqrt(Math.PI) / 2, C45 = Math.cos(Math.PI / 4);
+  const MIN_ANGLE = 2 * Math.PI / 180, THIN_M = 0.05, SQPI2 = Math.sqrt(Math.PI) / 2, C45 = Math.cos(Math.PI / 4);
   // complex helpers on [re, im]
   const cmul = (a, b) => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
   function fresnelTail(a) { // int_a^inf exp(-j t^2) dt
@@ -794,7 +794,44 @@ const GEOM = (() => {
       const n = (Math.PI + Math.acos(Math.max(-1, Math.min(1, cAB)))) / Math.PI;
       out.push({ a: [P[i][0] + lo * t[0], P[i][1] + lo * t[1], P[i][2] + lo * t[2]], len: hi - lo, t, i0: A, i1: B, n, t0: tA, n0: nA });
     }
-    return out;
+    return thinEdges(G, P, Q, own, T, out);
+  }
+  // free-standing plates: two antiparallel faces back to back within THIN_M -> one thin-plate edge (n = 2) on the
+  // mid line; the wedges of the thin end face are dropped (same rule as diffraction._thin_edges)
+  function thinEdges(G, P, Q, own, T, out) {
+    const thin = [];
+    for (let i = 0; i < P.length; i++) {
+      const A = own[i], nA = G.S[A].n;
+      for (let j = 0; j < P.length; j++) {
+        const B = own[j];
+        if (B <= A || Math.abs(dot(T[j], T[i])) < 1 - 1e-7) continue;
+        const nB = G.S[B].n; if (dot(nA, nB) > -1 + 1e-6) continue;
+        const t = T[i], w = sub(P[j], P[i]), wt = dot(w, t), off = [w[0] - wt * t[0], w[1] - wt * t[1], w[2] - wt * t[2]];
+        const on = dot(off, nA);
+        if (nrm(off) > THIN_M || Math.abs(on) < 1e-9 || nrm([off[0] - on * nA[0], off[1] - on * nA[1], off[2] - on * nA[2]]) > 1e-6) continue;
+        const u1 = dot(sub(Q[i], P[i]), t), w0 = wt, w1 = dot(sub(Q[j], P[i]), t);
+        const lo = Math.max(Math.min(0, u1), Math.min(w0, w1)), hi = Math.min(Math.max(0, u1), Math.max(w0, w1));
+        if (hi - lo < 1e-3) continue;
+        const mA = [P[i][0] + 0.5 * (lo + hi) * t[0], P[i][1] + 0.5 * (lo + hi) * t[1], P[i][2] + 0.5 * (lo + hi) * t[2]];
+        const tA = into(G.S[A], t, mA), tB = into(G.S[B], t, [mA[0] + off[0], mA[1] + off[1], mA[2] + off[2]]);
+        if (!tA || !tB || dot(tA, tB) < 1 - 1e-6) continue;
+        if (on > 0) continue;
+        const a = [P[i][0] + 0.5 * off[0], P[i][1] + 0.5 * off[1], P[i][2] + 0.5 * off[2]];
+        const mid = [a[0] + 0.5 * (lo + hi) * t[0], a[1] + 0.5 * (lo + hi) * t[1], a[2] + 0.5 * (lo + hi) * t[2]], wd = nrm(off), h = wd / 2 + 1e-3;
+        let rests = false;
+        for (let k = 0; k < G.S.length && !rests; k++) {
+          const s = G.S[k];
+          if (k === A || k === B || Math.abs(dot(s.n, mid) - s.d) >= 1e-6) continue;
+          rests = inSurface(s, [mid[0] + h * nA[0], mid[1] + h * nA[1], mid[2] + h * nA[2]]) && inSurface(s, [mid[0] - h * nA[0], mid[1] - h * nA[1], mid[2] - h * nA[2]]);
+        }
+        if (rests) continue;
+        thin.push({ a: [a[0] + lo * t[0], a[1] + lo * t[1], a[2] + lo * t[2]], len: hi - lo, t, i0: A, i1: B, n: 2, t0: tA, n0: nA, thin: true, w: wd });
+      }
+    }
+    if (!thin.length) return out;
+    const keep = out.filter((e) => !thin.some((th) => { if (Math.abs(dot(e.t, th.t)) < 1 - 1e-7) return false;
+      const w = sub(e.a, th.a), wt = dot(w, th.t); return nrm([w[0] - wt * th.t[0], w[1] - wt * th.t[1], w[2] - wt * th.t[2]]) <= th.w / 2 + 1e-6; }));
+    return keep.concat(thin);
   }
   const lerpLog = (xs, ys, x) => { const lx = Math.log(x); if (lx <= Math.log(xs[0])) return ys[0]; if (lx >= Math.log(xs[xs.length - 1])) return ys[ys.length - 1];
     let i = 0; while (Math.log(xs[i + 1]) < lx) i++; const f = (lx - Math.log(xs[i])) / (Math.log(xs[i + 1]) - Math.log(xs[i])); return ys[i] + f * (ys[i + 1] - ys[i]); };
@@ -807,24 +844,47 @@ const GEOM = (() => {
     return [nrm(dv), Rb];
   }
   // diffracted arrivals at receiver R (same fields as diffraction.diffract; h in the head frame like ism())
-  function diffract(G, E, S, R, c, mats, air, bands, tMax) {
+  // reflOrder 1: also paths with one specular reflection before and/or after the edge (as diffraction.diffract)
+  function mirror(G, X, k) { const s = G.S[k], side = dot(s.n, X) - s.d; return side <= 1e-9 ? null : [X[0] - 2 * side * s.n[0], X[1] - 2 * side * s.n[1], X[2] - 2 * side * s.n[2]]; }
+  function onPlane(G, k, e) { const s = G.S[k], b = [e.a[0] + e.len * e.t[0], e.a[1] + e.len * e.t[1], e.a[2] + e.len * e.t[2]];
+    return Math.abs(dot(s.n, e.a) - s.d) < 1e-6 && Math.abs(dot(s.n, b) - s.d) < 1e-6; }
+  function via(G, X, Xi, k, Qp, e) {
+    const s = G.S[k], dv = sub(Qp, Xi), den = dot(s.n, dv); if (Math.abs(den) < 1e-12) return null;
+    const t = (s.d - dot(s.n, Xi)) / den; if (!(t > 1e-9 && t < 1 - 1e-9)) return null;
+    const P = [Xi[0] + t * dv[0], Xi[1] + t * dv[1], Xi[2] + t * dv[2]];
+    if (!inSurface(s, P) || occluded(G, X, P, k, -1) || occluded(G, P, Qp, k, e.i0, e.i1)) return null;
+    return P;
+  }
+  function diffract(G, E, S, R, c, mats, air, bands, tMax, reflOrder) {
     const out = [], BF = bands.map((fc) => { const a = []; for (let i = 0; i < 8; i++) a.push(fc / Math.SQRT2 * Math.pow(2, i / 7)); return a; });
     const direct = !occluded(G, S, R, -1, -1) ? nrm(sub(R, S)) : 0;
-    for (const e of E) {
-      const t = e.t, a = e.a, vs = sub(S, a), vr = sub(R, a), zs = dot(vs, t), zr = dot(vr, t);
+    const combos = [[S, null, R, null]];
+    if (reflOrder >= 1) {
+      const imS = [], imR = [];
+      G.S.forEach((_, k) => { const X = mirror(G, S, k); if (X) imS.push([k, X]); const Y = mirror(G, R, k); if (Y) imR.push([k, Y]); });
+      for (const [k, X] of imS) combos.push([X, k, R, null]);
+      for (const [k, X] of imR) combos.push([S, null, X, k]);
+      for (const [k, X] of imS) for (const [j, Y] of imR) combos.push([X, k, Y, j]);
+    }
+    for (const e of E) for (const [S1, ks, R1, kr] of combos) {
+      if ([ks, kr].some((k) => k !== null && (k === e.i0 || k === e.i1 || onPlane(G, k, e)))) continue;
+      const t = e.t, a = e.a, vs = sub(S1, a), vr = sub(R1, a), zs = dot(vs, t), zr = dot(vr, t);
       const ws = [vs[0] - zs * t[0], vs[1] - zs * t[1], vs[2] - zs * t[2]], wr = [vr[0] - zr * t[0], vr[1] - zr * t[1], vr[2] - zr * t[2]], rs = nrm(ws), rr = nrm(wr);
       if (rs < 1e-6 || rr < 1e-6) continue;
       const z = zs + (zr - zs) * rs / (rs + rr); if (z < -1e-9 || z > e.len + 1e-9) continue;
-      const Qp = [a[0] + z * t[0], a[1] + z * t[1], a[2] + z * t[2]], s0 = nrm(sub(S, Qp)), s1 = nrm(sub(R, Qp)), L = s0 + s1;
+      const Qp = [a[0] + z * t[0], a[1] + z * t[1], a[2] + z * t[2]], s0 = nrm(sub(S1, Qp)), s1 = nrm(sub(R1, Qp)), L = s0 + s1;
       if (tMax != null && L / c > tMax) continue;
       const ang = (w) => { let x = Math.atan2(dot(w, e.n0), dot(w, e.t0)); if (x < 0) x += 2 * Math.PI; return x; };
       const ph0 = ang(ws), ph = ang(wr); if (ph0 > e.n * Math.PI + 1e-9 || ph > e.n * Math.PI + 1e-9) continue;
-      if (occluded(G, S, Qp, e.i0, e.i1) || occluded(G, Qp, R, e.i0, e.i1)) continue;
+      let Ps = null, Pr = null;
+      if (ks !== null) { Ps = via(G, S, S1, ks, Qp, e); if (!Ps) continue; } else if (occluded(G, S, Qp, e.i0, e.i1)) continue;
+      if (kr !== null) { Pr = via(G, R, R1, kr, Qp, e); if (!Pr) continue; } else if (occluded(G, Qp, R, e.i0, e.i1)) continue;
       const sinb = rs / s0, R0b = mats[G.S[e.i0].mat].R, Rnb = mats[G.S[e.i1].mat].R;
       const Dl = utd(e.n, ph, ph0, s1, s0, sinb, DF, c, DF.map((f) => lerpLog(bands, R0b, f)), DF.map((f) => lerpLog(bands, Rnb, f)));
-      const ga = air.map((v) => Math.exp(-0.5 * v * L));
-      const partners = []; if (direct) partners.push([direct, bands.map(() => 1)]);
-      for (const k of [e.i0, e.i1]) { const p = reflPartner(G, S, R, k, mats[G.S[k].mat].R); if (p) partners.push(p); }
+      const refl = [ks, kr].filter((k) => k !== null);
+      const ga = air.map((v, b) => refl.reduce((g, k) => g * mats[G.S[k].mat].R[b], Math.exp(-0.5 * v * L)));
+      const partners = []; if (!refl.length && direct) partners.push([direct, bands.map(() => 1)]);
+      if (!refl.length) for (const k of [e.i0, e.i1]) { const p = reflPartner(G, S, R, k, mats[G.S[k].mat].R); if (p) partners.push(p); }
       const eb = [], g = [];
       BF.forEach((fb, b) => {
         const Db = utd(e.n, ph, ph0, s1, s0, sinb, fb, c, fb.map((f) => lerpLog(bands, R0b, f)), fb.map((f) => lerpLog(bands, Rnb, f)));
@@ -834,13 +894,14 @@ const GEOM = (() => {
           acc += x; });
         eb.push(acc / fb.length * ga[b] * ga[b]); g.push(Math.sqrt(ad / fb.length) * ga[b]);
       });
-      const hw = [(Qp[0] - R[0]) / s1, (Qp[1] - R[1]) / s1, (Qp[2] - R[2]) / s1];
-      out.push({ d: L, t: L / c, o: 1, dif: 1, h: [hw[1], -hw[0], hw[2]], e: [(Qp[0] - S[0]) / s0, (Qp[1] - S[1]) / s0, (Qp[2] - S[2]) / s0],
+      const first = Ps || Qp, last = Pr || Qp, lr = nrm(sub(last, R)), lf = nrm(sub(first, S));
+      const hw = [(last[0] - R[0]) / lr, (last[1] - R[1]) / lr, (last[2] - R[2]) / lr];
+      out.push({ d: L, t: L / c, o: 1 + refl.length, dif: 1, refl, h: [hw[1], -hw[0], hw[2]], e: [(first[0] - S[0]) / lf, (first[1] - S[1]) / lf, (first[2] - S[2]) / lf],
         ga, g, eb, dr: Dl.map((x) => x[0]), di: Dl.map((x) => x[1]) });
     }
     return out;
   }
 
-  return { build, buildMesh, meshColumn, loadObj, objGroups, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, transition, utd, DF, FIB, fresnel, panels, specFactor };
+  return { makeSurface, build, buildMesh, meshColumn, loadObj, objGroups, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, transition, utd, DF, FIB, fresnel, panels, specFactor };
 })();
 if (typeof module !== "undefined") module.exports = GEOM;
