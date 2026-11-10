@@ -33,6 +33,27 @@ computed here. Their spectra in the supplementary material (SuppPub2) were read 
 scored against the measured curve of each figure; AuralPaths against the measured impulse response, with the same
 windowing (the two measured curves agree within 0.1 - 0.9 dB).
 
+### 2.0 In the paper's own measures
+
+The paper's results are mostly figures and a few numbers. Each row is one measure as the paper uses it, what the
+paper reports for the six programs, and AuralPaths evaluated the same way (BRAS initial material data unless noted).
+The numbers for the programs are quoted from the paper or read from its supplementary figures.
+
+| measure (paper) | the programs (paper) | AuralPaths |
+|---|---|---|
+| Spectra of the simple scenes (Figs. 1 - 3, SuppPub2) | compared by eye only; no number | no number either; our shape error in 2.1 |
+| Coupled rooms, 1 kHz EDC, door 30.4 deg (Fig. 4) | measured transition "at approximately t = 0.3 s"; most programs "only a weakly double sloped EDC"; A both decay rates but the wrong transition time | double slope with the fitted data: transition 0.37 - 0.40 s (measured 0.25 - 0.28 s; programs 0.40 - 0.55 s), late decay rate T = 2.9 - 3.0 s (measured 3.7 s; programs 1.7 - 2.1 s, A 4.4 s). With the initial data like most programs: 0.54 - 0.58 s, 2.0 - 2.2 s |
+| Coupled rooms, door 4.1 deg (SuppPub2) | figures only | no second slope (single decay, T = 1.1 - 1.4 s; measured late T 4.0 - 4.2 s) |
+| T20, mean of 10 source-receiver pairs, octave bands (Fig. 5, S3-1) | measured T20 "on average, overestimated by 58% (125 Hz) and 35% (250 Hz)"; at 500 Hz - 2 kHz "still above the JND in most cases" | +34 % (125 Hz), +7 % (250 Hz), -6 / -12 / -20 / -17 % (500 Hz - 4 kHz), mean over the three rooms; 14 of 18 room-bands beyond the 5 % JND (programs 14 - 17). Read from S3-1, the six programs average +58 % and +35 %, as the paper says |
+| Correlation of measured and simulated parameters over the 10 pairs, 1 kHz | not significant, "with the exception of C80 and D50" in the large room (r = 0.7 - 0.9) | the same pattern: large room C80 r = 0.77, D50 r = 0.85 (p < 0.05); all others not significant |
+| Tone colour: energy differences in 37 gammatone bands 80 Hz - 16 kHz, BRIRs, mean over sources and ears (Fig. 6) | mean error E 1.3 dB, B and C 2.2 dB, A 3.2 dB | CR3 1.4 dB, CR4 1.4 dB (FABIAN HRIRs, fitted materials, K8 directivity); not run for the small room (BRIRs not used here) |
+| ITD of the direct sound (discussion) | "well preserved in the simulations (except for C)" | within a few microseconds; lateralization 1.2 - 1.3 deg from the geometric direction (2.4) |
+| Authenticity, plausibility, SAQI (listening tests, Figs. 7 - 10) | no program authentic; B, C, E plausible | not tested |
+
+The paper leaves some details open; choices made here: the transition time and decay rates are from a two-line fit
+to the EDC (down to -50 dB), and the tone-colour filter details are listed in `validation/rr_tonecolor.py`. The
+binaural renders use fitted materials, as the BRAS binaural check does; the programs had material data only.
+
 ### 2.1 Reflection spectra
 
 | | A | C | D | E | F | AuralPaths |
