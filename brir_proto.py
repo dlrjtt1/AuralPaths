@@ -930,7 +930,7 @@ def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len, spec=False):
             import seatdip
             hT = seatdip.fir(T)
             y = np.stack([np.convolve(e, hT) for e in y])
-            a -= seatdip.PRE
+            a -= seatdip.delay(T)
         lo, hi = max(a, 0), min(a + y.shape[1], n_len)
         if hi > lo:
             out[:, lo:hi] += y[:, lo - a:hi - a]

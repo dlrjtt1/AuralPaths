@@ -9,9 +9,13 @@ files.
   generic seats along the path (Davies & Cox 2000 approach; `seatdip.py`, `engine_geom.js` seatPath, both engines,
   agree to 1e-10). Row spacing from the user or the steps of a drawn section; seat back 0.80 m and openings 0 /
   0.10 / 0.24 m as defaults (Tahvanainen et al. 2020). *Seat-dip range…* shows the effect of the unknown seat
-  dimensions at the current seat. BRAS RS7: 3.0–3.3 dB in sight of the source (3.8–6.4 dB without), 3.4–6.7 dB behind
+  dimensions at the current seat. BRAS RS7: 1.8–2.5 dB in sight of the source (3.8–6.4 dB without), 3.3–6.2 dB behind
   the first block (5.6–9.1 dB). New regression check `seatdip`; `validation/rs7_seatdip_bem.py`,
   `validation/check_seatdip_pyjs.py`.
+- Seat dip: T on 5.9 Hz bins (8192-point FFT at 48 kHz) instead of 23 Hz, the BEM on every bin up to 160 Hz and on
+  every fourth bin above (interpolated): the rows' response wrapped around the shorter FIR (BRAS RS7: 200 Hz 8 - 9 dB
+  too loud before, 3 - 4 dB now; 400 - 500 Hz dip within 3 dB). Browser BEM faster (order-1 Bessel only, block-
+  circulant matrix product, GMRES started from the previous bin's solution): about the same time as before.
 - Seat dip checked in the Detmold Konzerthaus (136 binaural pairs, default seats): early IACC deficit 0.15 -> 0.09,
   C80 bias up to -0.8 dB -> within 0.3 dB; `validation/detmold_kh.md`. `detmold_kh.py compare --meas-csv` reuses the
   measured metrics of an earlier run.

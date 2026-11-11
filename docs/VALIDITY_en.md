@@ -40,8 +40,8 @@ criteria averaged over receivers. That is a small sample; the results describe t
 - Whether listeners hear simulated and measured BRIRs of the same hall as equivalent: no listening test has
   compared them. The checks above are physical, not perceptual.
 - Seat dip: without the optional seat-dip model (BRAS RS7: no 500 Hz dip; behind the first row 5–11 dB too
-  loud); with it, RS7 within 3.0–3.3 dB in sight of the source and 3.4–6.7 dB behind the first block, the 500 Hz dip
-  only in part, generic seats, not checked in a real hall (`docs/MODEL_en.md`, *Seat dip*). Diffraction beyond
+  loud); with it, RS7 within 1.8–2.5 dB in sight of the source and 3.3–6.2 dB behind the first block, the 400–500 Hz
+  dip within 3 dB but starting about a third octave low, generic seats, one real hall checked with default seats (`docs/MODEL_en.md`, *Seat dip*). Diffraction beyond
   second order (second order is opt-in and checked only on BRAS RS6), edge end points, seats as geometry.
 - Loudspeaker frequency responses (only directivity patterns are modelled); individual HRTFs (KU100 only, nearest
   HRIR, no interpolation).

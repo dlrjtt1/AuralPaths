@@ -135,6 +135,8 @@ drawn fan-hall example the rule reduces the diffracted arrivals of the 12 source
 
 Update 2026-11-11: an optional seat-dip model (`"geometry": {"seat_dip": {"on": true}}`, `seatdip.py`; 2-D boundary
 elements over generic seat rows, multiplied onto the direct sound) gives, with its settings scaled to this 1:3.2
-set-up, 3.0 - 3.3 dB mean absolute difference in sight of the source and 3.4 - 6.7 dB behind the first block (median
-measured - simulated -1.3 ... -2.2 and -2.8 ... -7.2 dB); the 500 Hz dip appears only in part
+set-up, 1.8 - 2.5 dB mean absolute difference in sight of the source and 3.3 - 6.2 dB behind the first block (median
+measured - simulated -0.9 ... +0.3 and -5.6 ... +0.4 dB); the 400 - 500 Hz dip within 3 dB, but 315 Hz 5 - 7 dB too
+quiet (the simulated dip starts about a third octave low). Before T was computed on 5.9 Hz bins (full scale) these were
+3.0 - 3.3 and 3.4 - 6.7 dB, with 200 Hz 8 - 9 dB too loud from wrap-around of the rows' response
 (`validation/rs7_seatdip_bem.py`; docs/MODEL_en.md, *Seat dip*).

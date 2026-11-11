@@ -310,27 +310,46 @@ def cross_section(G, S, R, params):
     return dict(bodies=bodies, S2=S2, R2=R2, rows=len(rows), seat=bodies[0], m=m, du=du, chief=chief)
 
 
-NFFT = 2048                  # T is given on the bins of a 2048-point FFT (23 Hz at 48 kHz): with 1024 points the
-                             # row resonances wrap around (BRAS RS7 at full-scale-equivalent resolution: mean
-                             # abs. difference 5.1 dB with 1024 points, 4.0 dB with 2048)
-PRE = NFFT // 8              # samples before the arrival in the FIR (fir), for the non-causal part of T
+NFFT = 8192                  # T is given on the bins of an 8192-point FFT at 48 kHz (5.9 Hz; nfft_for scales it with
+                             # fs): the rows' response lasts longer than the FIR at coarser grids and wraps around
+                             # (BRAS RS7 at full-scale-equivalent resolution, median measured - simulated at 200 Hz:
+                             # -8.5 dB with 2048 points, -3.8 dB with 8192, +0.6 dB with 16384; seat-dip bands
+                             # 400 / 500 Hz -5.8 / -4.9 dB with 2048 points, -0.6 / -2.4 dB with 8192)
+FSPLIT = 160.0               # Hz: the BEM is solved on every bin up to FSPLIT and on every STEP-th bin above, with
+STEP = 4                     # linear interpolation (re, im) between; RS7: the same result as every bin up to FMAX
+                             # (mean abs. difference 3.47 vs 3.50 dB with the split at the full-scale equivalent of
+                             # 125 Hz), at about 1/3 of the BEM solves
 
 
-def bins(fs, nfft=NFFT):
-    """Renderer frequency bins solved with the BEM (1 .. FMAX)."""
+def nfft_for(fs):
+    """Renderer FFT length for the seat-dip FIR at sampling rate fs (NFFT at 48 kHz, ~5.9 Hz bins at any fs)."""
+    return 1 << int(round(math.log2(NFFT * fs / 48000.0)))
+
+
+def delay(T):
+    """Samples before the arrival in the FIR of T (fir): an eighth of its length, for the non-causal part of T."""
+    return (2 * (len(T) - 1)) // 8
+
+
+def bins(fs, nfft=None):
+    """(k, f): all renderer bins 1 .. FMAX, and the mask of those solved with the BEM (every bin up to FSPLIT, every
+    STEP-th bin above it, and the last)."""
+    nfft = nfft or nfft_for(fs)
     k = np.arange(1, int(FMAX * nfft / fs) + 1)
-    return k * fs / nfft
+    f = k * fs / nfft
+    return k, f, (f <= FSPLIT) | (k % STEP == 0) | (k == k[-1])
 
 
-def path_transfer(G, S, R, params, fs, c, nfft=NFFT):
+def path_transfer(G, S, R, params, fs, c, nfft=None):
     """Complex T on the renderer's bins 0 .. nfft/2 (array of nfft/2 + 1), or None (no seat dip on this path)."""
     X = cross_section(G, S, R, params)
     if X is None:
         return None
-    fb = bins(fs, nfft)
-    T = transfer_rows(X["seat"], X["m"], X["du"], X["S2"], X["R2"], fb, c)
-    nb = nfft // 2 + 1
-    return _continue(T, fb, nb)
+    nfft = nfft or nfft_for(fs)
+    k, fb, solve = bins(fs, nfft)
+    Ts = transfer_rows(X["seat"], X["m"], X["du"], X["S2"], X["R2"], fb[solve], c)
+    T = np.interp(k, k[solve], Ts.real) + 1j * np.interp(k, k[solve], Ts.imag)
+    return _continue(T, fb, nfft // 2 + 1)
 
 
 def _continue(T, fb, nb):
@@ -348,14 +367,14 @@ def _continue(T, fb, nb):
     return out
 
 
-def fir(T, nfft=NFFT):
-    """FIR of T: nfft taps, the arrival at sample PRE."""
-    return np.roll(np.fft.irfft(T, nfft), PRE)
+def fir(T):
+    """FIR of T: 2 (len(T) - 1) taps, the arrival at sample delay(T)."""
+    return np.roll(np.fft.irfft(T, 2 * (len(T) - 1)), delay(T))
 
 
-def band_energy(T, fs, bands, nfft=NFFT):
+def band_energy(T, fs, bands):
     """Mean |T|^2 over each octave band (f / sqrt 2 .. f sqrt 2) of the bins."""
-    f = np.arange(len(T)) * fs / nfft
+    f = np.arange(len(T)) * fs / (2 * (len(T) - 1))
     out = []
     for fc in bands:
         m = (f >= fc / math.sqrt(2)) & (f < fc * math.sqrt(2))

@@ -612,10 +612,10 @@ const ENG = (() => {
     }
     return out;
   }
-  // seat dip (seatdip.fir): T on the bins of a 2048-point FFT -> FIR with the arrival at sample PRE; the rendered
-  // 1024-point block of the direct sound is convolved with it (4096-point FFT)
+  // seat dip (seatdip.fir): T on the bins of an NT-point FFT -> FIR with the arrival at sample NT / 8 (seatdip.delay);
+  // the rendered 1024-point block of the direct sound is convolved with it (FFT of NC >= NFFT + NT points)
   function seatConv(q, blk, dst, a, nLen) {
-    const NT = GEOM.SEAT.NFFT, PT = GEOM.SEAT.PRE, NC = 4096;
+    const NT = 2 * (q.Tr.length - 1), PT = NT / 8; let NC = 2; while (NC < NFFT + NT) NC *= 2;
     if (!q._HT) {
       const hr = new Float64Array(NT), hi = new Float64Array(NT);
       for (let k = 0; k <= NT / 2; k++) { hr[k] = q.Tr[k]; hi[k] = q.Ti[k]; if (k > 0 && k < NT / 2) { hr[NT - k] = q.Tr[k]; hi[NT - k] = -q.Ti[k]; } }

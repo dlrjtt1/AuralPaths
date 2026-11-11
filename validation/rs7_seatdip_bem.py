@@ -6,8 +6,9 @@ transfer function T(f), windowed and compared in third-octave bands with the mea
     python validation/rs7_seatdip_bem.py <folder holding "_unz/1 Scene descriptions"> [--out out/rs]
 
 RS7 is about a 1:3.2 model of seat rows (0.24 m blocks for ~0.8 m seat backs), so the model settings are scaled:
-elements at most seatdip.HMAX / 3.2 long, BEM up to 3.2 x seatdip.FMAX, and T on the bins of a 512-point FFT at
-44.1 kHz (the engine's 2048 points at 48 kHz, in the time scale of the model). Same rows as the engine: the last
+elements at most seatdip.HMAX / 3.2 long, BEM up to 3.2 x seatdip.FMAX, T on the bins of a 2048-point FFT at
+44.1 kHz (21.5 Hz; the engine's 5.9 Hz at full scale is 18.8 Hz in the model) and solved on every bin up to
+3.2 x seatdip.FSPLIT, every seatdip.STEP-th bin above (as the engine). Same rows as the engine: the last
 ROWS_FRONT blocks in front of the receiver and ROWS_BACK behind. Also prints the result with all 15 blocks.
 First checks the BEM against the series solution for a rigid half-cylinder on a rigid floor.
 """
@@ -25,7 +26,7 @@ import bras_rs as b      # noqa: E402
 import seatdip as sd     # noqa: E402
 
 SCALE = 3.2
-NF = 512
+NF = 2048
 
 
 def check_cylinder():
@@ -67,8 +68,8 @@ def main():
     xs = [3.958 + 0.34 * r for r in range(15)]
     TH = np.array(b.THIRD)
     sel = (TH >= 125) & (TH <= 4000)
-    hmax, fmax = sd.HMAX, sd.FMAX
-    sd.HMAX, sd.FMAX = hmax / SCALE, fmax * SCALE
+    hmax, fmax, fsplit = sd.HMAX, sd.FMAX, sd.FSPLIT
+    sd.HMAX, sd.FMAX, sd.FSPLIT = hmax / SCALE, fmax * SCALE, fsplit * SCALE
     rows_out = []
     try:
         for label, front, back in (("engine rows", sd.ROWS_FRONT, sd.ROWS_BACK), ("all 15 blocks", 99, 0)):
@@ -80,8 +81,9 @@ def main():
                 x0 = use[0]
                 seat = [(x0 - 0.06, 0), (x0 + 0.06, 0), (x0 + 0.06, 0.24), (x0 - 0.06, 0.24)]
                 m = [int(round((x - x0) / 0.34)) for x in use]
-                fb = np.arange(1, int(sd.FMAX * NF / b.FS) + 1) * b.FS / NF
-                T = sd._continue(sd.transfer_rows(seat, m, 0.34, [S[0], S[2]], [Rr[0], Rr[2]], fb, c), fb, NF // 2 + 1)
+                k, fb, solve = sd.bins(b.FS, NF)
+                Ts = sd.transfer_rows(seat, m, 0.34, [S[0], S[2]], [Rr[0], Rr[2]], fb[solve], c)
+                T = sd._continue(np.interp(k, k[solve], Ts.real) + 1j * np.interp(k, k[solve], Ts.imag), fb, NF // 2 + 1)
                 h = np.roll(np.fft.irfft(T, NF), NF // 8)
                 L = float(np.linalg.norm(Rr - S))
                 H = b.P1M * np.exp(-1j * 2 * np.pi * f / c * L - air * L) / L * np.fft.rfft(h, nfft) * \
@@ -97,7 +99,7 @@ def main():
                 for fc, v in zip(TH, d):
                     rows_out.append([label, f"LS{eid[i]}", f"MP{rid[i]}", int(fc), round(float(v), 2)])
     finally:
-        sd.HMAX, sd.FMAX = hmax, fmax
+        sd.HMAX, sd.FMAX, sd.FSPLIT = hmax, fmax, fsplit
     os.makedirs(a.out, exist_ok=True)
     import csv
     with open(os.path.join(a.out, "RS7_seatdip.csv"), "w", newline="") as fh:

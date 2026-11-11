@@ -899,24 +899,29 @@ It is not a measured seat-dip filter of any hall.
   best-fit line (steps are not modelled). Modelled: the last 8 rows in front of the listener, the listener's own
   row and 1 behind.
 - **Numerics.** Constant elements (≤ λ/8 and ≤ 5 cm), collocation at the centres, composite Gauss rule for
-  near-singular integrals; BEM up to 1 kHz on the bins of a 2048-point FFT (23 Hz at 48 kHz), above that the energy
-  mean of |T| over the last third octave (crossfaded). Checked against the series solution for a rigid half-cylinder
+  near-singular integrals; T up to 1 kHz on the bins of an 8192-point FFT (5.9 Hz at 48 kHz), the BEM solved on
+  every bin up to 160 Hz and on every fourth bin above (linear interpolation between), above 1 kHz the energy mean of
+  |T| over the last third octave (crossfaded). The fine low-frequency bins matter: the response of the rows lasts
+  longer than the FIR of a coarser grid and wraps around (RS7 below). Checked against the series solution for a rigid half-cylinder
   on a floor (0.002 dB). The interior resonances of the closed seat bodies are not suppressed: with CHIEF points
   (least squares) the result changes by up to 0.3 dB in third-octave bands, up to 3 dB at single bins (drawn fan
   hall). Python (direct solve) and browser (GMRES) agree to 1e-10 (`validation/check_seatdip_pyjs.py`, regression
-  check `seatdip`). About 4–5 s per source–listener pair on one core.
+  check `seatdip`). About 4 s per source–listener pair on one core in the browser engine (8–9 s in Python).
 - **Check against BRAS RS7** (15 blocks 0.24 m high, a seat-dip set-up at about 1:3.2; settings scaled;
   `validation/rs7_seatdip_bem.py`), third-octave bands 125 Hz–4 kHz:
 
   | | source in sight (4 pairs) | behind the first block (4) |
   |---|---|---|
-  | mean abs. difference, without / with seat dip | 3.8–6.4 / **3.0–3.3 dB** | 5.6–9.1 / **3.4–6.7 dB** |
-  | median measured − simulated, without / with | −0.7 … −4.7 / **−1.3 … −2.2 dB** | −5.3 … −11.0 / **−2.8 … −7.2 dB** |
+  | mean abs. difference, without / with seat dip | 3.8–6.4 / **1.8–2.5 dB** | 5.6–9.1 / **3.3–6.2 dB** |
+  | median measured − simulated, without / with | −0.7 … −4.7 / **−0.9 … +0.3 dB** | −5.3 … −11.0 / **−5.6 … +0.4 dB** |
 
-  The 500 Hz dip appears only in part (400–500 Hz still 5–7 dB too loud, 9–12 dB without), and at 200 Hz the model
-  is now 8–9 dB too loud (4 dB too quiet without). T needs fine frequency resolution: four times finer bins give
-  3.5 instead of 4.1 dB mean. Behind the rows, modelling all 15 blocks is better (2.9–4.7 dB), but worse far from
-  the source in sight (4.3–4.6 dB).
+  Per band (median of each group): 400–500 Hz, the dip, −2.7 … +0.2 dB (9–12 dB too loud without); 200 Hz 3–4 dB
+  too loud; 315 Hz 5–7 dB too quiet (the simulated dip starts about a third octave lower than measured; cause not
+  known). The frequency grid matters: on the earlier grid, four times coarser (2048 points at 48 kHz), the 200 Hz
+  band was 8–9 dB too loud and the dip bands 5–7 dB too loud, from wrap-around of the rows' response; a grid twice
+  as fine again changes the mean by 0.1 dB. With all 15 blocks instead of the engine's 10 rows: 1.6–2.5 / 2.8–3.5 dB;
+  the difference is at the two receivers far behind the first block (5.8 / 6.2 dB with the engine's rows), whose
+  path crosses blocks the engine leaves out.
 - **Check in a real hall** (Detmold Konzerthaus, 136 binaural source–seat pairs, default seats, not fitted;
   `validation/detmold_kh.md`): early IACC (IACC_E3) −0.15 → −0.09 below the measurement (within 0.075: 18 → 40 %),
   C80 bias −0.3 / −0.8 / −0.7 → −0.1 / −0.1 / +0.3 dB (500 Hz / 1 kHz / 2 kHz), EDT and late IACC about unchanged;

@@ -17,7 +17,7 @@ that every hall is simulated equally well; the weak spots are listed in section 
 | Rooms of the 2019 round robin (BRAS CR2 - CR4): T20, EDT, C80, D50 averaged over 10 source-receiver pairs, from the BRAS material data alone | mean error 2.2 - 4.0 JND; the six programs 1.3 - 6.4 JND (best of seven in CR3, second with C in CR4, sixth in CR2) | section 2.2 |
 | Coupled rooms (CR1), energy decay at 1 kHz | door 30.4 deg: 7.6 dB with the BRAS initial data, 1.7 dB with the fitted data (programs 2.5 - 7.5 dB); door 4.1 deg: 6.6 - 8.2 dB, worse than every program (4.1 - 5.1 dB) | section 2.3 |
 | Concert hall, 136 binaural source-seat pairs (Detmold Konzerthaus) | late spaciousness (IACC_L3) within 0.075 at 96 % of the pairs; EDT bias 0 - 3 %; C80 0.3 - 0.8 dB low | section 4 |
-| Known weak spots | sound just above seat rows behind the first row: 5 - 11 dB too loud (3.4 - 6.7 dB off with the optional seat-dip model); early IACC too low; coupled rooms joined by a narrow gap (late decay 13 dB low) | section 5 |
+| Known weak spots | sound just above seat rows behind the first row: 5 - 11 dB too loud (3.3 - 6.2 dB off with the optional seat-dip model); early IACC too low; coupled rooms joined by a narrow gap (late decay 13 dB low) | section 5 |
 
 Shape error: rms over 1/3-octave bands of simulated minus measured level after removing the mean difference.
 Mean abs. difference: absolute levels. The loudspeaker is modelled as a flat point source with its documented
@@ -44,7 +44,7 @@ Weak:
 - Small rooms with uncalibrated material data: CR2 reverberates 30 - 35 % too short (sixth of seven); calibrate to a
   measured reverberation time where one exists.
 - Grazing sound over seat rows behind the first row: 5 - 11 dB too loud without the optional seat-dip model; with it
-  (generic seats, 2-D) 3.4 - 6.7 dB, and the 500 Hz dip appears only in part (RS7).
+  (generic seats, 2-D) 3.3 - 6.2 dB; the 400 - 500 Hz dip within 3 dB, but it starts about a third octave too low (RS7).
 - Early spatial impression in concert halls: IACC_E3 about 0.15 low; C80 slightly low (Detmold). With the seat-dip
   model (default seats) 0.09 low and C80 within 0.3 dB on average.
 - High frequencies of binaural responses: 4 - 6 dB too much energy at 9 - 15 kHz.
@@ -172,7 +172,7 @@ Aspoeck et al., BRAS - Benchmark for Room Acoustical Simulation, https://doi.org
 | RS6 body 0.72 m, 8 positions behind it | 8 | 3.0 - 3.5 dB | 2.3 - 2.8 dB | `diffraction_order` 2, `diffraction_refl` 1, `finite_reflectors` false |
 | RS7 15 low blocks (seat-dip set-up), source in sight | 4 | 4.6 - 6.4 dB | 3.8 - 6.4 dB | default |
 | RS7, behind the first block | 4 | 5.2 - 7.4 dB | 5.6 - 9.1 dB | default (too loud, section 5) |
-| RS7 source in sight / behind the first block, with the seat-dip model | 4 / 4 | 3.2 - 3.8 / 3.2 - 4.1 dB | 3.0 - 3.3 / 3.4 - 6.7 dB | `seat_dip` on (settings scaled to the 1:3.2 set-up; `validation/rs7_seatdip_bem.py`) |
+| RS7 source in sight / behind the first block, with the seat-dip model | 4 / 4 | 3.2 - 3.8 / 3.2 - 4.1 dB | 1.8 - 2.5 / 3.3 - 6.2 dB | `seat_dip` on (settings scaled to the 1:3.2 set-up; `validation/rs7_seatdip_bem.py`) |
 
 With the default setting RS5 is 3.9 dB (mean abs.) and RS6 leaves 4 of 8 positions without sound; the options are
 off by default because they cost time (up to tens of seconds per source-receiver pair). Details:
@@ -192,9 +192,10 @@ accompanies the Detmold data (no primary source checked).
 ## 5. Known weak spots
 
 - **Sound just above seat rows** (grazing incidence) behind the first row: 5 - 11 dB too loud and no seat dip (here
-  about 500 Hz) without the optional seat-dip model (BRAS RS7). With it: 3.0 - 6.7 dB, the dip only in part (400 -
-  500 Hz still 5 - 7 dB too loud, 200 Hz 8 - 9 dB too loud), generic seats, two-dimensional, not yet checked in a
-  real hall (docs/MODEL_en.md, *Seat dip*). Check such positions with measurements.
+  about 500 Hz) without the optional seat-dip model (BRAS RS7). With it: 1.8 - 6.2 dB; the dip at 400 -
+  500 Hz within 3 dB, but 315 Hz 5 - 7 dB too quiet (the simulated dip starts about a third octave low) and 200 Hz
+  3 - 4 dB too loud; generic seats, two-dimensional, checked in one real hall with default seats (docs/MODEL_en.md,
+  *Seat dip*). Check such positions with measurements.
 - **Early spaciousness** (IACC_E3) about 0.15 too low in a concert hall (Detmold); C80 slightly low. The optional
   seat-dip model narrows this to 0.09 and C80 to within 0.3 dB, but moves the first 15 ms further from the
   measurement at 200 - 315 Hz.

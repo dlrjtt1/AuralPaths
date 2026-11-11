@@ -1032,9 +1032,34 @@ const GEOM = (() => {
     BJY[2] = j1; BJY[3] = -2 / (Math.PI * x) + 2 / Math.PI * lg * j1 - x / (2 * Math.PI) * s1;
     return BJY;
   }
+  // order 1 only (J1, Y1), as besselJY: the kernel needs no order 0
+  const BJ1 = new Float64Array(2);
+  function besselJY1(x) {
+    if (x > 12) {
+      let sr = 0, si = 0, a = 1;
+      for (let k = 0; k < 30; k++) {
+        if (k > 0) a *= (4 - (2 * k - 1) ** 2) / (k * 8 * x);
+        if (k > 2 && Math.abs(a) < 1e-17) break;
+        const m = k & 3; if (m === 0) sr += a; else if (m === 1) si += a; else if (m === 2) sr -= a; else si -= a;
+      }
+      const w = x - 3 * Math.PI / 4, amp = Math.sqrt(2 / (Math.PI * x)), cw = Math.cos(w), sw = Math.sin(w);
+      BJ1[0] = amp * (cw * sr - sw * si); BJ1[1] = amp * (sw * sr + cw * si);
+      return BJ1;
+    }
+    const q = x * x / 4;
+    let j1 = 0, s1 = 0, t1 = 1, psi = -EULER;
+    for (let k = 0; k < 80; k++) {
+      if (k > 0) { t1 *= -q / (k * (k + 1)); psi += 1 / k; }
+      j1 += t1; s1 += (2 * psi + 1 / (k + 1)) * t1;
+      if (k > 4 && Math.abs(t1) < 1e-18 && Math.abs(t1 * q) < 1e-18) break;
+    }
+    j1 *= x / 2;
+    BJ1[0] = j1; BJ1[1] = -2 / (Math.PI * x) + 2 / Math.PI * Math.log(x / 2) * j1 - x / (2 * Math.PI) * s1;
+    return BJ1;
+  }
   function hankel01(x) { const b = besselJY(x); return [[b[0], b[1]], [b[2], b[3]]]; }
   const SEAT = { EPW: 8, NQ: 2, FMAX: 1000, ROWS_FRONT: 8, ROWS_BACK: 1, COS_MIN: 0.5, PRESETS: { closed: 0, standard: 0.10, open: 0.24 },
-    DEFAULTS: { spacing: 0.80, back: 0.80, gap: 0.10 }, NFFT: 2048, PRE: 256, HMAX: 0.05, NEAR: 2.3, NSUB: 8, PAN_DEPTH: 0.50, PAN_TOP: 0.45, BACK_T: 0.10, EAR_FWD: 0.15, GX: [-1 / Math.sqrt(3), 1 / Math.sqrt(3)], GW: [1, 1] };
+    DEFAULTS: { spacing: 0.80, back: 0.80, gap: 0.10 }, NFFT: 8192, FSPLIT: 160, STEP: 4, HMAX: 0.05, NEAR: 2.3, NSUB: 8, PAN_DEPTH: 0.50, PAN_TOP: 0.45, BACK_T: 0.10, EAR_FWD: 0.15, GX: [-1 / Math.sqrt(3), 1 / Math.sqrt(3)], GW: [1, 1] };
   function seatParams(spec) {
     const p = Object.assign({}, SEAT.DEFAULTS);
     if (spec && spec.preset in SEAT.PRESETS) p.gap = SEAT.PRESETS[spec.preset];
@@ -1078,8 +1103,8 @@ const GEOM = (() => {
   function dGdn(k, x0, x1, y0, y1, n0, n1) {
     let re = 0, im = 0;
     for (let sg = 1; sg >= -1; sg -= 2) {
-      const dx = x0 - y0, dz = x1 - sg * y1, r = Math.hypot(dx, dz), b = besselJY(k * r), s = k * (dx * n0 + dz * sg * n1) / r / 4;
-      re -= b[3] * s; im += b[2] * s;          // i/4 (J1 + i Y1) s
+      const dx = x0 - y0, dz = x1 - sg * y1, r = Math.hypot(dx, dz), b = besselJY1(k * r), s = k * (dx * n0 + dz * sg * n1) / r / 4;
+      re -= b[1] * s; im += b[0] * s;          // i/4 (J1 + i Y1) s
     }
     KV[0] = re; KV[1] = im; return KV;
   }
@@ -1162,8 +1187,9 @@ const GEOM = (() => {
   // (1/2) p - K p = p_inc is solved by GMRES with the inverse of the diagonal block as right preconditioner (Python:
   // direct solve; same result to ~1e-10), with a direct solve if GMRES does not converge
   const GM = { TOL: 1e-12, RESTART: 80, MAX: 800 };
+  // consecutive frequencies with the same mesh start GMRES from the previous solution
   function seatRows(seat, m, du, S, R, freqs, c) {
-    const nr = m.length;
+    const nr = m.length; let prev = null;
     return freqs.map((f) => {
       const k = 2 * Math.PI * f / c, M = seatMesh([seat], c / f / SEAT.EPW), ns = M.P.length, n = nr * ns;
       const kern = (x0, x1, j, sh) => { if (isNear(x0, x1, M, j, sh)) return nearInt(k, x0, x1, M, j, sh); let re = 0, im = 0; for (let q = 0; q < SEAT.NQ; q++) { const y = M.Q[j][q], v = dGdn(k, x0, x1, y[0] + sh, y[1], M.N[j][0], M.N[j][1]); re += v[0] * M.W[j][q]; im += v[1] * M.W[j][q]; } KV[0] = re; KV[1] = im; return KV; };
@@ -1178,16 +1204,33 @@ const GEOM = (() => {
       for (let i = 0; i < ns * ns; i++) { Dr[i] = -B0r[i]; Di[i] = -B0i[i]; } for (let i = 0; i < ns; i++) Dr[i * ns + i] += 0.5;
       const F = cluFactor(Dr, Di, ns);
       const precond = (vr, vi) => { const zr = Float64Array.from(vr), zi = Float64Array.from(vi); for (let p = 0; p < nr; p++) cluSolve(F, zr, zi, p * ns); return [zr, zi]; };
+      // K x with the block-Toeplitz structure: rows at mm = m - min(m) in a block circulant of P >= 2 L - 1 rows,
+      // diagonalised by a DFT over the row index (P block products per product instead of nr^2)
+      const mn = Math.min(...m), mm = m.map((v) => v - mn), L = Math.max(...mm) + 1, P = 2 * L - 1, ns2 = ns * ns;
+      const cw = new Float64Array(P), sw = new Float64Array(P);
+      for (let t = 0; t < P; t++) { cw[t] = Math.cos(2 * Math.PI * t / P); sw[t] = Math.sin(2 * Math.PI * t / P); }
+      const Cr = new Float64Array(P * ns2), Ci = new Float64Array(P * ns2);
+      for (const [d, [Br, Bi]] of blocks) { const t = ((d % P) + P) % P;
+        for (let s = 0; s < P; s++) { const e = (s * t) % P, c = cw[e], sn = -sw[e], o = s * ns2;   // e^{-2 pi i s t / P}
+          for (let i = 0; i < ns2; i++) { Cr[o + i] += Br[i] * c - Bi[i] * sn; Ci[o + i] += Br[i] * sn + Bi[i] * c; } } }
+      const Xr = new Float64Array(P * ns), Xi = new Float64Array(P * ns), Yr = new Float64Array(P * ns), Yi = new Float64Array(P * ns);
       const apply = (xr, xi) => { // y = (1/2) x - K x
+        Xr.fill(0); Xi.fill(0);
+        for (let s = 0; s < P; s++) for (let p = 0; p < nr; p++) { const e = (s * mm[p]) % P, c = cw[e], sn = -sw[e], o = s * ns, op = p * ns;
+          for (let j = 0; j < ns; j++) { const u = xr[op + j], v = xi[op + j]; Xr[o + j] += u * c - v * sn; Xi[o + j] += u * sn + v * c; } }
+        for (let s = 0; s < P; s++) { const oc = s * ns2, o = s * ns;
+          for (let i = 0; i < ns; i++) { let sr = 0, si = 0; const row = oc + i * ns;
+            for (let j = 0; j < ns; j++) { const a = Cr[row + j], b = Ci[row + j], u = Xr[o + j], v = Xi[o + j]; sr += a * u - b * v; si += a * v + b * u; }
+            Yr[o + i] = sr; Yi[o + i] = si; } }
         const yr = new Float64Array(n), yi = new Float64Array(n);
-        for (let p = 0; p < nr; p++) for (let q = 0; q < nr; q++) { const [Br, Bi] = blocks.get(m[p] - m[q]);
-          for (let i = 0; i < ns; i++) { let sr = 0, si = 0; const row = i * ns, o = q * ns;
-            for (let j = 0; j < ns; j++) { const a = Br[row + j], b = Bi[row + j], u = xr[o + j], v = xi[o + j]; sr += a * u - b * v; si += a * v + b * u; }
-            yr[p * ns + i] -= sr; yi[p * ns + i] -= si; } }
+        for (let p = 0; p < nr; p++) { const op = p * ns;
+          for (let s = 0; s < P; s++) { const e = (s * mm[p]) % P, c = cw[e], sn = sw[e], o = s * ns;
+            for (let i = 0; i < ns; i++) { const a = Yr[o + i], b = Yi[o + i]; yr[op + i] -= (a * c - b * sn) / P; yi[op + i] -= (a * sn + b * c) / P; } } }
         for (let i = 0; i < n; i++) { yr[i] += 0.5 * xr[i]; yi[i] += 0.5 * xi[i]; }
         return [yr, yi];
       };
-      let sol = gmres(apply, precond, br, bi, n), xr, xi;
+      let sol = gmres(apply, precond, br, bi, n, prev && prev[0].length === n ? prev : null), xr, xi;
+      prev = sol ? sol.u : null;
       if (sol) [xr, xi] = sol;
       else { // direct solve
         const Ar = new Float64Array(n * n), Ai = new Float64Array(n * n);
@@ -1203,16 +1246,18 @@ const GEOM = (() => {
     });
   }
   // restarted GMRES with right preconditioning, complex vectors as [re, im] Float64Arrays; returns [xr, xi] or null
-  function gmres(apply, precond, br, bi, n) {
+  // u0: optional start [ur, ui] in the preconditioned variable (x = M^-1 u); the result carries its u as .u
+  function gmres(apply, precond, br, bi, n, u0) {
     const dot = (ar, ai, br2, bi2) => { let r = 0, i = 0; for (let k = 0; k < n; k++) { r += ar[k] * br2[k] + ai[k] * bi2[k]; i += ar[k] * bi2[k] - ai[k] * br2[k]; } return [r, i]; }; // conj(a) . b
     const nrm = (ar, ai) => Math.sqrt(dot(ar, ai, ar, ai)[0]);
-    const bn = nrm(br, bi), xr = new Float64Array(n), xi = new Float64Array(n);
-    if (bn === 0) return [xr, xi];
+    const bn = nrm(br, bi), xr = u0 ? Float64Array.from(u0[0]) : new Float64Array(n), xi = u0 ? Float64Array.from(u0[1]) : new Float64Array(n);
+    const fin = () => { const z = precond(xr, xi); z.u = [xr, xi]; return z; };
+    if (bn === 0) { const z = [new Float64Array(n), new Float64Array(n)]; z.u = z.slice(); return z; }
     let it = 0;
     while (it < GM.MAX) {
       const [mr, mi] = precond(xr, xi), [ar, ai] = apply(mr, mi), rr = new Float64Array(n), ri = new Float64Array(n);
       for (let k = 0; k < n; k++) { rr[k] = br[k] - ar[k]; ri[k] = bi[k] - ai[k]; }
-      const beta = nrm(rr, ri); if (beta <= GM.TOL * bn) return precond(xr, xi);
+      const beta = nrm(rr, ri); if (beta <= GM.TOL * bn) return fin();
       const Vr = [rr.map((v) => v / beta)], Vi = [ri.map((v) => v / beta)], Hr = [], Hi = [], cs = [], snr = [], sni = [], gr = [beta], gi = [0];
       let j = 0, done = false;
       for (; j < GM.RESTART && it < GM.MAX; j++, it++) {
@@ -1244,7 +1289,7 @@ const GEOM = (() => {
         const a = Hr[i][i], b = Hi[i][i], dd = a * a + b * b; yr[i] = (sr * a + si * b) / dd; yi[i] = (si * a - sr * b) / dd;
       }
       for (let i = 0; i < j; i++) for (let k = 0; k < n; k++) { xr[k] += yr[i] * Vr[i][k] - yi[i] * Vi[i][k]; xi[k] += yr[i] * Vi[i][k] + yi[i] * Vr[i][k]; }
-      if (done) return precond(xr, xi);
+      if (done) return fin();
     }
     return null;
   }
@@ -1291,11 +1336,18 @@ const GEOM = (() => {
     const du = rot(own + dEff, a + b * (own + dEff))[0] - rot(own, a + b * own)[0], m = rows.map((sb) => Math.round((sb - own) / dEff));
     return { bodies, S2, R2, rows: rows.length, seat: bodies[0], m, du, chief };
   }
-  // complex T on the renderer's bins 0 .. nfft/2, or null (seatdip.path_transfer)
-  function seatPath(G, S, R, prm, fs, c, nfft = SEAT.NFFT) {
+  const seatNfft = (fs) => 1 << Math.round(Math.log2(SEAT.NFFT * fs / 48000));   // seatdip.nfft_for
+  // complex T on the renderer's bins 0 .. nfft/2, or null (seatdip.path_transfer): the BEM on every bin up to FSPLIT and
+  // every STEP-th bin above, linear interpolation (re, im) between
+  function seatPath(G, S, R, prm, fs, c, nfft = seatNfft(fs)) {
     const X = seatSection(G, S, R, prm); if (!X) return null;
-    const K = Math.floor(SEAT.FMAX * nfft / fs), fb = []; for (let k = 1; k <= K; k++) fb.push(k * fs / nfft);
-    const T = seatRows(X.seat, X.m, X.du, X.S2, X.R2, fb, c), nb = nfft / 2 + 1, re = new Float64Array(nb), im = new Float64Array(nb);
+    const K = Math.floor(SEAT.FMAX * nfft / fs), fb = [], ks = [];
+    for (let k = 1; k <= K; k++) { fb.push(k * fs / nfft); if (k * fs / nfft <= SEAT.FSPLIT || k % SEAT.STEP === 0 || k === K) ks.push(k); }
+    const Ts = seatRows(X.seat, X.m, X.du, X.S2, X.R2, ks.map((k) => k * fs / nfft), c), T = [];
+    for (let j = 0, k = 1; k <= K; k++) { while (ks[j + 1] <= k) j++;
+      if (ks[j] === k) { T.push(Ts[j]); continue; }
+      const w = (k - ks[j]) / (ks[j + 1] - ks[j]); T.push([Ts[j][0] + w * (Ts[j + 1][0] - Ts[j][0]), Ts[j][1] + w * (Ts[j + 1][1] - Ts[j][1])]); }
+    const nb = nfft / 2 + 1, re = new Float64Array(nb), im = new Float64Array(nb);
     // seatdip._continue: crossfade over the last third octave to the energy mean of |T| there, kept above FMAX
     const f0 = SEAT.FMAX * Math.pow(2, -1 / 3); let e = 0, ne = 0;
     T.forEach(([r, i], j) => { if (fb[j] >= f0) { e += r * r + i * i; ne++; } });
@@ -1305,7 +1357,8 @@ const GEOM = (() => {
     re[0] = Math.hypot(T[0][0], T[0][1]);
     return { re, im, rows: X.rows };
   }
-  function seatBandEnergy(T, fs, bands, nfft = SEAT.NFFT) {
+  function seatBandEnergy(T, fs, bands) {
+    const nfft = 2 * (T.re.length - 1);
     return bands.map((fc) => { let s = 0, m = 0; for (let k = 0; k < T.re.length; k++) { const f = k * fs / nfft; if (f >= fc / Math.SQRT2 && f < fc * Math.SQRT2) { s += T.re[k] ** 2 + T.im[k] ** 2; m++; } } return m ? s / m : 1; });
   }
 

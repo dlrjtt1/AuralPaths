@@ -48,8 +48,8 @@ By LABO 1557 (Dong-Gyun You).
   RS1–RS4 (reflections on floors, plates, arrays): spectral shape between the round-robin participants
   (`validation/bras_rs.md`); thick obstacles need `diffraction_order` 2 (BRAS RS6: within about 3 dB behind a 0.72 m
   body); behind seat rows at grazing incidence the simulation is
-  5–11 dB too loud without the optional seat-dip model (`geometry.seat_dip`) and 3.4–6.7 dB off with it (BRAS RS7;
-  in sight of the source 3.0–3.3 dB), where the 500 Hz dip appears only in part.
+  5–11 dB too loud without the optional seat-dip model (`geometry.seat_dip`) and 3.3–6.2 dB off with it (BRAS RS7;
+  in sight of the source 1.8–2.5 dB), where the 400–500 Hz dip is within 3 dB but starts about a third octave low.
 - Room-criteria check against two measured halls (Fratoni dataset, inputs from the authors' Odeon calibration,
   unchanged): raked lecture hall (ULH) EDT / T30 / C50 / Ts within about 1 JND at 500 Hz–4 kHz, T30 1–2 JND short
   at 125–250 Hz; elliptical domed hall (STC) T30 about 15 % too long at all bands (non-diffuse field; calibrate
