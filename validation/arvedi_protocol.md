@@ -31,3 +31,19 @@ Derived outputs stay in `out/` (not in the repository).
    off, seat dip off, binaural settings unused (omnidirectional comparison). Pre-declared secondary runs: seat dip on (default
    seats), and the four directional sources with the generic loudspeaker directivity.
 7. **One run.** The comparison is computed once and reported as it comes out, including failures.
+
+## Added 2026-11-11, after reading the position files only (no RIR opened)
+
+8. **Placement.** The dataset's origin is the stage centre (S0 at z = 1.45 m, S1 - S4 at 1.18 m) and its axes are
+   parallel to the model's. The 65 receivers (rows A1 - A5) are on one side of the stage; on the low-end side all of
+   them lie 0.5 - 1.4 m above the model floor, on the high-end side 11 of them would lie at or below it. Placement:
+   model = dataset + (22.05, 7.0, 0) m, no rotation.
+9. **Metrics, both sides with the same functions.** Octave-band energy histograms (measured: `validate_bras_cr.
+   measured_hist` of each of the 8 capsules, energies averaged over the capsules; simulated: `brir_proto.energy_hists`
+   at the array centre), then `validate_fratoni.criteria` (EDT, T30, C80, C50 -> D50, Ts) and T20 (-5 ... -25 dB) the
+   same way. Direct sound at the geometric distance / c.
+10. **Materials.** BRAS CR3 fitted values (examples/bras_cr3): seating (aud) <- mat_CR3_seating, plaster walls <-
+    mat_CR3_plaster, ceiling <- mat_CR3_ceiling, windows <- mat_CR3_windows, walkway and stage floors <-
+    mat_CR3_floor, wood shells <- mat_CR3_stagePanels; their scattering as given there.
+11. **Secondary run, directional sources.** S1 - S4 with the generic loudspeaker model (90 degree coverage), aimed
+    horizontally along +x (towards the measured audience); the aim is not documented in the dataset.
