@@ -49,6 +49,11 @@ OUT_HI = [8.5, 10.6, 12.1, 12.9, 12.9, 12.5, 12.3, 11.9, 11.9, 12.1, 12.3, 12.4,
 PROF_X = [1.6, 3.2, 11.2, 14.95, 16.2, 18.7, 19.3, 24.8, 25.7, 30.4, 34.6]
 PROF_Z = [9.3, 9.3, 4.6, 2.75, 1.5, 0.4, 0.0, 0.0, 0.4, 2.4, 4.4]
 STAGE_ZONE = (19.3, 24.8)               # stage floor between the ring rows
+# post hoc (after the blind run, see validation/arvedi_protocol.md item 13): the ring rows in front of the high end
+# follow the dataset's receiver heights (microphone 1.2 m above the floor: rows A1 - A5 on floors 0 ... 1.1 m at
+# 3.3 ... 6.9 m from the stage centre), then the front of the high block (step to 2.75 m), then the rake as above
+PROF_POSTHOC = ([1.6, 3.2, 11.2, 14.55, 14.75, 15.15, 16.05, 16.95, 17.85, 18.75, 19.3, 24.8, 25.7, 30.4, 34.6],
+                [9.3, 9.3, 4.6, 2.75, 1.2, 1.1, 0.8, 0.5, 0.2, 0.0, 0.0, 0.0, 0.4, 2.4, 4.4])
 RING = (3.0, 11.0, 1.6)                 # ring rows: from z 0 at y = 3 / 11 m up to 1.6 m at the island edge
 
 
@@ -104,7 +109,10 @@ def vside(o, xa, ya, xb, yb, za, zb, mat, split=None):
         o.face([(xa, ya, lo[0]), (xb, yb, lo[1]), (xb, yb, hi[1]), (xa, ya, hi[0])], mat)
 
 
-def build():
+def build(posthoc=False):
+    global PROF_X, PROF_Z
+    if posthoc:
+        PROF_X, PROF_Z = PROF_POSTHOC
     o = Obj()
     xs = sorted(set(OUT_X + PROF_X + list(STAGE_ZONE)))
     xs = [x for x in xs if OUT_X[0] <= x <= OUT_X[-1]]

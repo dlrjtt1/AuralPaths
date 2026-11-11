@@ -55,3 +55,18 @@ Derived outputs stay in `out/` (not in the repository).
     six comparison runs. Higher orders are left to the ray tracing (20 000 rays), as in the other mesh-hall checks
     (BRAS CR3 / CR4 use order 1). No result had been computed when this was changed; only the measured T30 means
     (calibration targets, 1.38 - 1.63 s, 125 Hz - 4 kHz) had been printed.
+
+## The blind run is void: receivers placed on the wrong side (found 2026-11-11, after its results)
+
+13. The dataset's documentation (README of https://github.com/polimi-ispl/arverir, which could not be reached from
+    this session; the figure and the loudspeaker models were provided by the user after the blind results had been
+    printed) shows the 65 receivers in rows A1 - A5 in front of the HIGH end, the dataset's +x pointing to it. Item 8
+    placed them on the low-end side: the model's floor in front of the high end had been read too high from the
+    section, so the height test chose the wrong side. The blind results (out/arvedi; EDT 21 - 36 % long, C80 0.5 -
+    2.2 dB low at 250 Hz - 4 kHz for S0) compare the wrong seats and are void. Sources per the documentation: S0 B&K
+    OmniPower 4292-L, S1 - S4 Genelec 8020C (quartet positions; photo: facing the audience on the +x side).
+    **Post hoc run** (`validation/arvedi_check.py --posthoc`, out/arvedi_posthoc), not blind: dataset turned by
+    180 deg (model = (22.05 - x, 7 - y, z)); ring-row floors in front of the high end set from the receiver heights
+    (microphone 1.2 m above the floor; validation/arvedi_model.py PROF_POSTHOC); everything else as items 1 - 12, plus
+    S0 with the 4292-L horizontal directivity from the B&K data sheet (BP 1689). These results are reported as
+    post hoc and do not count as a blind check.

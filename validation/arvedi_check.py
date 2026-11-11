@@ -9,6 +9,9 @@ without this repository is the hist.py written next to the data); this script re
 
     python validation/arvedi_check.py <folder with pos_sources.csv, pos_receivers.csv, meas_hist_*.npz> [--out out/arvedi]
         [--skip-cal]      reuse <out>/config_cal.json
+        [--posthoc]       after the blind run (protocol item 13): receivers on the high-end side (dataset turned by
+                          180 deg), ring-row floors from the receiver heights, and S0 also with the B&K 4292-L
+                          directivity (--dodeca <csv>); default output out/arvedi_posthoc
 
 Writes <out>/config.json, <out>/t30_S0.csv (calibration targets), <out>/config_cal.json (calibrate.py),
 <out>/compare_<run>.csv and prints the summary.
@@ -32,6 +35,7 @@ import brir_proto as bp                       # noqa: E402
 from validate_fratoni import BANDS, criteria  # noqa: E402
 
 OFFSET = np.array([22.05, 7.0, 0.0])          # dataset -> model (protocol item 8)
+TURN = np.array([1.0, 1.0, 1.0])               # post hoc: (-1, -1, 1), the dataset turned by 180 deg (item 13)
 C = 343.0
 RAYS, ISM = 20000, 2         # order 2: protocol item 12
 JND = {"EDT": ("rel", 0.05), "T20": ("rel", 0.05), "T30": ("rel", 0.05), "C80": ("abs", 1.0), "D50": ("abs", 0.05),
@@ -57,9 +61,9 @@ def metrics(h, t0):
 
 
 def load(folder):
-    src = {r["source"]: np.array([float(r["x"]), float(r["y"]), float(r["z"])]) + OFFSET
+    src = {r["source"]: TURN * np.array([float(r["x"]), float(r["y"]), float(r["z"])]) + OFFSET
            for r in csv.DictReader(open(os.path.join(folder, "pos_sources.csv")), delimiter=";")}
-    rec = {r["mic"]: np.array([float(r["C_x"]), float(r["C_y"]), float(r["C_z"])]) + OFFSET
+    rec = {r["mic"]: TURN * np.array([float(r["C_x"]), float(r["C_y"]), float(r["C_z"])]) + OFFSET
            for r in csv.DictReader(open(os.path.join(folder, "pos_receivers.csv")), delimiter=";")}
     H = {}
     for f in sorted(glob.glob(os.path.join(folder, "meas_hist_*.npz"))):
@@ -67,8 +71,8 @@ def load(folder):
     return src, rec, H
 
 
-def config(src, rec, out):
-    o = am.build()
+def config(src, rec, out, posthoc=False):
+    o = am.build(posthoc)
     obj = os.path.join(out, "arvedi.obj")
     o.write(obj)
     mats = json.load(open(os.path.join(ROOT, "examples", "bras_cr3", "bras_cr3_config.json")))["geometry"]["materials"]
@@ -87,7 +91,8 @@ def config(src, rec, out):
            "binaural": {"sofa_path": "", "early_window_ms": 100.0, "crossfade_ms": 10.0, "ism_order_early": 12,
                         "ism_order_omni": 60}}
     for k in ("S1", "S2", "S3", "S4"):
-        cfg["sources"][k] = {"pos": src[k].round(4).tolist(), "coverage": 90.0, "aim": {"az": 90.0, "el": 0.0},
+        cfg["sources"][k] = {"pos": src[k].round(4).tolist(), "coverage": 90.0,
+                             "aim": {"az": 90.0 * TURN[0], "el": 0.0},
                              "role": "generic 90 degree loudspeaker, aimed along +x (assumed; protocol item 11)"}
     return cfg
 
@@ -124,10 +129,16 @@ def main():
     ap.add_argument("data")
     ap.add_argument("--out", default=os.path.join(ROOT, "out", "arvedi"))
     ap.add_argument("--skip-cal", action="store_true")
+    ap.add_argument("--posthoc", action="store_true")
+    ap.add_argument("--dodeca", default=None, help="directivity CSV of the B&K 4292-L (post hoc S0 run)")
     a = ap.parse_args()
+    if a.posthoc:
+        TURN[:] = (-1.0, -1.0, 1.0)
+        if a.out == os.path.join(ROOT, "out", "arvedi"):
+            a.out = os.path.join(ROOT, "out", "arvedi_posthoc")
     os.makedirs(a.out, exist_ok=True)
     src, rec, H = load(a.data)
-    cfg = config(src, rec, a.out)
+    cfg = config(src, rec, a.out, a.posthoc)
     json.dump(cfg, open(os.path.join(a.out, "config.json"), "w"), indent=1)
     t30 = os.path.join(a.out, "t30_S0.csv")
     with open(t30, "w", newline="") as f:
@@ -150,6 +161,10 @@ def main():
     c2["geometry"]["seat_dip"] = {"on": True}
     c2["geometry"]["mesh"]["rotate_deg"] = 90.0       # rows across the hall (normal along x)
     compare(c2, src, rec, H, "S0", "S0_seatdip", a.out)
+    if a.dodeca:
+        c3 = copy.deepcopy(cfg)
+        c3["sources"]["S0"]["directivity"] = a.dodeca
+        compare(c3, src, rec, H, "S0", "S0_dodeca4292L", a.out)
     for s in ("S1", "S2", "S3", "S4"):
         compare(cfg, src, rec, H, s, f"{s}_directional", a.out)
 
