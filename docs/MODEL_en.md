@@ -923,8 +923,8 @@ It is not a measured seat-dip filter of any hall.
   the difference is at the two receivers far behind the first block (5.8 / 6.2 dB with the engine's rows), whose
   path crosses blocks the engine leaves out.
 - **Check in a real hall** (Detmold Konzerthaus, 136 binaural source–seat pairs, default seats, not fitted;
-  `validation/detmold_kh.md`): early IACC (IACC_E3) −0.15 → −0.09 below the measurement (within 0.075: 18 → 40 %),
-  C80 bias −0.3 / −0.8 / −0.7 → −0.1 / −0.1 / +0.3 dB (500 Hz / 1 kHz / 2 kHz), EDT and late IACC about unchanged;
+  `validation/detmold_kh.md`): early IACC (IACC_E3) −0.15 → −0.10 below the measurement (within 0.075: 18 → 38 %),
+  C80 bias −0.3 / −0.8 / −0.7 → −0.2 / −0.2 / +0.2 dB (500 Hz / 1 kHz / 2 kHz), EDT and late IACC about unchanged;
   the first 15 ms closer to the measurement below 160 Hz, further away at 200–315 Hz.
 - **Limits.** 2-D (rows infinitely wide; the RS7 blocks are 4.1 m wide), generic seat shape, empty rigid seats,
   checked in one real hall with default seats. The page's *Seat-dip range…* button shows how much the direct sound and the PA / direct

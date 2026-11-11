@@ -41,11 +41,11 @@ measured metrics as above.
 
 | metric | measured | without seat dip: simulated / mean diff. / within ref. | with seat dip: simulated / mean diff. / within ref. |
 |---|---|---|---|
-| IACC_E3 | 0.45 | 0.30 / -0.146 / 18 % | **0.36 / -0.090 / 40 %** |
-| IACC_E broadband | 0.43 | 0.41 / -0.015 / 66 % | 0.48 / +0.053 / 65 % |
+| IACC_E3 | 0.45 | 0.30 / -0.146 / 18 % | **0.35 / -0.097 / 38 %** |
+| IACC_E broadband | 0.43 | 0.41 / -0.015 / 66 % | 0.47 / +0.047 / 63 % |
 | IACC_L3 | 0.12 | 0.12 / -0.003 / 96 % | 0.12 / -0.003 / 96 % |
-| C80 500 Hz / 1 kHz / 2 kHz | 0.9 / 1.8 / 4.0 dB | -0.26 / -0.76 / -0.71 dB; 38 / 51 / 51 % | **-0.12 / -0.13 / +0.30 dB**; 38 / 47 / 57 % |
-| EDT 500 Hz / 1 kHz / 2 kHz | 1.46 / 1.41 / 1.16 s | +0 / +2 / +3 %; 35 / 45 / 27 % | -1 / -2 / -7 %; 32 / 39 / 26 % |
+| C80 500 Hz / 1 kHz / 2 kHz | 0.9 / 1.8 / 4.0 dB | -0.26 / -0.76 / -0.71 dB; 38 / 51 / 51 % | **-0.19 / -0.19 / +0.24 dB**; 38 / 49 / 58 % |
+| EDT 500 Hz / 1 kHz / 2 kHz | 1.46 / 1.41 / 1.16 s | +0 / +2 / +3 %; 35 / 45 / 27 % | -0 / -1 / -6 %; 35 / 42 / 27 % |
 
 Spectrum of the first 15 ms (direct sound and early reflections, third-octave bands 80 Hz - 2 kHz, each pair's mean
 removed; the measured IRs contain the KH 120 response, the same in both runs; `early_spec.py` and `cmp_early.py`
@@ -54,9 +54,13 @@ in out/detmold_sd, not in the repository):
 | | 80 - 160 Hz | 200 - 315 Hz | rms shape error (median of the pairs) |
 |---|---|---|---|
 | measured - simulated, without seat dip | -3.9 ... -1.5 dB | -3.3 ... -1.8 dB | 4.7 dB |
-| measured - simulated, with seat dip | -1.8 ... -0.2 dB | -3.9 ... -3.5 dB | 4.9 dB |
+| measured - simulated, with seat dip | -1.9 ... -0.4 dB | -4.2 ... -3.6 dB | 5.0 dB |
 
-Reading: with the seat-dip model the early IACC deficit shrinks from 0.15 to 0.09 and the C80 bias from up to
-0.8 dB to 0.1 - 0.3 dB; the early spectrum gets closer to the measurement below 160 Hz and further away at 200 -
+Reading: with the seat-dip model the early IACC deficit shrinks from 0.15 to 0.10 and the C80 bias from up to
+0.8 dB to 0.2 dB; the early spectrum gets closer to the measurement below 160 Hz and further away at 200 -
 315 Hz, and its overall shape error is about the same. The seat dimensions are defaults, not Detmold's; the result is
 a check of the default model in one hall, not evidence that it reproduces this hall's seat dip.
+
+The seat-dip column is from T on 5.9 Hz bins (2026-11-11, later the same day). With the earlier 23 Hz bins it was:
+IACC_E3 -0.090 (40 % within), C80 -0.12 / -0.13 / +0.30 dB, EDT -1 / -2 / -7 %, early-spectrum shape error 4.9 dB,
+i.e. the finer grid changes the Detmold results by less than their spread over the pairs.

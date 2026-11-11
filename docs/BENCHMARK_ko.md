@@ -41,8 +41,8 @@
 - 교정하지 않은 재료 데이터의 작은 실: CR2의 잔향이 30 – 35 % 짧음(7개 중 6위). 실측 잔향 시간이 있으면 교정할 것.
 - 첫 열 뒤 객석 열 위를 스치는 소리: 선택 사항인 좌석 dip 모델 없이 5 – 11 dB 과대; 모델을 켜면(일반적인 의자,
   2차원) 3.3 – 6.2 dB; 400 – 500 Hz dip은 3 dB 이내지만 약 1/3옥타브 낮은 데서 시작함(RS7).
-- 콘서트홀의 초기 공간감: IACC_E3가 약 0.15 낮음; C80 약간 낮음(Detmold). 좌석 dip 모델(기본 의자)을 켜면 0.09 낮고
-  C80은 평균 0.3 dB 이내.
+- 콘서트홀의 초기 공간감: IACC_E3가 약 0.15 낮음; C80 약간 낮음(Detmold). 좌석 dip 모델(기본 의자)을 켜면 0.10 낮고
+  C80은 평균 0.2 dB 이내.
 - 바이노럴 응답의 고역: 9 – 15 kHz에서 에너지가 4 – 6 dB 많음.
 - 물체 뒤 가려진 위치는 느린 회절 옵션이 필요함(3절). 기본 설정에서는 RS6 물체 뒤 8곳 중 4곳에 소리가 없음.
 
@@ -168,7 +168,7 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
 
 | 홀 | 데이터 | 결과 | 상세 |
 |---|---|---|---|
-| Detmold Konzerthaus(약 600석), 무대 음원 4 × 좌석 34, KU100 더미헤드 | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3: 96 %의 쌍에서 0.075 이내; IACC_E3: 평균 0.15 낮음(0.075 이내 18 %); EDT 편차 0 – 3 %(5 % 이내 27 – 45 %); C80 0.3 – 0.8 dB 낮음(1 dB 이내 38 – 51 %); T30 교정 후 2.7 % 이내. 좌석 dip 모델(기본 의자)을 켜면 IACC_E3 0.09 낮음(0.075 이내 40 %), C80 −0.1 … +0.3 dB | [validation/detmold_kh.md](../validation/detmold_kh.md) |
+| Detmold Konzerthaus(약 600석), 무대 음원 4 × 좌석 34, KU100 더미헤드 | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3: 96 %의 쌍에서 0.075 이내; IACC_E3: 평균 0.15 낮음(0.075 이내 18 %); EDT 편차 0 – 3 %(5 % 이내 27 – 45 %); C80 0.3 – 0.8 dB 낮음(1 dB 이내 38 – 51 %); T30 교정 후 2.7 % 이내. 좌석 dip 모델(기본 의자)을 켜면 IACC_E3 0.10 낮음(0.075 이내 38 %), C80 −0.2 … +0.2 dB | [validation/detmold_kh.md](../validation/detmold_kh.md) |
 | BRAS CR3 실내악홀, CR4 강당(바이노럴, FABIAN 헤드) | BRAS | 직접음 ITD 5 µs 이내, 2 – 4 kHz 스펙트럼 1.4 dB 이내; 직접음 후 14 – 70 ms의 개별 반사: 실측 − 모델 −1.1 dB(중앙값, 두 홀); CR4에서 천장 패널–통로 플러터 아래 좌석의 후기 IACC 낮음 | [validation/bras_brir_iacc_diag.md](../validation/bras_brir_iacc_diag.md) |
 | Fratoni 강의실(ULH)과 돔형 홀(STC) | Fratoni et al. 데이터셋 | ULH: 500 Hz – 4 kHz에서 약 1 JND 이내; STC: T30 약 15 % 김(이런 홀은 먼저 교정할 것) | [validation/](../validation/) `fratoni_*.md` |
 
@@ -181,7 +181,7 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
   딥(여기서는 약 500 Hz)이 나타나지 않음(BRAS RS7). 모델을 켜면 1.8 – 6.2 dB; 400 – 500 Hz 딥은 3 dB
   이내지만 315 Hz가 5 – 7 dB 작고(시뮬레이션의 딥이 약 1/3옥타브 낮게 시작) 200 Hz는 3 – 4 dB 큼. 일반적인 의자, 2차원,
   실제 홀은 기본 의자로 한 곳만 확인(docs/MODEL_ko.md, *좌석 dip*). 이런 위치는 실측으로 확인할 것.
-- **초기 공간감**(IACC_E3)이 콘서트홀에서 약 0.15 낮음(Detmold); C80 약간 낮음. 선택 사항인 좌석 dip 모델을 켜면 0.09, C80은 0.3 dB 이내로 줄지만, 처음 15 ms는 200 – 315 Hz에서 실측과 더 멀어진다.
+- **초기 공간감**(IACC_E3)이 콘서트홀에서 약 0.15 낮음(Detmold); C80 약간 낮음. 선택 사항인 좌석 dip 모델을 켜면 0.10, C80은 0.2 dB 이내로 줄지만, 처음 15 ms는 200 – 315 Hz에서 실측과 더 멀어진다.
 - **평행면 사이 플러터**: 유한 패널 사이의 반복 반사가 기본 유한 반사판 계수에서는 저역에서 너무 약함(RS3), CR4에서 천장–
   통로 플러터를 과소평가.
 - 모서리 끝점 회절, 3차 이상의 회절, 두께 5 cm – 수십 cm의 판: 확인하지 않음.

@@ -16,8 +16,8 @@ files.
   every fourth bin above (interpolated): the rows' response wrapped around the shorter FIR (BRAS RS7: 200 Hz 8 - 9 dB
   too loud before, 3 - 4 dB now; 400 - 500 Hz dip within 3 dB). Browser BEM faster (order-1 Bessel only, block-
   circulant matrix product, GMRES started from the previous bin's solution): about the same time as before.
-- Seat dip checked in the Detmold Konzerthaus (136 binaural pairs, default seats): early IACC deficit 0.15 -> 0.09,
-  C80 bias up to -0.8 dB -> within 0.3 dB; `validation/detmold_kh.md`. `detmold_kh.py compare --meas-csv` reuses the
+- Seat dip checked in the Detmold Konzerthaus (136 binaural pairs, default seats): early IACC deficit 0.15 -> 0.10,
+  C80 bias up to -0.8 dB -> within 0.2 dB (5.9 Hz grid; 0.09 / 0.3 dB with the 23 Hz grid); `validation/detmold_kh.md`. `detmold_kh.py compare --meas-csv` reuses the
   measured metrics of an earlier run.
 - Round robin, all the objective comparisons of Brinkmann et al. 2019 (https://doi.org/10.1121/1.5096178) that do not
   need listeners: room acoustical parameters of the three rooms (`validation/rr_extract_ra.py`,
