@@ -31,5 +31,3 @@ Derived outputs stay in `out/` (not in the repository).
    off, seat dip off, binaural settings unused (omnidirectional comparison). Pre-declared secondary runs: seat dip on (default
    seats), and the four directional sources with the generic loudspeaker directivity.
 7. **One run.** The comparison is computed once and reported as it comes out, including failures.
-</content>
-</invoke>
