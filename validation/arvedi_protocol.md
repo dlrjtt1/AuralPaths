@@ -47,3 +47,11 @@ Derived outputs stay in `out/` (not in the repository).
     mat_CR3_floor, wood shells <- mat_CR3_stagePanels; their scattering as given there.
 11. **Secondary run, directional sources.** S1 - S4 with the generic loudspeaker model (90 degree coverage), aimed
     horizontally along +x (towards the measured audience); the aim is not documented in the dataset.
+
+## Deviation, 2026-11-11, before any result (computation time only)
+
+12. **Image-source order 2 instead of 3** (item 6). On this mesh (232 faces, each kept two-sided) order 3 takes about
+    85 s per receiver for the image sources alone (order 2: about 11 s), i.e. some 17 hours for the calibration and the
+    six comparison runs. Higher orders are left to the ray tracing (20 000 rays), as in the other mesh-hall checks
+    (BRAS CR3 / CR4 use order 1). No result had been computed when this was changed; only the measured T30 means
+    (calibration targets, 1.38 - 1.63 s, 125 Hz - 4 kHz) had been printed.

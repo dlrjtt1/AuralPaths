@@ -33,7 +33,7 @@ from validate_fratoni import BANDS, criteria  # noqa: E402
 
 OFFSET = np.array([22.05, 7.0, 0.0])          # dataset -> model (protocol item 8)
 C = 343.0
-RAYS, ISM = 20000, 3
+RAYS, ISM = 20000, 2         # order 2: protocol item 12
 JND = {"EDT": ("rel", 0.05), "T20": ("rel", 0.05), "T30": ("rel", 0.05), "C80": ("abs", 1.0), "D50": ("abs", 0.05),
        "Ts": ("abs", 10.0)}
 CR3 = {"aud": "mat_CR3_seating", "wall": "mat_CR3_plaster", "ceiling": "mat_CR3_ceiling", "window": "mat_CR3_windows",
