@@ -917,8 +917,12 @@ It is not a measured seat-dip filter of any hall.
   is now 8–9 dB too loud (4 dB too quiet without). T needs fine frequency resolution: four times finer bins give
   3.5 instead of 4.1 dB mean. Behind the rows, modelling all 15 blocks is better (2.9–4.7 dB), but worse far from
   the source in sight (4.3–4.6 dB).
-- **Limits.** 2-D (rows infinitely wide; the RS7 blocks are 4.1 m wide), generic seat shape, empty rigid seats, no
-  check in a real hall yet. The page's *Seat-dip range…* button shows how much the direct sound and the PA / direct
+- **Check in a real hall** (Detmold Konzerthaus, 136 binaural source–seat pairs, default seats, not fitted;
+  `validation/detmold_kh.md`): early IACC (IACC_E3) −0.15 → −0.09 below the measurement (within 0.075: 18 → 40 %),
+  C80 bias −0.3 / −0.8 / −0.7 → −0.1 / −0.1 / +0.3 dB (500 Hz / 1 kHz / 2 kHz), EDT and late IACC about unchanged;
+  the first 15 ms closer to the measurement below 160 Hz, further away at 200–315 Hz.
+- **Limits.** 2-D (rows infinitely wide; the RS7 blocks are 4.1 m wide), generic seat shape, empty rigid seats,
+  checked in one real hall with default seats. The page's *Seat-dip range…* button shows how much the direct sound and the PA / direct
   level ratio at the current seat change over the seat backs and openings above, i.e. how much the result depends on
   seats that were not measured.
 

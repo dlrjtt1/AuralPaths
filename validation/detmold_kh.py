@@ -6,7 +6,7 @@ grid; Detmold University of Music, https://zenodo.org/records/4116247, CC BY 4.0
     python validation/detmold_kh.py setup <DetmoldSRIR_v01 folder> <section image> --hrir <KU100.sofa> [--out out/detmold]
     python calibrate.py out/detmold/config.json out/detmold/t30.csv --out out/detmold/config_cal.json --iter 4
     python validation/detmold_kh.py render out/detmold/config_cal.json [--sources S2,S3,S6,S7]
-    python validation/detmold_kh.py compare <DetmoldSRIR_v01 folder> out/detmold
+    python validation/detmold_kh.py compare <DetmoldSRIR_v01 folder> out/detmold [--meas-csv <earlier compare.csv>]
 
 What is taken from the data and what is assumed (state this with any result):
 - Plan: outline of the hall in the position figure of Set C (Documentation/DetmoldKH_POSITIONS_Dense.png), scaled
@@ -190,16 +190,23 @@ def compare(a):
     import soundfile as sf
     sim_dir = os.path.join(a.outdir, "brir")
     meas_dir = os.path.join(a.detmold, "SetC_DenseKH_LSOrchestra", "Data", "DummyHead")
+    known = {}
+    if a.meas_csv:            # measured metrics of an earlier compare (compare.csv), instead of the measured BRIRs
+        for r in csv.DictReader(open(a.meas_csv)):
+            known[r["pair"]] = {k[:-5]: float(v) for k, v in r.items() if k.endswith("_meas")}
     rows = []
     for p in sorted(glob.glob(os.path.join(sim_dir, "*.wav"))):
         name = os.path.basename(p)
         mp = os.path.join(meas_dir, name)
-        if not os.path.exists(mp):
+        if name[:-4] in known:
+            mm = known[name[:-4]]
+        elif os.path.exists(mp):
+            xm, fm = sf.read(mp)
+            mm = _metrics(xm, fm)
+        else:
             continue
         xs, fs = sf.read(p)
-        xm, fm = sf.read(mp)
-        ms, mm = _metrics(xs, fs), _metrics(xm, fm)
-        rows.append((name[:-4], mm, ms))
+        rows.append((name[:-4], mm, _metrics(xs, fs)))
     keys = list(rows[0][1])
     with open(os.path.join(a.outdir, "compare.csv"), "w", newline="") as f:
         w = csv.writer(f)
@@ -222,6 +229,7 @@ def main():
     s1.add_argument("--hrir", required=True); s1.add_argument("--out", default=os.path.join(HERE, "..", "out", "detmold"))
     s2 = sp.add_parser("render"); s2.add_argument("config"); s2.add_argument("--sources", default="S2,S3,S6,S7")
     s3 = sp.add_parser("compare"); s3.add_argument("detmold"); s3.add_argument("outdir")
+    s3.add_argument("--meas-csv", default=None, help="measured metrics from an earlier compare.csv (no measured BRIRs needed)")
     a = ap.parse_args()
     {"setup": setup, "render": render, "compare": compare}[a.cmd](a)
 

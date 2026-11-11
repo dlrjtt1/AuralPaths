@@ -45,7 +45,8 @@ Weak:
   measured reverberation time where one exists.
 - Grazing sound over seat rows behind the first row: 5 - 11 dB too loud without the optional seat-dip model; with it
   (generic seats, 2-D) 3.4 - 6.7 dB, and the 500 Hz dip appears only in part (RS7).
-- Early spatial impression in concert halls: IACC_E3 about 0.15 low; C80 slightly low (Detmold).
+- Early spatial impression in concert halls: IACC_E3 about 0.15 low; C80 slightly low (Detmold). With the seat-dip
+  model (default seats) 0.09 low and C80 within 0.3 dB on average.
 - High frequencies of binaural responses: 4 - 6 dB too much energy at 9 - 15 kHz.
 - Shadowed positions behind objects need the slower diffraction options (section 3); with the defaults, four of
   eight positions behind the RS6 object receive no sound.
@@ -181,7 +182,7 @@ off by default because they cost time (up to tens of seconds per source-receiver
 
 | hall | data | result | details |
 |---|---|---|---|
-| Detmold Konzerthaus (about 600 seats), 4 stage sources x 34 seats, KU100 dummy head | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3 within 0.075 at 96 % of the pairs; IACC_E3 0.15 low on average (18 % within 0.075); EDT bias 0 - 3 % (27 - 45 % of the pairs within 5 %); C80 0.3 - 0.8 dB low (38 - 51 % within 1 dB); T30 within 2.7 % after calibration | [validation/detmold_kh.md](../validation/detmold_kh.md) |
+| Detmold Konzerthaus (about 600 seats), 4 stage sources x 34 seats, KU100 dummy head | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3 within 0.075 at 96 % of the pairs; IACC_E3 0.15 low on average (18 % within 0.075); EDT bias 0 - 3 % (27 - 45 % of the pairs within 5 %); C80 0.3 - 0.8 dB low (38 - 51 % within 1 dB); T30 within 2.7 % after calibration. With the seat-dip model (default seats): IACC_E3 0.09 low (40 % within 0.075), C80 -0.1 ... +0.3 dB | [validation/detmold_kh.md](../validation/detmold_kh.md) |
 | BRAS CR3 chamber music hall, CR4 auditorium (binaural, FABIAN head) | BRAS | direct-sound ITD within 5 us, 2 - 4 kHz spectrum within 1.4 dB; discrete reflections 14 - 70 ms after the direct sound: measured - model -1.1 dB (median, both halls); CR4 late IACC too low at seats under a flutter between ceiling panels and aisle | [validation/bras_brir_iacc_diag.md](../validation/bras_brir_iacc_diag.md) |
 | Fratoni lecture hall (ULH) and domed hall (STC) | Fratoni et al. dataset | ULH within about 1 JND at 500 Hz - 4 kHz; STC T30 about 15 % too long (calibrate first in such halls) | [validation/](../validation/) `fratoni_*.md` |
 
@@ -194,7 +195,9 @@ accompanies the Detmold data (no primary source checked).
   about 500 Hz) without the optional seat-dip model (BRAS RS7). With it: 3.0 - 6.7 dB, the dip only in part (400 -
   500 Hz still 5 - 7 dB too loud, 200 Hz 8 - 9 dB too loud), generic seats, two-dimensional, not yet checked in a
   real hall (docs/MODEL_en.md, *Seat dip*). Check such positions with measurements.
-- **Early spaciousness** (IACC_E3) about 0.15 too low in a concert hall (Detmold); C80 slightly low.
+- **Early spaciousness** (IACC_E3) about 0.15 too low in a concert hall (Detmold); C80 slightly low. The optional
+  seat-dip model narrows this to 0.09 and C80 to within 0.3 dB, but moves the first 15 ms further from the
+  measurement at 200 - 315 Hz.
 - **Flutter between parallel surfaces**: repeated reflections between finite panels are too weak at low
   frequencies with the default finite-reflector factor (RS3) and a ceiling-aisle flutter was underestimated in CR4.
 - Diffraction from edge end points, third and higher orders, plates between 5 cm and a few tenths of a metre thick:

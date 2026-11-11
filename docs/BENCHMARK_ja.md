@@ -41,7 +41,7 @@
 - 校正していない材料データの小さい室: CR2 の残響が 30 – 35 % 短い(7 本中 6 位)。実測残響時間があれば校正すること。
 - 最前列より後ろで座席列の上を掠める音: オプションの座席ディップモデルなしでは 5 – 11 dB 過大; モデルを用いると
   (一般的な座席、2 次元)3.4 – 6.7 dB で、500 Hz のディップは一部のみ現れる(RS7)。
-- コンサートホールの初期の空間印象: IACC_E3 が約 0.15 低い; C80 がやや低い(Detmold)。
+- コンサートホールの初期の空間印象: IACC_E3 が約 0.15 低い; C80 がやや低い(Detmold)。 座席ディップモデル(既定の座席)では 0.09 低く、C80 は平均 0.3 dB 以内。
 - バイノーラル応答の高域: 9 – 15 kHz でエネルギーが 4 – 6 dB 多い。
 - 物体の背後の遮蔽位置には時間のかかる回折オプションが必要(3 節)。既定の設定では RS6 の物体背後 8 位置のうち 4 位置で
   音が生じない。
@@ -170,7 +170,7 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
 
 | ホール | データ | 結果 | 詳細 |
 |---|---|---|---|
-| Detmold Konzerthaus(約 600 席)、舞台音源 4 × 座席 34、KU100 ダミーヘッド | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3: 96 % の組で 0.075 以内; IACC_E3: 平均 0.15 低い(0.075 以内は 18 %); EDT の偏り 0 – 3 %(5 % 以内 27 – 45 %); C80 は 0.3 – 0.8 dB 低い(1 dB 以内 38 – 51 %); T30 は校正後 2.7 % 以内 | [validation/detmold_kh.md](../validation/detmold_kh.md) |
+| Detmold Konzerthaus(約 600 席)、舞台音源 4 × 座席 34、KU100 ダミーヘッド | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3: 96 % の組で 0.075 以内; IACC_E3: 平均 0.15 低い(0.075 以内は 18 %); EDT の偏り 0 – 3 %(5 % 以内 27 – 45 %); C80 は 0.3 – 0.8 dB 低い(1 dB 以内 38 – 51 %); T30 は校正後 2.7 % 以内。座席ディップモデル(既定の座席)では IACC_E3 が 0.09 低い(0.075 以内 40 %)、C80 −0.1 … +0.3 dB | [validation/detmold_kh.md](../validation/detmold_kh.md) |
 | BRAS CR3 室内楽ホール、CR4 講堂(バイノーラル、FABIAN ヘッド) | BRAS | 直接音の ITD 5 µs 以内、2 – 4 kHz のスペクトル 1.4 dB 以内; 直接音後 14 – 70 ms の個別反射: 実測 − モデル −1.1 dB(中央値、両ホール); CR4 では天井パネル–通路のフラッター下の座席で後期 IACC が低い | [validation/bras_brir_iacc_diag.md](../validation/bras_brir_iacc_diag.md) |
 | Fratoni の講義室(ULH)とドーム型ホール(STC) | Fratoni et al. のデータセット | ULH: 500 Hz – 4 kHz で約 1 JND 以内; STC: T30 が約 15 % 長い(このようなホールではまず校正すること) | [validation/](../validation/) `fratoni_*.md` |
 
@@ -183,7 +183,7 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
   座席ディップ(ここでは約 500 Hz)が現れない(BRAS RS7)。モデルを用いると 3.0 – 6.7 dB で、ディップは一部のみ現れる
   (400 – 500 Hz はなお 5 – 7 dB 大きく、200 Hz は 8 – 9 dB 大きい)。一般的な座席、2 次元、実際のホールでは未確認
   (docs/MODEL_ja.md、*座席ディップ*)。このような位置は実測で確認すること。
-- **初期の空間印象**(IACC_E3)がコンサートホールで約 0.15 低い(Detmold); C80 がやや低い。
+- **初期の空間印象**(IACC_E3)がコンサートホールで約 0.15 低い(Detmold); C80 がやや低い。 オプションの座席ディップモデルでは 0.09、C80 は 0.3 dB 以内に縮まるが、最初の 15 ms は 200 – 315 Hz で実測から離れる。
 - **平行面間のフラッター**: 有限パネル間の反復反射が既定の有限反射板係数では低域で弱すぎる(RS3)。CR4 では天井–通路の
   フラッターを過小評価。
 - エッジ端点の回折、3 次以上の回折、厚さ 5 cm – 数十 cm の板: 未確認。
