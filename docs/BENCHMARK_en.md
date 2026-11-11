@@ -195,7 +195,8 @@ accompanies the Detmold data (no primary source checked).
   about 500 Hz) without the optional seat-dip model (BRAS RS7). With it: 1.8 - 6.2 dB; the dip at 400 -
   500 Hz within 3 dB, but 315 Hz 5 - 7 dB too quiet (the simulated dip starts about a third octave low) and 200 Hz
   3 - 4 dB too loud; generic seats, two-dimensional, checked in one real hall with default seats (docs/MODEL_en.md,
-  *Seat dip*). Check such positions with measurements.
+  *Seat dip*). The deep notch at the lower edge of the dip is not explained (ruled out: 2-D approximation, block
+  dimensions, surface absorption); read levels there qualitatively. Check such positions with measurements.
 - **Early spaciousness** (IACC_E3) about 0.15 too low in a concert hall (Detmold); C80 slightly low. The optional
   seat-dip model narrows this to 0.10 and C80 to within 0.2 dB, but moves the first 15 ms further from the
   measurement at 200 - 315 Hz.

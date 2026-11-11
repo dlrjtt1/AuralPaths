@@ -140,3 +140,6 @@ measured - simulated -0.9 ... +0.3 and -5.6 ... +0.4 dB); the 400 - 500 Hz dip w
 quiet (the simulated dip starts about a third octave low). Before T was computed on 5.9 Hz bins (full scale) these were
 3.0 - 3.3 and 3.4 - 6.7 dB, with 200 Hz 8 - 9 dB too loud from wrap-around of the rows' response
 (`validation/rs7_seatdip_bem.py`; docs/MODEL_en.md, *Seat dip*).
+The deep notch the model puts at 260 - 330 Hz is not explained: a converged 3-D calculation, the documented block
+dimensions, absorbing block surfaces and MDF walls on the box cavity all keep it (`validation/rs7_seatdip_diag.py`;
+docs/MODEL_en.md, *Seat dip*, lower edge of the dip).

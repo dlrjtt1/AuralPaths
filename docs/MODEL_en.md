@@ -930,6 +930,16 @@ It is not a measured seat-dip filter of any hall.
   checked in one real hall with default seats. The page's *Seat-dip range…* button shows how much the direct sound and the PA / direct
   level ratio at the current seat change over the seat backs and openings above, i.e. how much the result depends on
   seats that were not measured.
+- **Lower edge of the dip (not resolved).** The rigid model puts a deep, narrow notch (−20 … −40 dB) at the lower
+  edge of the dip that the measurement does not show: RS7 260–330 Hz, i.e. the 315 Hz band 5–7 dB too quiet (about
+  100 Hz at full scale). Ruled out (`validation/rs7_seatdip_diag.py`): the 2-D approximation (a converged 3-D
+  point-source calculation of the same rows, by the 2.5-D transform, is as deep: −32 dB at 260–280 Hz, within 0.5 dB
+  of 2-D from 320 Hz up), the block dimensions (as documented by BRAS: 0.24 × 0.12 × 4.1 m, gaps 0.22 m), absorption
+  of the block surfaces (α up to 0.1 as an impedance boundary) and the MDF walls as a mass (8.91 kg/m²) on the box
+  cavity; also source and receiver heights (±4–8 cm) and irregular block positions (±1 cm). The cause is not known;
+  vibration of the hollow MDF blocks is not modelled. Whether real, upholstered seats show such a notch is not known,
+  so levels at the lower edge of the dip are not to be read quantitatively. The early spectrum in Detmold departing
+  from the measurement at 200–315 Hz may or may not have the same cause (not checked).
 
 ## Reproducibility (`out/manifest.json`)
 

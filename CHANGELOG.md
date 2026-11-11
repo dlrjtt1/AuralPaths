@@ -16,6 +16,9 @@ files.
   every fourth bin above (interpolated): the rows' response wrapped around the shorter FIR (BRAS RS7: 200 Hz 8 - 9 dB
   too loud before, 3 - 4 dB now; 400 - 500 Hz dip within 3 dB). Browser BEM faster (order-1 Bessel only, block-
   circulant matrix product, GMRES started from the previous bin's solution): about the same time as before.
+- Seat dip, lower edge of the dip in RS7 (315 Hz 5 - 7 dB too quiet) investigated and documented as a limit: not the
+  2-D approximation (converged 3-D point-source calculation by the 2.5-D transform), not the block dimensions, not
+  absorbing surfaces or MDF walls on the box cavity; `validation/rs7_seatdip_diag.py`.
 - Seat dip checked in the Detmold Konzerthaus (136 binaural pairs, default seats): early IACC deficit 0.15 -> 0.10,
   C80 bias up to -0.8 dB -> within 0.2 dB (5.9 Hz grid; 0.09 / 0.3 dB with the 23 Hz grid); `validation/detmold_kh.md`. `detmold_kh.py compare --meas-csv` reuses the
   measured metrics of an earlier run.
