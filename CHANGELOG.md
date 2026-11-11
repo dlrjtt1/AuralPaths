@@ -16,6 +16,11 @@ files.
   every fourth bin above (interpolated): the rows' response wrapped around the shorter FIR (BRAS RS7: 200 Hz 8 - 9 dB
   too loud before, 3 - 4 dB now; 400 - 500 Hz dip within 3 dB). Browser BEM faster (order-1 Bessel only, block-
   circulant matrix product, GMRES started from the previous bin's solution): about the same time as before.
+- Arvedi Auditorium (Cremona), a hall not used in development, modelled from the published drawings
+  (`validation/arvedi_model.py`, `validation/arvedi_check.py`, protocol fixed beforehand in
+  `validation/arvedi_protocol.md`). The blind run placed the receivers on the wrong side of the stage and is void;
+  post hoc: T20 within 3 %, mid-frequency C80 within 1 dB, EDT 17 - 32 % too long, and for the directional
+  loudspeakers C80 3 - 8 dB low at 2 - 4 kHz (`validation/arvedi_check.md`).
 - Seat dip, lower edge of the dip in RS7 (315 Hz 5 - 7 dB too quiet) investigated and documented as a limit: not the
   2-D approximation (converged 3-D point-source calculation by the 2.5-D transform), not the block dimensions, not
   absorbing surfaces or MDF walls on the box cavity; `validation/rs7_seatdip_diag.py`.

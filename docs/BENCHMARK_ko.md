@@ -17,6 +17,7 @@
 | 2019 라운드 로빈의 실내(BRAS CR2 – CR4): T20, EDT, C80, D50, 음원-수음점 10쌍 평균, BRAS 재료 데이터만 사용 | 평균 오차 2.2 – 4.0 JND; 참가 프로그램 6개는 1.3 – 6.4 JND(CR3에서 7개 중 1위, CR4에서 C와 공동 2위, CR2에서 6위) | 2.2절 |
 | 결합실(CR1), 1 kHz 에너지 감쇠 | 문 30.4°: BRAS initial 데이터로 7.6 dB, fitted 데이터로 1.7 dB(프로그램 2.5 – 7.5 dB); 문 4.1°: 6.6 – 8.2 dB로 모든 프로그램(4.1 – 5.1 dB)보다 나쁨 | 2.3절 |
 | 콘서트홀, 바이노럴 음원-좌석 136쌍(Detmold Konzerthaus) | 후기 공간감(IACC_L3)이 96 %의 쌍에서 0.075 이내; EDT 편차 0 – 3 %; C80 0.3 – 0.8 dB 낮음 | 4절 |
+| 개발에 쓰지 않은 홀, 공개 도면으로 모델링(Arvedi Auditorium, Cremona; 무대를 둘러싼 객석), 수음점 65개, 사후 비교 | T20 3 % 이내; 250 Hz – 1 kHz C80 −0.1 … −0.9 dB; EDT 17 – 32 % 김; 지향성 스피커: 2 – 4 kHz C80 3 – 8 dB 낮음 | 4절 |
 | 알려진 약점 | 첫 열 뒤 객석 바로 위를 지나는 소리: 5 – 11 dB 과대(선택 사항인 좌석 dip 모델을 켜면 3.3 – 6.2 dB 차이); 초기 IACC 낮음; 좁은 틈으로 이어진 결합실(후기 감쇠 13 dB 낮음) | 5절 |
 
 형태 오차: 시뮬레이션과 실측의 1/3옥타브 레벨 차에서 평균 차이를 뺀 rms. 평균 절대 차이: 절대 레벨 기준. 스피커는
@@ -43,6 +44,8 @@
   2차원) 3.3 – 6.2 dB; 400 – 500 Hz dip은 3 dB 이내지만 약 1/3옥타브 낮은 데서 시작함(RS7).
 - 콘서트홀의 초기 공간감: IACC_E3가 약 0.15 낮음; C80 약간 낮음(Detmold). 좌석 dip 모델(기본 의자)을 켜면 0.10 낮고
   C80은 평균 0.2 dB 이내.
+- 공개 도면으로 모델링한 홀의 무대 근처 초기 감쇠(Arvedi, 무대를 둘러싼 객석, 사후 비교): T20은 맞지만 EDT가 17 – 32 %
+  김; 지향성 스피커에서는 2 – 4 kHz의 직접음·초기 우세가 재현되지 않음(C80 3 – 8 dB 낮음). 원인은 확인하지 못함.
 - 바이노럴 응답의 고역: 9 – 15 kHz에서 에너지가 4 – 6 dB 많음.
 - 물체 뒤 가려진 위치는 느린 회절 옵션이 필요함(3절). 기본 설정에서는 RS6 물체 뒤 8곳 중 4곳에 소리가 없음.
 
@@ -171,6 +174,7 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
 | Detmold Konzerthaus(약 600석), 무대 음원 4 × 좌석 34, KU100 더미헤드 | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3: 96 %의 쌍에서 0.075 이내; IACC_E3: 평균 0.15 낮음(0.075 이내 18 %); EDT 편차 0 – 3 %(5 % 이내 27 – 45 %); C80 0.3 – 0.8 dB 낮음(1 dB 이내 38 – 51 %); T30 교정 후 2.7 % 이내. 좌석 dip 모델(기본 의자)을 켜면 IACC_E3 0.10 낮음(0.075 이내 38 %), C80 −0.2 … +0.2 dB | [validation/detmold_kh.md](../validation/detmold_kh.md) |
 | BRAS CR3 실내악홀, CR4 강당(바이노럴, FABIAN 헤드) | BRAS | 직접음 ITD 5 µs 이내, 2 – 4 kHz 스펙트럼 1.4 dB 이내; 직접음 후 14 – 70 ms의 개별 반사: 실측 − 모델 −1.1 dB(중앙값, 두 홀); CR4에서 천장 패널–통로 플러터 아래 좌석의 후기 IACC 낮음 | [validation/bras_brir_iacc_diag.md](../validation/bras_brir_iacc_diag.md) |
 | Fratoni 강의실(ULH)과 돔형 홀(STC) | Fratoni et al. 데이터셋 | ULH: 500 Hz – 4 kHz에서 약 1 JND 이내; STC: T30 약 15 % 김(이런 홀은 먼저 교정할 것) | [validation/](../validation/) `fratoni_*.md` |
+| Auditorium Giovanni Arvedi, Cremona(무대를 둘러싼 약 470석), 무대 음원 5개 × 수음점 65개, 8채널 구형 마이크; 공개 도면으로 만든 단순화 모델 | Politecnico di Milano, https://doi.org/10.5281/zenodo.20098848 (CC BY 4.0) | **사후 비교**(맞대결 계산은 수음점을 반대쪽에 놓아 무효). 무지향 음원: T20 3 % 이내(48 – 75 %가 5 % 이내), C80 250 Hz – 1 kHz −0.1 … −0.9 dB, 2 – 4 kHz −1.3 … −1.5 dB, D50 0.04 이내, EDT 17 – 32 % 김. Genelec 스피커(8020A 데이터): 2 – 4 kHz의 직접음·초기 우세가 재현되지 않음, C80 3 – 8 dB 낮음, EDT 2 – 5배 김 | [validation/arvedi_check.md](../validation/arvedi_check.md) |
 
 기준값: EDT 5 %와 C80 1 dB는 ISO 3382-1:2009 Annex A; IACC 0.075는 Detmold 데이터에 딸린 학위논문에서 가정한 값(1차 출처는
 확인하지 않음).
@@ -182,6 +186,9 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
   이내지만 315 Hz가 5 – 7 dB 작고(시뮬레이션의 딥이 약 1/3옥타브 낮게 시작) 200 Hz는 3 – 4 dB 큼. 일반적인 의자, 2차원,
   실제 홀은 기본 의자로 한 곳만 확인(docs/MODEL_ko.md, *좌석 dip*). dip 아래쪽 경계의 깊은 홈은 설명되지 않았다(2차원 근사, 블록 치수, 표면 흡음은 원인이 아님); 그곳의 레벨은 정성적으로만 읽을 것. 이런 위치는 실측으로 확인할 것.
 - **초기 공간감**(IACC_E3)이 콘서트홀에서 약 0.15 낮음(Detmold); C80 약간 낮음. 선택 사항인 좌석 dip 모델을 켜면 0.10, C80은 0.2 dB 이내로 줄지만, 처음 15 ms는 200 – 315 Hz에서 실측과 더 멀어진다.
+- **무대 근처의 초기 감쇠와 직접음·초기 반사 균형**: 개발에 쓰지 않고 공개 도면으로 모델링한 홀(Arvedi, 사후 비교)에서
+  T20은 맞지만 EDT가 17 – 32 % 김; 지향성 스피커에서는 2 – 4 kHz C80이 3 – 8 dB 낮음. 후보(시험하지 않음): 단순화 모델에서
+  빠진 초기 반사면, 모든 재료를 같은 비율로 교정한 것, 12 % 작은 용적([validation/arvedi_check.md](../validation/arvedi_check.md)).
 - **평행면 사이 플러터**: 유한 패널 사이의 반복 반사가 기본 유한 반사판 계수에서는 저역에서 너무 약함(RS3), CR4에서 천장–
   통로 플러터를 과소평가.
 - 모서리 끝점 회절, 3차 이상의 회절, 두께 5 cm – 수십 cm의 판: 확인하지 않음.

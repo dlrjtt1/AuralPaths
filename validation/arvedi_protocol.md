@@ -73,8 +73,11 @@ Derived outputs stay in `out/` (not in the repository).
 
 14. **Loudspeaker data for the post hoc run (2026-11-11, before it was started).** S1 - S4: Genelec 8020A
     manufacturer data (CLF2 file by Genelec Oy, measured 2009-09-21, anechoic, 1.6 m) as a stand-in for the 8020C of
-    the dataset (same family and size; whether the C version radiates the same is not checked). The horizontal and
+    the dataset (same family and size; whether the C version radiates the same is not checked; the user judges the
+    difference in sound to be small, which is a judgement, not a measurement). The horizontal and
     vertical polars (1/3-octave bands 125 Hz - 16 kHz) were read off the CLF Viewer plots by colour (`--genelec <csv>`;
     the CSV and the reading scripts stay in out/arvedi_posthoc, not in the repository). Aim: horizontal, towards the
     measured audience (dataset +x), as in the photo of the measurement. S0: as item 13 (omnidirectional, and the
     4292-L horizontal polars as a second run). Everything else as items 1 - 13; all results post hoc.
+
+Results of the post hoc run: [arvedi_check.md](arvedi_check.md).
