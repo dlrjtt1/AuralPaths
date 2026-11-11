@@ -65,6 +65,12 @@ class Obj:
         n = np.cross(np.subtract(pts[1], pts[0]), np.subtract(pts[2], pts[0]))
         if np.linalg.norm(n) < 1e-9 and len(pts) == 3:
             return
+        if len(pts) > 3:                     # a warped quad (ring rows) goes in as two triangles
+            nn = n / (np.linalg.norm(n) or 1)
+            if max(abs(np.dot(np.subtract(p, pts[0]), nn)) for p in pts) > 1e-6:
+                for i in range(1, len(pts) - 1):
+                    self.face([pts[0], pts[i], pts[i + 1]], mat)
+                return
         i0 = len(self.v)
         self.v += pts
         self.f.append((mat, list(range(i0 + 1, i0 + 1 + len(pts)))))
