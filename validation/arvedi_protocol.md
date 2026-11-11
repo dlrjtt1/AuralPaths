@@ -70,3 +70,11 @@ Derived outputs stay in `out/` (not in the repository).
     (microphone 1.2 m above the floor; validation/arvedi_model.py PROF_POSTHOC); everything else as items 1 - 12, plus
     S0 with the 4292-L horizontal directivity from the B&K data sheet (BP 1689). These results are reported as
     post hoc and do not count as a blind check.
+
+14. **Loudspeaker data for the post hoc run (2026-11-11, before it was started).** S1 - S4: Genelec 8020A
+    manufacturer data (CLF2 file by Genelec Oy, measured 2009-09-21, anechoic, 1.6 m) as a stand-in for the 8020C of
+    the dataset (same family and size; whether the C version radiates the same is not checked). The horizontal and
+    vertical polars (1/3-octave bands 125 Hz - 16 kHz) were read off the CLF Viewer plots by colour (`--genelec <csv>`;
+    the CSV and the reading scripts stay in out/arvedi_posthoc, not in the repository). Aim: horizontal, towards the
+    measured audience (dataset +x), as in the photo of the measurement. S0: as item 13 (omnidirectional, and the
+    4292-L horizontal polars as a second run). Everything else as items 1 - 13; all results post hoc.

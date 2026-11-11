@@ -131,6 +131,7 @@ def main():
     ap.add_argument("--skip-cal", action="store_true")
     ap.add_argument("--posthoc", action="store_true")
     ap.add_argument("--dodeca", default=None, help="directivity CSV of the B&K 4292-L (post hoc S0 run)")
+    ap.add_argument("--genelec", default=None, help="directivity CSV for S1 - S4 (post hoc: Genelec 8020A data)")
     a = ap.parse_args()
     if a.posthoc:
         TURN[:] = (-1.0, -1.0, 1.0)
@@ -139,6 +140,11 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     src, rec, H = load(a.data)
     cfg = config(src, rec, a.out, a.posthoc)
+    if a.genelec:
+        for k in ("S1", "S2", "S3", "S4"):
+            cfg["sources"][k].pop("coverage", None)
+            cfg["sources"][k]["directivity"] = os.path.abspath(a.genelec)
+            cfg["sources"][k]["role"] = "Genelec 8020C in the dataset; 8020A manufacturer polars (protocol item 14)"
     json.dump(cfg, open(os.path.join(a.out, "config.json"), "w"), indent=1)
     t30 = os.path.join(a.out, "t30_S0.csv")
     with open(t30, "w", newline="") as f:
