@@ -91,6 +91,15 @@
    "value": 0.2393649502
   }
  },
+ "seatdip": {
+  "max_T_diff": {
+   "max": 1e-06
+  },
+  "pairs": {
+   "tol": 0,
+   "value": 12
+  }
+ },
  "specular": {
   "images": {
    "tol": 0,

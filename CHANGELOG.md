@@ -4,6 +4,14 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Seat dip (optional, `"geometry": {"seat_dip": {"on": true}}`, page: Hall → Seat dip): the direct sound of every
+  source over the audience floor gets the transfer function of the seat rows from a 2-D boundary element model of
+  generic seats along the path (Davies & Cox 2000 approach; `seatdip.py`, `engine_geom.js` seatPath, both engines,
+  agree to 1e-10). Row spacing from the user or the steps of a drawn section; seat back 0.80 m and openings 0 /
+  0.10 / 0.24 m as defaults (Tahvanainen et al. 2020). *Seat-dip range…* shows the effect of the unknown seat
+  dimensions at the current seat. BRAS RS7: 3.0–3.3 dB in sight of the source (3.8–6.4 dB without), 3.4–6.7 dB behind
+  the first block (5.6–9.1 dB). New regression check `seatdip`; `validation/rs7_seatdip_bem.py`,
+  `validation/check_seatdip_pyjs.py`.
 - Round robin, all the objective comparisons of Brinkmann et al. 2019 (https://doi.org/10.1121/1.5096178) that do not
   need listeners: room acoustical parameters of the three rooms (`validation/rr_extract_ra.py`,
   `validation/rr_complex.py`), energy decay in the coupled rooms (`validation/rr_coupled.py`) and source

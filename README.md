@@ -39,7 +39,7 @@ By LABO 1557 (Dong-Gyun You).
 - Drawn halls are 2.5D (the cross-section is the same across the width); 3D models get image sources to order 2
   (browser; order 1 in Python) and no diffraction (browser and Python ray tracers agree within about 2 % in T30 on two real halls); diffraction
   at one edge per path (optionally with one reflection before and after it, or two edges in sequence with
-  `diffraction_order` 2), no seat-dip effect; scattering as a random (Lambert) model; nearest-direction HRIRs; non-individual (dummy-head) HRTFs.
+  `diffraction_order` 2), seat dip only as an optional 2-D model with generic seats; scattering as a random (Lambert) model; nearest-direction HRIRs; non-individual (dummy-head) HRTFs.
 - Diffraction check against BRAS scene RS5 (a 2.07 m partition on a hard floor, 16 positions): mean absolute
   difference 1.8 dB in third-octave bands 500 Hz–2 kHz (2.2 dB at the 11 shadow positions). This is one simple
   scene, not a measure of whole-hall accuracy. Details: `validation/`, `docs/MODEL_en.md`. The same scene given to
@@ -48,7 +48,8 @@ By LABO 1557 (Dong-Gyun You).
   RS1–RS4 (reflections on floors, plates, arrays): spectral shape between the round-robin participants
   (`validation/bras_rs.md`); thick obstacles need `diffraction_order` 2 (BRAS RS6: within about 3 dB behind a 0.72 m
   body); behind seat rows at grazing incidence the simulation is
-  still 5–11 dB too loud and the seat dip is not produced.
+  5–11 dB too loud without the optional seat-dip model (`geometry.seat_dip`) and 3.4–6.7 dB off with it (BRAS RS7;
+  in sight of the source 3.0–3.3 dB), where the 500 Hz dip appears only in part.
 - Room-criteria check against two measured halls (Fratoni dataset, inputs from the authors' Odeon calibration,
   unchanged): raked lecture hall (ULH) EDT / T30 / C50 / Ts within about 1 JND at 500 Hz–4 kHz, T30 1–2 JND short
   at 125–250 Hz; elliptical domed hall (STC) T30 about 15 % too long at all bands (non-diffuse field; calibrate

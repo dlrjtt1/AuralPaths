@@ -17,7 +17,7 @@
 | 2019 라운드 로빈의 실내(BRAS CR2 – CR4): T20, EDT, C80, D50, 음원-수음점 10쌍 평균, BRAS 재료 데이터만 사용 | 평균 오차 2.2 – 4.0 JND; 참가 프로그램 6개는 1.3 – 6.4 JND(CR3에서 7개 중 1위, CR4에서 C와 공동 2위, CR2에서 6위) | 2.2절 |
 | 결합실(CR1), 1 kHz 에너지 감쇠 | 문 30.4°: BRAS initial 데이터로 7.6 dB, fitted 데이터로 1.7 dB(프로그램 2.5 – 7.5 dB); 문 4.1°: 6.6 – 8.2 dB로 모든 프로그램(4.1 – 5.1 dB)보다 나쁨 | 2.3절 |
 | 콘서트홀, 바이노럴 음원-좌석 136쌍(Detmold Konzerthaus) | 후기 공간감(IACC_L3)이 96 %의 쌍에서 0.075 이내; EDT 편차 0 – 3 %; C80 0.3 – 0.8 dB 낮음 | 4절 |
-| 알려진 약점 | 첫 열 뒤 객석 바로 위를 지나는 소리: 5 – 11 dB 과대; 초기 IACC 낮음; 좁은 틈으로 이어진 결합실(후기 감쇠 13 dB 낮음) | 5절 |
+| 알려진 약점 | 첫 열 뒤 객석 바로 위를 지나는 소리: 5 – 11 dB 과대(선택 사항인 좌석 dip 모델을 켜면 3.4 – 6.7 dB 차이); 초기 IACC 낮음; 좁은 틈으로 이어진 결합실(후기 감쇠 13 dB 낮음) | 5절 |
 
 형태 오차: 시뮬레이션과 실측의 1/3옥타브 레벨 차에서 평균 차이를 뺀 rms. 평균 절대 차이: 절대 레벨 기준. 스피커는
 문서에 적힌 교정값을 가진 평탄한 점음원으로 모델링했다. 라운드 로빈 참가자들은 스피커 지향성 데이터를 썼고 이 실행은
@@ -39,7 +39,8 @@
 
 - 좁은 개구로 이어진 결합실: 두 번째 실에서 오는 후기 감쇠가 약 13 dB 낮음(CR1, 문 4.1°), 모든 프로그램보다 나쁨.
 - 교정하지 않은 재료 데이터의 작은 실: CR2의 잔향이 30 – 35 % 짧음(7개 중 6위). 실측 잔향 시간이 있으면 교정할 것.
-- 첫 열 뒤 객석 열 위를 스치는 소리: 5 – 11 dB 과대, 객석 딥이 나타나지 않음(RS7).
+- 첫 열 뒤 객석 열 위를 스치는 소리: 선택 사항인 좌석 dip 모델 없이 5 – 11 dB 과대; 모델을 켜면(일반적인 의자,
+  2차원) 3.4 – 6.7 dB이고 500 Hz dip은 일부만 나타남(RS7).
 - 콘서트홀의 초기 공간감: IACC_E3가 약 0.15 낮음; C80 약간 낮음(Detmold).
 - 바이노럴 응답의 고역: 9 – 15 kHz에서 에너지가 4 – 6 dB 많음.
 - 물체 뒤 가려진 위치는 느린 회절 옵션이 필요함(3절). 기본 설정에서는 RS6 물체 뒤 8곳 중 4곳에 소리가 없음.
@@ -156,6 +157,7 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
 | RS6 0.72 m 물체, 뒤쪽 8곳 | 8 | 3.0 – 3.5 dB | 2.3 – 2.8 dB | `diffraction_order` 2, `diffraction_refl` 1, `finite_reflectors` false |
 | RS7 낮은 블록 15줄(객석 딥 구성), 음원이 보임 | 4 | 4.6 – 6.4 dB | 3.8 – 6.4 dB | 기본 |
 | RS7, 첫 블록 뒤 | 4 | 5.2 – 7.4 dB | 5.6 – 9.1 dB | 기본(과대, 5절) |
+| RS7 음원이 보임 / 첫 블록 뒤, 좌석 dip 모델 사용 | 4 / 4 | 3.2 – 3.8 / 3.2 – 4.1 dB | 3.0 – 3.3 / 3.4 – 6.7 dB | `seat_dip` 켬(설정을 1:3.2 구성에 맞춤; `validation/rs7_seatdip_bem.py`) |
 
 기본 설정에서는 RS5가 평균 절대 차이 3.9 dB이고, RS6는 8곳 중 4곳에 소리가 없다. 이 옵션들은 계산 시간이 길어서(음원-수음점
 쌍당 최대 수십 초) 기본으로 꺼져 있다. 상세: [validation/bras_rs.md](../validation/bras_rs.md),
@@ -174,8 +176,10 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
 
 ## 5. 알려진 약점
 
-- **객석 열 바로 위를 지나는 소리**(스치는 입사), 첫 열 뒤: 5 – 11 dB 과대; 객석 딥(여기서는 약 500 Hz)이 나타나지 않음
-  (BRAS RS7). 이런 위치는 실측으로 확인할 것.
+- **객석 열 바로 위를 지나는 소리**(스치는 입사), 첫 열 뒤: 선택 사항인 좌석 dip 모델 없이는 5 – 11 dB 과대이고 객석
+  딥(여기서는 약 500 Hz)이 나타나지 않음(BRAS RS7). 모델을 켜면 3.0 – 6.7 dB이고 딥은 일부만 나타남(400 – 500 Hz가
+  여전히 5 – 7 dB 큼, 200 Hz는 8 – 9 dB 큼). 일반적인 의자, 2차원, 실제 홀에서는 아직 확인하지 않음(docs/MODEL_ko.md,
+  *좌석 dip*). 이런 위치는 실측으로 확인할 것.
 - **초기 공간감**(IACC_E3)이 콘서트홀에서 약 0.15 낮음(Detmold); C80 약간 낮음.
 - **평행면 사이 플러터**: 유한 패널 사이의 반복 반사가 기본 유한 반사판 계수에서는 저역에서 너무 약함(RS3), CR4에서 천장–
   통로 플러터를 과소평가.
@@ -192,6 +196,7 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
 
     python validation/bras_rs.py <BRAS 폴더> --scene RS2          # RS1 – RS4, RS6, RS7
     python validation/bras_rs5.py <BRAS 폴더> --variant thin+floor
+    python validation/rs7_seatdip_bem.py <BRAS 폴더>                # 좌석 dip 모델로 RS7
     python validation/rr_extract.py <SuppPub2.pdf> out/rs/rr_curves.csv
     python validation/rr_compare.py
     python validation/rr_extract_ra.py <SuppPub3.pdf> out/rs/rr_ra.csv

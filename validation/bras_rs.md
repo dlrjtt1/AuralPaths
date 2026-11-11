@@ -132,3 +132,9 @@ over many edges in sequence). Second-order diffraction does not help over rows: 
 dB too loud (pairs of near-grazing edges add up the same way); use it for isolated thick obstacles only. In the
 drawn fan-hall example the rule reduces the diffracted arrivals of the 12 source-receiver pairs from 132 to 98.
 **Behind seat rows, balcony fronts or riser steps seen at grazing incidence the simulation is still too loud.**
+
+Update 2026-11-11: an optional seat-dip model (`"geometry": {"seat_dip": {"on": true}}`, `seatdip.py`; 2-D boundary
+elements over generic seat rows, multiplied onto the direct sound) gives, with its settings scaled to this 1:3.2
+set-up, 3.0 - 3.3 dB mean absolute difference in sight of the source and 3.4 - 6.7 dB behind the first block (median
+measured - simulated -1.3 ... -2.2 and -2.8 ... -7.2 dB); the 500 Hz dip appears only in part
+(`validation/rs7_seatdip_bem.py`; docs/MODEL_en.md, *Seat dip*).

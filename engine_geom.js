@@ -1001,6 +1001,314 @@ const GEOM = (() => {
     return out;
   }
 
-  return { makeSurface, build, buildMesh, meshColumn, loadObj, objGroups, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, diffract2, transition, utd, DF, FIB, fresnel, panels, specFactor };
+  // ---------- seat dip (seatdip.py): 2-D BEM of the seat rows along the path, multiplied onto the direct sound
+  // Bessel functions of order 0 and 1: power series (DLMF 10.2.2, 10.8.1) for x <= 12, Hankel's asymptotic expansion
+  // (DLMF 10.17.5) above; H(n, x) = J_n(x) + i Y_n(x) as [re, im]
+  const EULER = 0.5772156649015329;
+  const BJY = new Float64Array(4);           // J0, Y0, J1, Y1 of the last besselJY call
+  function besselJY(x) {
+    if (x > 12) {
+      for (let nu = 0; nu < 2; nu++) {
+        let sr = 0, si = 0, a = 1; const mu = 4 * nu * nu;
+        for (let k = 0; k < 30; k++) {
+          if (k > 0) a *= (mu - (2 * k - 1) ** 2) / (k * 8 * x);
+          if (k > 2 && Math.abs(a) < 1e-17) break;
+          const m = k & 3; if (m === 0) sr += a; else if (m === 1) si += a; else if (m === 2) sr -= a; else si -= a;   // i^k
+        }
+        const w = x - nu * Math.PI / 2 - Math.PI / 4, amp = Math.sqrt(2 / (Math.PI * x)), cw = Math.cos(w), sw = Math.sin(w);
+        BJY[2 * nu] = amp * (cw * sr - sw * si); BJY[2 * nu + 1] = amp * (sw * sr + cw * si);
+      }
+      return BJY;
+    }
+    const q = x * x / 4, lg = Math.log(x / 2);
+    let j0 = 0, j1 = 0, s0 = 0, s1 = 0, t0 = 1, t1 = 1, psi = -EULER;   // t0 = (-q)^k / (k!)^2, t1 = (-q)^k / (k! (k+1)!)
+    for (let k = 0; k < 80; k++) {
+      if (k > 0) { t0 *= -q / (k * k); t1 *= -q / (k * (k + 1)); psi += 1 / k; }
+      j0 += t0; j1 += t1; s0 += 2 * psi * t0; s1 += (2 * psi + 1 / (k + 1)) * t1;   // psi(k + 1) + psi(k + 2)
+      if (k > 4 && Math.abs(t0) < 1e-18 && Math.abs(t1) < 1e-18) break;
+    }
+    j1 *= x / 2;
+    BJY[0] = j0; BJY[1] = 2 / Math.PI * lg * j0 - s0 / Math.PI;
+    BJY[2] = j1; BJY[3] = -2 / (Math.PI * x) + 2 / Math.PI * lg * j1 - x / (2 * Math.PI) * s1;
+    return BJY;
+  }
+  function hankel01(x) { const b = besselJY(x); return [[b[0], b[1]], [b[2], b[3]]]; }
+  const SEAT = { EPW: 8, NQ: 2, FMAX: 1000, ROWS_FRONT: 8, ROWS_BACK: 1, COS_MIN: 0.5, PRESETS: { closed: 0, standard: 0.10, open: 0.24 },
+    DEFAULTS: { spacing: 0.80, back: 0.80, gap: 0.10 }, NFFT: 2048, PRE: 256, HMAX: 0.05, NEAR: 2.3, NSUB: 8, PAN_DEPTH: 0.50, PAN_TOP: 0.45, BACK_T: 0.10, EAR_FWD: 0.15, GX: [-1 / Math.sqrt(3), 1 / Math.sqrt(3)], GW: [1, 1] };
+  function seatParams(spec) {
+    const p = Object.assign({}, SEAT.DEFAULTS);
+    if (spec && spec.preset in SEAT.PRESETS) p.gap = SEAT.PRESETS[spec.preset];
+    for (const k of ["spacing", "back", "gap"]) if (spec && spec[k] != null) p[k] = +spec[k];
+    return p;
+  }
+  function seatMesh(bodies, h) {
+    const P = [], N = [], Q = [], W = [], A = [], B = []; h = Math.min(h, SEAT.HMAX);
+    for (let poly of bodies) {
+      let a2 = 0; for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length]; a2 += p[0] * q[1] - q[0] * p[1]; }
+      if (a2 < 0) poly = poly.slice().reverse();
+      const n = poly.length;
+      for (let i = 0; i < n; i++) {
+        const a = poly[i], b = poly[(i + 1) % n];
+        if (Math.abs(a[1]) < 1e-7 && Math.abs(b[1]) < 1e-7) continue;
+        const L = Math.hypot(b[0] - a[0], b[1] - a[1]); if (L < 1e-9) continue;
+        const m = Math.max(1, Math.ceil(L / h - 1e-9)), tx = (b[0] - a[0]) / L, tz = (b[1] - a[1]) / L;
+        for (let j = 0; j < m; j++) {
+          const p0 = [a[0] + (b[0] - a[0]) * j / m, a[1] + (b[1] - a[1]) * j / m], p1 = [a[0] + (b[0] - a[0]) * (j + 1) / m, a[1] + (b[1] - a[1]) * (j + 1) / m];
+          const c = [(p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2];
+          P.push(c); N.push([tz, -tx]); A.push(p0); B.push(p1);
+          Q.push(SEAT.GX.map((g) => [c[0] + g * (p1[0] - p0[0]) / 2, c[1] + g * (p1[1] - p0[1]) / 2])); W.push(SEAT.GW.map((w) => w * L / m / 2));
+        }
+      }
+    }
+    return { P, N, Q, W, A, B };
+  }
+  // composite Gauss rule for an element near the point (seatdip._near_fix): NSUB sub-intervals of NQ points
+  function nearInt(k, x0, x1, M, j, sh) {
+    const a = M.A[j], b = M.B[j], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    let re = 0, im = 0;
+    for (let s = 0; s < SEAT.NSUB; s++) for (let q = 0; q < SEAT.NQ; q++) {
+      const t = (s + (SEAT.GX[q] + 1) / 2) / SEAT.NSUB, w = SEAT.GW[q] / 2 * L / SEAT.NSUB;
+      const v = dGdn(k, x0, x1, a[0] + t * (b[0] - a[0]) + sh, a[1] + t * (b[1] - a[1]), M.N[j][0], M.N[j][1]); re += v[0] * w; im += v[1] * w;
+    }
+    KV[0] = re; KV[1] = im; return KV;
+  }
+  const isNear = (x0, x1, M, j, sh) => { const a = M.A[j], b = M.B[j]; return Math.hypot(x0 - (M.P[j][0] + sh), x1 - M.P[j][1]) < SEAT.NEAR * Math.hypot(b[0] - a[0], b[1] - a[1]); };
+  // i/4 k H1(k r) (d . n) / r, summed over the point and its floor image; result in KV = [re, im]
+  const KV = new Float64Array(2);
+  function dGdn(k, x0, x1, y0, y1, n0, n1) {
+    let re = 0, im = 0;
+    for (let sg = 1; sg >= -1; sg -= 2) {
+      const dx = x0 - y0, dz = x1 - sg * y1, r = Math.hypot(dx, dz), b = besselJY(k * r), s = k * (dx * n0 + dz * sg * n1) / r / 4;
+      re -= b[3] * s; im += b[2] * s;          // i/4 (J1 + i Y1) s
+    }
+    KV[0] = re; KV[1] = im; return KV;
+  }
+  function green(k, x, y) {
+    let re = 0, im = 0;
+    for (const sg of [1, -1]) { const b = besselJY(k * Math.hypot(x[0] - y[0], x[1] - sg * y[1])); re -= b[1] / 4; im += b[0] / 4; }
+    return [re, im];
+  }
+  function csolve(Ar, Ai, br, bi, n) { // Gaussian elimination with partial pivoting, A [n * n] row-major, in place
+    for (let c = 0; c < n; c++) {
+      let p = c, best = -1;
+      for (let r = c; r < n; r++) { const v = Ar[r * n + c] ** 2 + Ai[r * n + c] ** 2; if (v > best) { best = v; p = r; } }
+      if (p !== c) { for (let j = 0; j < n; j++) { let t = Ar[c * n + j]; Ar[c * n + j] = Ar[p * n + j]; Ar[p * n + j] = t; t = Ai[c * n + j]; Ai[c * n + j] = Ai[p * n + j]; Ai[p * n + j] = t; }
+        let t = br[c]; br[c] = br[p]; br[p] = t; t = bi[c]; bi[c] = bi[p]; bi[p] = t; }
+      const dr = Ar[c * n + c], di = Ai[c * n + c], dd = dr * dr + di * di;
+      for (let r = c + 1; r < n; r++) {
+        const xr = Ar[r * n + c], xi = Ai[r * n + c]; if (xr === 0 && xi === 0) continue;
+        const fr = (xr * dr + xi * di) / dd, fi = (xi * dr - xr * di) / dd;
+        for (let j = c; j < n; j++) { const ar = Ar[c * n + j], ai = Ai[c * n + j]; Ar[r * n + j] -= fr * ar - fi * ai; Ai[r * n + j] -= fr * ai + fi * ar; }
+        br[r] -= fr * br[c] - fi * bi[c]; bi[r] -= fr * bi[c] + fi * br[c];
+      }
+    }
+    for (let r = n - 1; r >= 0; r--) {
+      let sr = br[r], si = bi[r];
+      for (let j = r + 1; j < n; j++) { const ar = Ar[r * n + j], ai = Ai[r * n + j]; sr -= ar * br[j] - ai * bi[j]; si -= ar * bi[j] + ai * br[j]; }
+      const dr = Ar[r * n + r], di = Ai[r * n + r], dd = dr * dr + di * di;
+      br[r] = (sr * dr + si * di) / dd; bi[r] = (si * dr - sr * di) / dd;
+    }
+  }
+  // T(f) = p(R) / p_free(R) for 2-D bodies on a rigid floor z = 0 (seatdip.transfer); returns [[re, im], ...]
+  function seatTransfer(bodies, S, R, freqs, c) {
+    return freqs.map((f) => {
+      const k = 2 * Math.PI * f / c, M = seatMesh(bodies, c / f / SEAT.EPW), n = M.P.length;
+      const kern = (x, j) => { if (isNear(x[0], x[1], M, j, 0)) { const v = nearInt(k, x[0], x[1], M, j, 0); return [v[0], v[1]]; }
+        let re = 0, im = 0; for (let q = 0; q < SEAT.NQ; q++) { const y = M.Q[j][q], v = dGdn(k, x[0], x[1], y[0], y[1], M.N[j][0], M.N[j][1]); re += v[0] * M.W[j][q]; im += v[1] * M.W[j][q]; } return [re, im]; };
+      let [pr, pi] = green(k, R, S);
+      if (n) {
+        const Ar = new Float64Array(n * n), Ai = new Float64Array(n * n), br = new Float64Array(n), bi = new Float64Array(n);
+        for (let i = 0; i < n; i++) { const g = green(k, M.P[i], S); br[i] = g[0]; bi[i] = g[1];
+          for (let j = 0; j < n; j++) { const v = kern(M.P[i], j); Ar[i * n + j] = (i === j ? 0.5 : 0) - v[0]; Ai[i * n + j] = -v[1]; } }
+        csolve(Ar, Ai, br, bi, n);
+        for (let j = 0; j < n; j++) { const v = kern(R, j); pr += v[0] * br[j] - v[1] * bi[j]; pi += v[0] * bi[j] + v[1] * br[j]; }
+      }
+      const H = hankel01(k * Math.hypot(R[0] - S[0], R[1] - S[1]))[0], fr = -H[1] / 4, fi = H[0] / 4, dd = fr * fr + fi * fi;
+      return [(pr * fr + pi * fi) / dd, (pi * fr - pr * fi) / dd];
+    });
+  }
+  // seatTransfer for identical rows: `seat` shifted by m[p] * du along u (seatdip.transfer_rows); the kernel between two
+  // rows depends only on m[p] - m[q], so each block is computed once
+  // complex LU with partial pivoting (in place) and solve, for the block preconditioner
+  function cluFactor(Ar, Ai, n) {
+    const piv = new Int32Array(n);
+    for (let c = 0; c < n; c++) {
+      let p = c, best = -1;
+      for (let r = c; r < n; r++) { const v = Ar[r * n + c] ** 2 + Ai[r * n + c] ** 2; if (v > best) { best = v; p = r; } }
+      piv[c] = p;
+      if (p !== c) for (let j = 0; j < n; j++) { let t = Ar[c * n + j]; Ar[c * n + j] = Ar[p * n + j]; Ar[p * n + j] = t; t = Ai[c * n + j]; Ai[c * n + j] = Ai[p * n + j]; Ai[p * n + j] = t; }
+      const dr = Ar[c * n + c], di = Ai[c * n + c], dd = dr * dr + di * di;
+      for (let r = c + 1; r < n; r++) {
+        const xr = Ar[r * n + c], xi = Ai[r * n + c], fr = (xr * dr + xi * di) / dd, fi = (xi * dr - xr * di) / dd;
+        Ar[r * n + c] = fr; Ai[r * n + c] = fi;
+        for (let j = c + 1; j < n; j++) { const ar = Ar[c * n + j], ai = Ai[c * n + j]; Ar[r * n + j] -= fr * ar - fi * ai; Ai[r * n + j] -= fr * ai + fi * ar; }
+      }
+    }
+    return { Ar, Ai, piv, n };
+  }
+  function cluSolve(F, br, bi, o) { // solves in place on br[o .. o + n), bi[...]
+    const { Ar, Ai, piv, n } = F;
+    for (let c = 0; c < n; c++) { const p = piv[c]; if (p !== c) { let t = br[o + c]; br[o + c] = br[o + p]; br[o + p] = t; t = bi[o + c]; bi[o + c] = bi[o + p]; bi[o + p] = t; } }
+    for (let r = 1; r < n; r++) { let sr = br[o + r], si = bi[o + r]; for (let j = 0; j < r; j++) { const ar = Ar[r * n + j], ai = Ai[r * n + j]; sr -= ar * br[o + j] - ai * bi[o + j]; si -= ar * bi[o + j] + ai * br[o + j]; } br[o + r] = sr; bi[o + r] = si; }
+    for (let r = n - 1; r >= 0; r--) {
+      let sr = br[o + r], si = bi[o + r];
+      for (let j = r + 1; j < n; j++) { const ar = Ar[r * n + j], ai = Ai[r * n + j]; sr -= ar * br[o + j] - ai * bi[o + j]; si -= ar * bi[o + j] + ai * br[o + j]; }
+      const dr = Ar[r * n + r], di = Ai[r * n + r], dd = dr * dr + di * di;
+      br[o + r] = (sr * dr + si * di) / dd; bi[o + r] = (si * dr - sr * di) / dd;
+    }
+  }
+  // seatTransfer for identical rows: `seat` shifted by m[p] * du along u (seatdip.transfer_rows without CHIEF points).
+  // The kernel between two rows depends only on m[p] - m[q], so each block is computed once; the system
+  // (1/2) p - K p = p_inc is solved by GMRES with the inverse of the diagonal block as right preconditioner (Python:
+  // direct solve; same result to ~1e-10), with a direct solve if GMRES does not converge
+  const GM = { TOL: 1e-12, RESTART: 80, MAX: 800 };
+  function seatRows(seat, m, du, S, R, freqs, c) {
+    const nr = m.length;
+    return freqs.map((f) => {
+      const k = 2 * Math.PI * f / c, M = seatMesh([seat], c / f / SEAT.EPW), ns = M.P.length, n = nr * ns;
+      const kern = (x0, x1, j, sh) => { if (isNear(x0, x1, M, j, sh)) return nearInt(k, x0, x1, M, j, sh); let re = 0, im = 0; for (let q = 0; q < SEAT.NQ; q++) { const y = M.Q[j][q], v = dGdn(k, x0, x1, y[0] + sh, y[1], M.N[j][0], M.N[j][1]); re += v[0] * M.W[j][q]; im += v[1] * M.W[j][q]; } KV[0] = re; KV[1] = im; return KV; };
+      const blocks = new Map();
+      for (const a of m) for (const b of m) { const d = a - b; if (blocks.has(d)) continue;
+        const Br = new Float64Array(ns * ns), Bi = new Float64Array(ns * ns);
+        for (let i = 0; i < ns; i++) { const x0 = M.P[i][0] + d * du, x1 = M.P[i][1]; for (let j = 0; j < ns; j++) { const v = kern(x0, x1, j, 0); Br[i * ns + j] = v[0]; Bi[i * ns + j] = v[1]; } }
+        blocks.set(d, [Br, Bi]); }
+      const br = new Float64Array(n), bi = new Float64Array(n);
+      for (let p = 0; p < nr; p++) for (let i = 0; i < ns; i++) { const g = green(k, [M.P[i][0] + m[p] * du, M.P[i][1]], S); br[p * ns + i] = g[0]; bi[p * ns + i] = g[1]; }
+      const [B0r, B0i] = blocks.get(0), Dr = new Float64Array(ns * ns), Di = new Float64Array(ns * ns);
+      for (let i = 0; i < ns * ns; i++) { Dr[i] = -B0r[i]; Di[i] = -B0i[i]; } for (let i = 0; i < ns; i++) Dr[i * ns + i] += 0.5;
+      const F = cluFactor(Dr, Di, ns);
+      const precond = (vr, vi) => { const zr = Float64Array.from(vr), zi = Float64Array.from(vi); for (let p = 0; p < nr; p++) cluSolve(F, zr, zi, p * ns); return [zr, zi]; };
+      const apply = (xr, xi) => { // y = (1/2) x - K x
+        const yr = new Float64Array(n), yi = new Float64Array(n);
+        for (let p = 0; p < nr; p++) for (let q = 0; q < nr; q++) { const [Br, Bi] = blocks.get(m[p] - m[q]);
+          for (let i = 0; i < ns; i++) { let sr = 0, si = 0; const row = i * ns, o = q * ns;
+            for (let j = 0; j < ns; j++) { const a = Br[row + j], b = Bi[row + j], u = xr[o + j], v = xi[o + j]; sr += a * u - b * v; si += a * v + b * u; }
+            yr[p * ns + i] -= sr; yi[p * ns + i] -= si; } }
+        for (let i = 0; i < n; i++) { yr[i] += 0.5 * xr[i]; yi[i] += 0.5 * xi[i]; }
+        return [yr, yi];
+      };
+      let sol = gmres(apply, precond, br, bi, n), xr, xi;
+      if (sol) [xr, xi] = sol;
+      else { // direct solve
+        const Ar = new Float64Array(n * n), Ai = new Float64Array(n * n);
+        for (let p = 0; p < nr; p++) for (let q = 0; q < nr; q++) { const [Br, Bi] = blocks.get(m[p] - m[q]);
+          for (let i = 0; i < ns; i++) { const row = (p * ns + i) * n + q * ns; for (let j = 0; j < ns; j++) { Ar[row + j] = -Br[i * ns + j]; Ai[row + j] = -Bi[i * ns + j]; } } }
+        for (let i = 0; i < n; i++) Ar[i * n + i] += 0.5;
+        xr = Float64Array.from(br); xi = Float64Array.from(bi); csolve(Ar, Ai, xr, xi, n);
+      }
+      let [pr, pi] = green(k, R, S);
+      for (let q = 0; q < nr; q++) for (let j = 0; j < ns; j++) { const v = kern(R[0], R[1], j, m[q] * du); pr += v[0] * xr[q * ns + j] - v[1] * xi[q * ns + j]; pi += v[0] * xi[q * ns + j] + v[1] * xr[q * ns + j]; }
+      const H = besselJY(k * Math.hypot(R[0] - S[0], R[1] - S[1])), fr = -H[1] / 4, fi = H[0] / 4, dd = fr * fr + fi * fi;
+      return [(pr * fr + pi * fi) / dd, (pi * fr - pr * fi) / dd];
+    });
+  }
+  // restarted GMRES with right preconditioning, complex vectors as [re, im] Float64Arrays; returns [xr, xi] or null
+  function gmres(apply, precond, br, bi, n) {
+    const dot = (ar, ai, br2, bi2) => { let r = 0, i = 0; for (let k = 0; k < n; k++) { r += ar[k] * br2[k] + ai[k] * bi2[k]; i += ar[k] * bi2[k] - ai[k] * br2[k]; } return [r, i]; }; // conj(a) . b
+    const nrm = (ar, ai) => Math.sqrt(dot(ar, ai, ar, ai)[0]);
+    const bn = nrm(br, bi), xr = new Float64Array(n), xi = new Float64Array(n);
+    if (bn === 0) return [xr, xi];
+    let it = 0;
+    while (it < GM.MAX) {
+      const [mr, mi] = precond(xr, xi), [ar, ai] = apply(mr, mi), rr = new Float64Array(n), ri = new Float64Array(n);
+      for (let k = 0; k < n; k++) { rr[k] = br[k] - ar[k]; ri[k] = bi[k] - ai[k]; }
+      const beta = nrm(rr, ri); if (beta <= GM.TOL * bn) return precond(xr, xi);
+      const Vr = [rr.map((v) => v / beta)], Vi = [ri.map((v) => v / beta)], Hr = [], Hi = [], cs = [], snr = [], sni = [], gr = [beta], gi = [0];
+      let j = 0, done = false;
+      for (; j < GM.RESTART && it < GM.MAX; j++, it++) {
+        const [pr, pi] = precond(Vr[j], Vi[j]), [wr, wi] = apply(pr, pi), hr = new Float64Array(j + 2), hi = new Float64Array(j + 2);
+        for (let i = 0; i <= j; i++) { const [a, b] = dot(Vr[i], Vi[i], wr, wi); hr[i] = a; hi[i] = b; for (let k = 0; k < n; k++) { wr[k] -= a * Vr[i][k] - b * Vi[i][k]; wi[k] -= a * Vi[i][k] + b * Vr[i][k]; } }
+        const hn = nrm(wr, wi); hr[j + 1] = hn; hi[j + 1] = 0;
+        Vr.push(wr.map((v) => v / (hn || 1))); Vi.push(wi.map((v) => v / (hn || 1)));
+        for (let i = 0; i < j; i++) { // previous rotations [c s; -conj(s) c]
+          const a0 = hr[i], a1 = hi[i], b0 = hr[i + 1], b1 = hi[i + 1], c = cs[i], s0 = snr[i], s1 = sni[i];
+          hr[i] = c * a0 + s0 * b0 - s1 * b1; hi[i] = c * a1 + s0 * b1 + s1 * b0;
+          hr[i + 1] = -(s0 * a0 + s1 * a1) + c * b0; hi[i + 1] = -(s0 * a1 - s1 * a0) + c * b1;
+        }
+        const aa = Math.hypot(hr[j], hi[j]), bb = Math.hypot(hr[j + 1], hi[j + 1]), r = Math.hypot(aa, bb);
+        let c, s0, s1;
+        if (aa === 0) { c = 0; s0 = 1; s1 = 0; } else { c = aa / r; const ur = hr[j] / aa, ui = hi[j] / aa; s0 = (ur * hr[j + 1] + ui * hi[j + 1]) / r; s1 = (ui * hr[j + 1] - ur * hi[j + 1]) / r; }
+        cs.push(c); snr.push(s0); sni.push(s1);
+        const a0 = hr[j], a1 = hi[j], b0 = hr[j + 1], b1 = hi[j + 1];
+        hr[j] = c * a0 + s0 * b0 - s1 * b1; hi[j] = c * a1 + s0 * b1 + s1 * b0; hr[j + 1] = 0; hi[j + 1] = 0;
+        const g0 = gr[j], g1 = gi[j];
+        gr[j] = c * g0; gi[j] = c * g1; gr.push(-(s0 * g0 + s1 * g1)); gi.push(-(s0 * g1 - s1 * g0));
+        Hr.push(hr); Hi.push(hi);
+        void bb;
+        if (Math.hypot(gr[j + 1], gi[j + 1]) <= GM.TOL * bn) { j++; it++; done = true; break; }
+      }
+      const yr = new Float64Array(j), yi = new Float64Array(j);
+      for (let i = j - 1; i >= 0; i--) {
+        let sr = gr[i], si = gi[i];
+        for (let l = i + 1; l < j; l++) { const a = Hr[l][i], b = Hi[l][i]; sr -= a * yr[l] - b * yi[l]; si -= a * yi[l] + b * yr[l]; }
+        const a = Hr[i][i], b = Hi[i][i], dd = a * a + b * b; yr[i] = (sr * a + si * b) / dd; yi[i] = (si * a - sr * b) / dd;
+      }
+      for (let i = 0; i < j; i++) for (let k = 0; k < n; k++) { xr[k] += yr[i] * Vr[i][k] - yi[i] * Vi[i][k]; xi[k] += yr[i] * Vi[i][k] + yi[i] * Vr[i][k]; }
+      if (done) return precond(xr, xi);
+    }
+    return null;
+  }
+  function inFace(s, p) { // crossing test dropping the largest normal component (seatdip._in_face)
+    const v = s.verts, an = s.n.map(Math.abs), big = an[0] >= an[1] && an[0] >= an[2] ? 0 : an[1] >= an[2] ? 1 : 2, ax = [0, 1, 2].filter((i) => i !== big);
+    const x = p[ax[0]], y = p[ax[1]]; let c = false;
+    for (let i = 0, j = v.length - 1; i < v.length; j = i++) { const xi = v[i][ax[0]], yi = v[i][ax[1]], xj = v[j][ax[0]], yj = v[j][ax[1]];
+      if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; }
+    return c;
+  }
+  function floorAt(G, x, y, zFrom) {
+    let best = null;
+    for (const s of G.S) {
+      const n = s.n; if (n[2] < 0.2) continue;
+      const v0 = s.verts[0], z = v0[2] - (n[0] * (x - v0[0]) + n[1] * (y - v0[1])) / n[2];
+      if (z >= zFrom - 1e-9 || (best && z <= best[0])) continue;
+      if (inFace(s, [x, y, z])) best = [z, s.mat];
+    }
+    return best;
+  }
+  function seatSection(G, S, R, prm) {
+    const vx = R[0] - S[0], vy = R[1] - S[1], Lh = Math.hypot(vx, vy); if (Lh < 1) return null;
+    const dx = vx / Lh, dy = vy / Lh, nr = prm.normal || [0, 1], cs = Math.max(Math.abs(dx * nr[0] + dy * nr[1]), SEAT.COS_MIN);
+    const dEff = prm.spacing / cs, depth = SEAT.PAN_DEPTH / cs, thick = SEAT.BACK_T / cs, fwd = SEAT.EAR_FWD / cs;
+    const zl = (s) => S[2] + (R[2] - S[2]) * s / Lh;
+    const aud = (s) => { const q = floorAt(G, S[0] + dx * s, S[1] + dy * s, zl(s)); return q && q[1] === "aud" ? q[0] : null; };
+    const zr = aud(Lh); if (zr === null || R[2] - zr > 2.5) return null;
+    const own = Lh + fwd, rows = [];
+    for (let k = 0; k <= SEAT.ROWS_FRONT; k++) { const sb = own - k * dEff; if (sb - depth < 0.5 || aud(sb) === null || aud(sb - depth) === null) break; rows.push(sb); }
+    if (rows.length < 2) return null;
+    for (let j = 1; j <= SEAT.ROWS_BACK; j++) { const sb = own + j * dEff; if (aud(sb) === null || aud(sb - depth) === null) break; rows.push(sb); }
+    const s0 = Math.min(...rows) - depth - 0.3, s1 = Math.max(...rows) + 0.05, ns = Math.max(3, Math.ceil((s1 - s0) / 0.1) + 1), pts = [];
+    for (let i = 0; i < ns; i++) { const s = s0 + (s1 - s0) * i / (ns - 1), z = aud(s); if (z !== null) pts.push([s, z]); }
+    if (pts.length < 3) return null;
+    let n = pts.length, sx = 0, sz = 0, sxx = 0, sxz = 0; for (const [s, z] of pts) { sx += s; sz += z; sxx += s * s; sxz += s * z; }
+    const b = (n * sxz - sx * sz) / (n * sxx - sx * sx), a = (sz - b * sx) / n, cb = 1 / Math.sqrt(1 + b * b), sb2 = b / Math.sqrt(1 + b * b);
+    const rot = (s, z) => [s * cb + (z - a) * sb2, -s * sb2 + (z - a) * cb];
+    const bodies = rows.map((sb) => [[sb - depth, prm.gap], [sb, prm.gap], [sb, prm.back], [sb - thick, prm.back], [sb - thick, SEAT.PAN_TOP], [sb - depth, SEAT.PAN_TOP]].map(([s, h]) => rot(s, a + b * s + h)));
+    const sb0 = rows[0], sp = SEAT.PAN_TOP - prm.gap, sk = prm.back - prm.gap;   // CHIEF points inside the listener's own seat
+    const chief = [[sb0 - depth + 0.37 * (depth - thick), prm.gap + 0.41 * sp], [sb0 - depth + 0.71 * (depth - thick), prm.gap + 0.67 * sp],
+      [sb0 - 0.43 * thick, prm.gap + 0.29 * sk], [sb0 - 0.61 * thick, prm.gap + 0.77 * sk]].map(([s, h]) => rot(s, a + b * s + h));
+    const S2 = rot(0, S[2]), R2 = rot(Lh, R[2]);
+    if (S2[1] < 0.05 || R2[1] < 0.05) return null;
+    const du = rot(own + dEff, a + b * (own + dEff))[0] - rot(own, a + b * own)[0], m = rows.map((sb) => Math.round((sb - own) / dEff));
+    return { bodies, S2, R2, rows: rows.length, seat: bodies[0], m, du, chief };
+  }
+  // complex T on the renderer's bins 0 .. nfft/2, or null (seatdip.path_transfer)
+  function seatPath(G, S, R, prm, fs, c, nfft = SEAT.NFFT) {
+    const X = seatSection(G, S, R, prm); if (!X) return null;
+    const K = Math.floor(SEAT.FMAX * nfft / fs), fb = []; for (let k = 1; k <= K; k++) fb.push(k * fs / nfft);
+    const T = seatRows(X.seat, X.m, X.du, X.S2, X.R2, fb, c), nb = nfft / 2 + 1, re = new Float64Array(nb), im = new Float64Array(nb);
+    // seatdip._continue: crossfade over the last third octave to the energy mean of |T| there, kept above FMAX
+    const f0 = SEAT.FMAX * Math.pow(2, -1 / 3); let e = 0, ne = 0;
+    T.forEach(([r, i], j) => { if (fb[j] >= f0) { e += r * r + i * i; ne++; } });
+    const top = Math.sqrt(e / ne);
+    T.forEach(([r, i], j) => { const w = fb[j] <= f0 ? 1 : 0.5 + 0.5 * Math.cos(Math.PI * Math.log(fb[j] / f0) / Math.log(SEAT.FMAX / f0)); re[j + 1] = w * r + (1 - w) * top; im[j + 1] = w * i; });
+    for (let j = K + 1; j < nb; j++) re[j] = top;
+    re[0] = Math.hypot(T[0][0], T[0][1]);
+    return { re, im, rows: X.rows };
+  }
+  function seatBandEnergy(T, fs, bands, nfft = SEAT.NFFT) {
+    return bands.map((fc) => { let s = 0, m = 0; for (let k = 0; k < T.re.length; k++) { const f = k * fs / nfft; if (f >= fc / Math.SQRT2 && f < fc * Math.SQRT2) { s += T.re[k] ** 2 + T.im[k] ** 2; m++; } } return m ? s / m : 1; });
+  }
+
+  return { makeSurface, build, buildMesh, meshColumn, loadObj, objGroups, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, diffract2, transition, utd, DF, FIB, fresnel, panels, specFactor, hankel01, SEAT, GM, seatParams, seatTransfer, seatRows, seatSection, seatPath, seatBandEnergy, floorAt };
 })();
 if (typeof module !== "undefined") module.exports = GEOM;

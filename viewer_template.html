@@ -302,6 +302,14 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
           <label class="vol">Rays <select id="selRays"><option value="10000">10 000 (draft)</option><option value="30000" selected>30 000</option><option value="50000">50 000</option><option value="100000">100 000 (fine)</option></select></label>
           <label class="vol">Edge diffraction <select id="selDiff"><option value="1" selected>On (UTD, 1st order)</option><option value="0">Off</option></select></label>
         </div>
+        <div class="row" id="seatDipRow">
+          <label class="vol">Seat dip <select id="selSeatDip"><option value="0" selected>Off</option><option value="1">On (2-D BEM over the rows)</option></select></label>
+          <label class="vol">Row spacing <span class="nowrap"><input id="nRowSp" type="number" min="0.6" max="1.6" step="0.05" style="width:5em"> m</span></label>
+          <label class="vol">Seats <select id="selSeatPreset"><option value="closed">Closed underneath (gap 0)</option><option value="standard" selected>Standard (gap 0.10 m)</option><option value="open">Open underneath (gap 0.24 m)</option></select></label>
+          <label class="vol">Seat back height <span class="nowrap"><input id="nSeatBack" type="number" min="0.5" max="1.2" step="0.01" style="width:5em"> m</span></label>
+          <button class="btn" id="btnSeatRange" title="Direct sound at the current seat for seat backs 0.64 - 0.88 m and openings 0 - 0.24 m">Seat-dip range…</button>
+        </div>
+        <p class="note" id="seatDipNote"></p>
         <p class="cap">Surface materials · α per octave band, scattering s</p>
         <div class="tablewrap"><table class="layout" id="matTable"></table></div>
       </div>
@@ -584,7 +592,7 @@ const ENG = (() => {
   function renderList(list, nLen) {
     const out = [new Float32Array(nLen), new Float32Array(nLen)], re = new Float64Array(NFFT), im = new Float64Array(NFFT);
     for (const q of list) {
-      const Hk = hrtf(nearest(q.h[0], q.h[1], q.h[2])), g = interp(q.dif ? q.ga : q.g), gi = q.dif ? new Float64Array(NB) : null;
+      const Hk = hrtf(nearest(q.h[0], q.h[1], q.h[2])), g = interp(q.dif ? q.ga : q.g); let gi = q.dif ? new Float64Array(NB) : null;
       if (q.dif) for (let b = 0; b < NB; b++) { const j = dfIdx[b], f = dfFr[b], dr = q.dr[j] + f * (q.dr[j + 1] - q.dr[j]), di = q.di[j] + f * (q.di[j + 1] - q.di[j]); gi[b] = g[b] * di; g[b] *= dr; }
       const tau = q.t * fs, n0 = Math.floor(tau), frac = tau - n0, a = n0 - PRE;
       for (let e = 0; e < 2; e++) {
@@ -597,11 +605,32 @@ const ENG = (() => {
         im[0] = 0; im[NB - 1] = 0;
         for (let b = 1; b < NB - 1; b++) { re[NFFT - b] = re[b]; im[NFFT - b] = -im[b]; }
         fft(re, im, true);
+        if (q.Tr) { seatConv(q, re, out[e], a, nLen); continue; }   // seat dip: the direct sound through T
         const lo = Math.max(a, 0), hi2 = Math.min(a + NFFT, nLen), dst = out[e];
         for (let i = lo; i < hi2; i++) dst[i] += re[i - a];
       }
     }
     return out;
+  }
+  // seat dip (seatdip.fir): T on the bins of a 2048-point FFT -> FIR with the arrival at sample PRE; the rendered
+  // 1024-point block of the direct sound is convolved with it (4096-point FFT)
+  function seatConv(q, blk, dst, a, nLen) {
+    const NT = GEOM.SEAT.NFFT, PT = GEOM.SEAT.PRE, NC = 4096;
+    if (!q._HT) {
+      const hr = new Float64Array(NT), hi = new Float64Array(NT);
+      for (let k = 0; k <= NT / 2; k++) { hr[k] = q.Tr[k]; hi[k] = q.Ti[k]; if (k > 0 && k < NT / 2) { hr[NT - k] = q.Tr[k]; hi[NT - k] = -q.Ti[k]; } }
+      hi[0] = 0; hi[NT / 2] = 0; fftAny(hr, hi, true);
+      const cr = new Float64Array(NC), ci = new Float64Array(NC);
+      for (let i = 0; i < NT; i++) cr[(i + PT) % NT] = hr[i] / NT;   // circular shift by PRE (seatdip.fir: np.roll)
+      fftAny(cr, ci, false); q._HT = [cr, ci];
+    }
+    const [Hr, Hi] = q._HT, xr = new Float64Array(NC), xi = new Float64Array(NC);
+    for (let i = 0; i < NFFT; i++) xr[i] = blk[i];
+    fftAny(xr, xi, false);
+    for (let k = 0; k < NC; k++) { const r = xr[k] * Hr[k] - xi[k] * Hi[k], m = xr[k] * Hi[k] + xi[k] * Hr[k]; xr[k] = r; xi[k] = m; }
+    fftAny(xr, xi, true);
+    const b0 = a - PT, n = NFFT + NT - 1;
+    for (let i = Math.max(0, -b0); i < n && b0 + i < nLen; i++) dst[b0 + i] += xr[i] / NC;
   }
   function early(src, rec, nLen, dm) {
     const { list, tDir } = images(src, rec, D.earlyMs + D.xfadeMs, D.ismOrder);
@@ -788,7 +817,7 @@ const ENG = (() => {
     return { E, bank };
   }
   function arrivalsFromList(list) {
-    return list.map((q) => { const rms = Math.sqrt(q.g.reduce((s, v) => s + v * v, 0) / q.g.length);
+    return list.map((q) => { const rms = Math.sqrt(q.g.reduce((s, v, b) => s + v * v * (q.tb ? q.tb[b] : 1), 0) / q.g.length);
       return { t: q.t, o: q.o, dif: q.dif, az: Math.atan2(q.h[1], q.h[0]) * 180 / Math.PI, el: Math.asin(Math.max(-1, Math.min(1, q.h[2]))) * 180 / Math.PI, lev: 20 * Math.log10(rms + 1e-12) }; });
   }
   function arrivals(src, rec, dm) {
@@ -817,13 +846,29 @@ const matGroups = () => GROUPS.concat(Object.keys((typeof HALL !== "undefined" &
 const sMean = (s) => (Array.isArray(s) ? +(s.reduce((a, b) => a + b, 0) / s.length).toFixed(3) : s);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 const ownKey = (name) => "own_" + name.replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 40);
+// seat dip (seatdip.py): state { on, spacing (null = from the section's steps or the default), preset, back (null = default) }
+function seatDipState(c) { return { on: !!(c && c.on !== false), spacing: c && +c.spacing > 0 ? +c.spacing : null, preset: c && ["closed", "standard", "open"].includes(c.preset) ? c.preset : "standard", back: c && +c.back > 0 ? +c.back : null }; }
+// row spacing read from the drawn section: the median tread length of the audience steps (3 or more risers, 0.6 - 1.6 m)
+function sectionRowSpacing() {
+  if (!HALL.geom || !HALL.geom.floor) return null;
+  const f = HALL.geom.floor, sy = HALL.dims[1] - HALL.stage, rise = [];
+  for (let i = 0; i + 1 < f.length; i++) if (Math.abs(f[i + 1][0] - f[i][0]) < 1e-6 && Math.abs(f[i + 1][1] - f[i][1]) > 1e-6 && f[i][0] < sy) rise.push(f[i][0]);
+  if (rise.length < 3) return null;
+  const tr = []; for (let i = 0; i + 1 < rise.length; i++) tr.push(Math.abs(rise[i + 1] - rise[i]));
+  tr.sort((a, b) => a - b); const m = tr[Math.floor(tr.length / 2)];
+  return m >= 0.6 && m <= 1.6 ? +m.toFixed(3) : null;
+}
+function seatDipConfig() { const sd = HALL.seatDip; return sd.on ? { seat_dip: { on: true, spacing: +seatDipSpacing().toFixed(3), preset: sd.preset, ...(sd.back ? { back: sd.back } : {}) } } : {}; }
+function seatDipSpacing() { const sd = HALL.seatDip; return sd.spacing || sectionRowSpacing() || GEOM.SEAT.DEFAULTS.spacing; }
+function seatDipParams() { const sd = HALL.seatDip; if (!sd || !sd.on || !isDrawn()) return null;
+  return GEOM.seatParams({ spacing: seatDipSpacing(), preset: sd.preset, back: sd.back }); }
 function defaultMats(alpha, s) { const m = {}; for (const [g] of GROUPS) m[g] = { alpha: alpha.slice(), s }; return m; }
 const INIT = {
   hall: Object.assign(deep(D.hall), {
     geom: D.geometry && !D.geometry.mesh ? { plan: deep(D.geometry.plan), floor: deep(D.geometry.floor || []), ceil: deep(D.geometry.ceiling || []) } : null,
     mesh: D.geometry && D.geometry.mesh && D.geometry.mesh.obj_text ? meshState(Object.assign({}, D.geometry.mesh, { _mats: D.geometry.materials })) : null,
     mats: Object.assign(defaultMats(D.hall.alpha, D.scattering ?? 0.1), D.geometry && D.geometry.materials ? deep(D.geometry.materials) : {}),
-    order: D.geometry?.ism_order ?? 4, rays: D.geometry?.rays ?? 30000, diff: D.geometry?.diffraction !== false, diffRefl: D.geometry?.diffraction_refl | 0, diffOrder: D.geometry?.diffraction_order | 0, seatMap: Array.isArray(D.seatMap) && D.seatMap.length ? deep(D.seatMap) : null }),
+    order: D.geometry?.ism_order ?? 4, rays: D.geometry?.rays ?? 30000, diff: D.geometry?.diffraction !== false, diffRefl: D.geometry?.diffraction_refl | 0, diffOrder: D.geometry?.diffraction_order | 0, seatDip: seatDipState(D.geometry?.seat_dip), seatMap: Array.isArray(D.seatMap) && D.seatMap.length ? deep(D.seatMap) : null }),
   objs: D.sources.map((s) => ({ id: s.id, kind: s.kind, pos: s.pos.slice(), locked: false, ...(s.kind === "pa" || s.dir ? { dir: s.dir ? deep(s.dir) : { cov: 0, az: 0, el: 0 } } : {}) })).concat(
     Object.entries(D.receivers).map(([k, p]) => ({ id: k, kind: "seat", pos: p.slice(), locked: false }))),
 };
@@ -966,7 +1011,19 @@ function provenanceNote(c) {
   return diff.length ? ` Note: this config was ${diff.join(", ")}; results may differ from when it was saved.` : ` Saved ${String(p.saved || "").slice(0, 10)} with this page and engine version: results reproduce.`;
 }
 // image-source arrivals plus first-order edge diffraction (GEOM.diffract) per receiver; shared by the worker and the inline fallback
+// seat dip (seatdip.py / GEOM.seatPath): the direct sound carries the 2-D BEM transfer function of the rows; first-order
+// reflections from the audience floor are part of it and are left out
+function withSeatDip(G, src, m, I) {
+  if (!m.seat) return I;
+  return I.map((L, k) => {
+    const q = L.find((x) => x.o === 0 && !x.dif); if (!q) return L;
+    const T = GEOM.seatPath(G, src, m.recs[k], m.seat, m.fs, m.c); if (!T) return L;
+    q.Tr = Array.from(T.re); q.Ti = Array.from(T.im); q.tb = GEOM.seatBandEnergy(T, m.fs, m.bands); q.rows = T.rows;
+    return L.filter((x) => !(x.o === 1 && !x.dif && x.seq && G.S[x.seq[0]].mat === "aud"));
+  });
+}
 function withDiffraction(G, E, src, m, I) {
+  I = withSeatDip(G, src, m, I);
   if (!E) return I;
   return I.map((L, k) => { const r = m.recs[k], t = Math.hypot(src[0] - r[0], src[1] - r[1], src[2] - r[2]) / m.c + m.tWin;
     const A = GEOM.diffract(G, E, src, r, m.c, m.mats, m.air, m.bands, t, m.diffRefl | 0);
@@ -974,8 +1031,8 @@ function withDiffraction(G, E, src, m, I) {
 }
 // late-field directions are recorded after the direct sound + early window (as brir_proto.late_directions)
 function tLateOf(src, m) { return m.lateDir ? m.recs.map((r) => Math.hypot(src[0] - r[0], src[1] - r[1], src[2] - r[2]) / m.c + m.tEarly) : null; }
-function slim(q) { const o = { t: q.t, d: q.d, o: q.o, h: q.h, e: q.e, g: Array.from(q.g) }; if (q.dif) Object.assign(o, { dif: 1, ga: q.ga, eb: q.eb, dr: q.dr, di: q.di }); return o; }
-const WORKER_SRC = GEOM_SRC + withDiffraction.toString() + tLateOf.toString() + slim.toString() + `
+function slim(q) { const o = { t: q.t, d: q.d, o: q.o, h: q.h, e: q.e, g: Array.from(q.g) }; if (q.dif) Object.assign(o, { dif: 1, ga: q.ga, eb: q.eb, dr: q.dr, di: q.di }); if (q.Tr) Object.assign(o, { Tr: q.Tr, Ti: q.Ti, tb: q.tb, rows: q.rows }); return o; }
+const WORKER_SRC = GEOM_SRC + withSeatDip.toString() + withDiffraction.toString() + tLateOf.toString() + slim.toString() + `
 self.onmessage = (e) => {
   // m.tasks: [{ i: source index, k0, k1: ray range, ism: also the image sources of this source }] (one worker of a pool)
   const m = e.data, G = m.geom.mesh ? GEOM.buildMesh(Object.assign({}, m.geom.mesh, { obj: GEOM.loadObj(m.geom.mesh.text) }), m.geom.mesh.seed) : GEOM.build(m.geom), E = m.diff ? GEOM.edges(G) : null;
@@ -1002,6 +1059,7 @@ function geomCompute(srcs, seats, seedOff = 0) {
     : { plan: HALL.geom.plan, floor: HALL.geom.floor, ceil: HALL.geom.ceil, stageY: HALL.dims[1] - HALL.stage };
   const msg = { job: ++jobId, geom,
     mats: workerMats(), air: D.air, c: D.c, order: isMesh() ? meshOrder() : HALL.order, rays: HALL.rays, tWin: Math.max(0.16, DISCRETE_MS / 1000), spec: isMesh() ? SPEC : null, diff: !isMesh() && !!HALL.diff, diffRefl: HALL.diffRefl | 0, diffOrder: HALL.diffOrder | 0, bands: D.praBands, lateDir: !!D.lateDir, tEarly: D.earlyMs / 1000,
+    seat: seatDipParams(), fs: D.fs,
     srcs: srcs.map((o) => o.pos.slice()), seeds: srcs.map((o) => pathIndex(o) + seedOff), recs: seats.map((s) => s.pos.slice()) };
   const progress = (k) => { $("busy").textContent = `Computing hall ${k}/${srcs.length}`; };
   progress(0);
@@ -1068,7 +1126,7 @@ function geomHist(o, raw) {
   // early window starts at the first arrival (direct, or diffracted / reflected when the direct path is blocked), as in brir_proto
   const tD = list.length ? Math.min(...list.map((q) => q.t)) : dist(o.pos, s.pos) / D.c;
   const Hi = Array.from({ length: nb }, () => new Float64Array(ENG.HN));
-  for (const q of list) { const bin = Math.floor(q.t / ENG.HB); if (bin < ENG.HN) for (let b = 0; b < nb; b++) Hi[b][bin] += q.dif ? q.eb[b] : q.g[b] * q.g[b]; }
+  for (const q of list) { const bin = Math.floor(q.t / ENG.HB); if (bin < ENG.HN) for (let b = 0; b < nb; b++) Hi[b][bin] += q.dif ? q.eb[b] : q.g[b] * q.g[b] * (q.tb ? q.tb[b] : 1); }
   for (let b = 0; b < nb; b++) for (let j = 0; j < ENG.HN; j++) if (Hi[b][j] < 0) Hi[b][j] = 0;   // diffraction interference term can be negative
   const resid = [], hist = [];
   for (let b = 0; b < nb; b++) { // directional source: the diffuse (ray-traced) power scales with 1 / Q
@@ -1083,7 +1141,7 @@ function renderGeom(o, s) {
   // energy they do not explain
   const span = Math.max(D.earlyMs + D.xfadeMs, DISCRETE_MS) / 1000, earlyList = list.filter((q) => q.t <= tD + span);
   const nb = D.praBands.length, Hd = Array.from({ length: nb }, () => new Float64Array(ENG.HN));
-  for (const q of earlyList) { const bin = Math.floor(q.t / ENG.HB); if (bin < ENG.HN) for (let b = 0; b < nb; b++) Hd[b][bin] += q.dif ? q.eb[b] : q.g[b] * q.g[b]; }
+  for (const q of earlyList) { const bin = Math.floor(q.t / ENG.HB); if (bin < ENG.HN) for (let b = 0; b < nb; b++) Hd[b][bin] += q.dif ? q.eb[b] : q.g[b] * q.g[b] * (q.tb ? q.tb[b] : 1); }
   const histLate = hist.map((h, b) => h.map((v, j) => Math.max(0, v - Math.max(0, Hd[b][j]))));
   if (raw.W && ENG.hasLateDir && !raw.late) raw.late = ENG.lateDir(raw.W, key);   // directional late field, kept while the hall is unchanged
   HIST[key] = hist; BR[key] = ENG.compose(ENG.renderList(earlyList, ENG.NL), tD, pathIndex(o), histLate, resid, raw.late, true);
@@ -1154,7 +1212,7 @@ function matchesConfig() {
   if (JSON.stringify(HALL.dims) !== JSON.stringify(INIT.hall.dims) || HALL.stage !== INIT.hall.stage) return false;
   if (isDrawn() !== !!(INIT.hall.geom || INIT.hall.mesh) || isMesh() !== !!INIT.hall.mesh) return false;
   if (isMesh() && JSON.stringify([HALL.mesh.text.length, HALL.mesh.groups, HALL.mesh.axes, HALL.mesh.voxel, HALL.mats]) !== JSON.stringify([INIT.hall.mesh.text.length, INIT.hall.mesh.groups, INIT.hall.mesh.axes, INIT.hall.mesh.voxel, INIT.hall.mats])) return false;
-  if (!isMesh() && (isDrawn() ? JSON.stringify([HALL.geom, HALL.mats, HALL.order, HALL.diff]) !== JSON.stringify([INIT.hall.geom, INIT.hall.mats, INIT.hall.order, INIT.hall.diff]) : JSON.stringify(HALL.alpha) !== JSON.stringify(INIT.hall.alpha))) return false;
+  if (!isMesh() && (isDrawn() ? JSON.stringify([HALL.geom, HALL.mats, HALL.order, HALL.diff, HALL.seatDip]) !== JSON.stringify([INIT.hall.geom, INIT.hall.mats, INIT.hall.order, INIT.hall.diff, INIT.hall.seatDip]) : JSON.stringify(HALL.alpha) !== JSON.stringify(INIT.hall.alpha))) return false;
   const dsig = (o) => (o && o.dir ? (o.dir.table ? `t|${o.dir.file}|${(+o.dir.az).toFixed(1)}|${(+o.dir.el).toFixed(1)}` : +o.dir.cov > 0 ? `c|${o.dir.cov}|${(+o.dir.az).toFixed(1)}|${(+o.dir.el).toFixed(1)}` : "omni") : "omni");
   for (const o of INIT.objs) { if (o.kind === "unamp") continue; const n = byId(o.id); if (!n || dist(n.pos, o.pos) > 1e-6 || dsig(n) !== dsig(o)) return false; }
   return true;
@@ -1653,8 +1711,36 @@ function shapeUI() {
     : "Model: shoebox with uniform absorption. First 100 ms: image sources to order 12 with KU100 HRIRs. After that: noise shaped by the image-source energy envelope (order 60). Hall values are placeholders until you enter real ones.";
   $("hallSub").textContent = mm ? "3D model (OBJ): each name in the model mapped to a material." : d ? "Drawn hall: plan outline, floor and ceiling lines, four surface materials." : "Shoebox, uniform absorption on all surfaces.";
   syncSeg($("segShape"), ["box", "drawn", "mesh"], () => (mm ? "mesh" : d ? "drawn" : "box"));
-  if (d) { buildMatTable(); $("selOrder").value = String(mm ? meshOrder() : HALL.order); $("selRays").value = String(HALL.rays); $("selDiff").value = HALL.diff ? "1" : "0"; }
+  if (d) { buildMatTable(); $("selOrder").value = String(mm ? meshOrder() : HALL.order); $("selRays").value = String(HALL.rays); $("selDiff").value = HALL.diff ? "1" : "0"; seatDipUI(); }
 }
+function seatDipUI() {
+  const sd = HALL.seatDip, on = sd.on, auto = !sd.spacing && sectionRowSpacing();
+  $("selSeatDip").value = on ? "1" : "0"; $("selSeatPreset").value = sd.preset;
+  $("nRowSp").value = seatDipSpacing().toFixed(2); $("nSeatBack").value = (sd.back || GEOM.SEAT.DEFAULTS.back).toFixed(2);
+  for (const id of ["nRowSp", "selSeatPreset", "nSeatBack", "btnSeatRange"]) $(id).disabled = !on;
+  $("seatDipNote").textContent = on
+    ? `Seat dip on: the direct sound of every source over the audience floor gets the transfer function of the seat rows (2-D boundary elements up to ${GEOM.SEAT.FMAX} Hz, the last ${GEOM.SEAT.ROWS_FRONT} rows in front of the seat; Davies & Cox 2000 approach). Row spacing ${seatDipSpacing().toFixed(2)} m${sd.spacing ? "" : auto ? " (from the steps in the section)" : " (default)"}. Seat back, opening and seat shape are defaults unless set (back 0.80 m; openings 0 / 0.10 / 0.24 m; Tahvanainen et al. 2020), unoccupied seats, rows parallel to the stage front. First-order reflections from the audience floor are part of it. Adds about 4 - 5 s of computing per source and seat (shared by the workers).`
+    : "Seat dip off: sound passing low over the seat rows is modelled without the rows (too loud there; see the benchmark page).";
+}
+function seatDipSet(k, v) { HALL.seatDip[k] = v; seatDipUI(); if (isDrawn()) work(rebuildAll); }
+$("selSeatDip").onchange = (e) => seatDipSet("on", e.target.value === "1");
+$("selSeatPreset").onchange = (e) => seatDipSet("preset", e.target.value);
+$("nRowSp").onchange = (e) => { const v = +e.target.value; seatDipSet("spacing", v >= 0.6 && v <= 1.6 ? v : null); };
+$("nSeatBack").onchange = (e) => { const v = +e.target.value; seatDipSet("back", v >= 0.5 && v <= 1.2 ? v : null); };
+// direct-sound level change by the seat rows at the current seat for the corners of the default ranges
+$("btnSeatRange").onclick = () => {
+  const sd = HALL.seatDip; if (!sd.on || !GM) return;
+  const s = seatObj(S.seat), srcs = [AMP(), PAL(), PAR()], bands = [125, 250, 500, 1000], base = { spacing: seatDipSpacing() };
+  const combos = [[0.64, 0], [0.64, 0.24], [0.88, 0], [0.88, 0.24], [sd.back || GEOM.SEAT.DEFAULTS.back, GEOM.SEAT.PRESETS[sd.preset]]];
+  $("seatDipNote").textContent = "Computing the seat-dip range…";
+  setTimeout(() => {
+    const lev = srcs.map((o) => combos.map(([back, gap]) => { const T = GEOM.seatPath(GM, o.pos, s.pos, GEOM.seatParams(Object.assign({}, base, { back, gap })), D.fs, D.c); return T ? GEOM.seatBandEnergy(T, D.fs, bands).map((e) => 10 * Math.log10(e)) : null; }));
+    const f = (v) => (v >= 0 ? "+" : "") + v.toFixed(1);
+    const part = (k, name) => { const L = lev[k]; if (!L[0]) return `${name}: no seat rows on its path`; return `${name} ` + bands.map((b, i) => { const v = L.map((x) => x[i]); return `${b} Hz ${f(Math.min(...v))} … ${f(Math.max(...v))} dB`; }).join(", "); };
+    const ratio = lev[0][0] && (lev[1][0] || lev[2][0]) ? bands.map((b, i) => { const d = combos.map((_, c) => { const pa = Math.max(...[lev[1][c], lev[2][c]].filter(Boolean).map((x) => x[i])); return pa - lev[0][c][i]; }); return `${b} Hz ${f(Math.min(...d))} … ${f(Math.max(...d))} dB`; }).join(", ") : null;
+    $("seatDipNote").textContent = `Seat ${S.seat}, direct-sound level re free field for seat backs 0.64 - 0.88 m and openings 0 - 0.24 m (and the current setting): ${part(0, "amplified")}; ${part(1, "PA L")}; ${part(2, "PA R")}.` + (ratio ? ` Level of the louder PA minus the amplified source, direct sound only, re the same difference in the free field: ${ratio}.` : "") + " The spread is how much the result depends on seats you have not measured.";
+  }, 20);
+};
 seg($("segShape"), ["box", "drawn", "mesh"], () => (isMesh() ? "mesh" : isDrawn() ? "drawn" : "box"), (v) => {
   const cur = isMesh() ? "mesh" : isDrawn() ? "drawn" : "box"; if (v === cur) return;
   if (v === "mesh") { // back to the last model, or pick one
@@ -2228,6 +2314,7 @@ function applyConfig(c, name) {
     HALL.diffRefl = g.diffraction_refl | 0;
     HALL.diffOrder = g.diffraction_order | 0;
   } else { HALL.geomStash = HALL.geom || HALL.geomStash; HALL.geom = null; HALL.mesh = null; }
+  HALL.seatDip = seatDipState(g ? g.seat_dip : null);
   HALL.seatMap = Array.isArray(c.seats?.xyz) ? c.seats.xyz.filter(P3).map((p) => p.map(Number)) : null; if (HALL.seatMap && !HALL.seatMap.length) HALL.seatMap = null;
   MESHC.defer = !!HALL.mesh; buildGeom();     // a model is built once the positions are in the page frame (below)
   const kindOf = (k) => (k === "S_amp" ? "amp" : k === "B_L" || k === "B_R" ? "pa" : "unamp");
@@ -2387,10 +2474,11 @@ function currentConfig() {
   if (isMesh()) { const m = HALL.mesh;
     out.geometry = { mesh: { obj: m.name, axes: m.axes, groups: m.groups, default: m.def || "wall", voxel: m.voxel || (GM ? +GM.vox.h.toFixed(4) : 0.05), rotate_deg: m.rot, obj_text: m.text,
       _note: "obj_text: the OBJ itself (this page and geometry.load_obj read it instead of the obj file); rotate_deg: plan turn used by the page only; voxel: the page's voxel size, so that geometry.build_mesh builds the same room; positions are in model coordinates" },
-      materials: HALL.mats, ism_order: 1, rays: Math.max(HALL.rays, 50000), diffraction: false };
+      materials: HALL.mats, ism_order: 1, rays: Math.max(HALL.rays, 50000), diffraction: false, ...seatDipConfig() };
     out.geometry.mesh.page_ism_order = meshOrder();   // the page's order; the Python mesh path (pyroomacoustics) stays at order 1
     out.room = Object.assign(out.room, { dims_m: m.dims, stage_depth_m: 0 }); }
-  else if (isDrawn()) out.geometry = Object.assign(base.geometry || {}, { plan: HALL.geom.plan, floor: HALL.geom.floor, ceiling: HALL.geom.ceil, materials: HALL.mats, ism_order: HALL.order, rays: Math.max(HALL.rays, 50000), diffraction: HALL.diff, ...(HALL.diffRefl ? { diffraction_refl: HALL.diffRefl } : {}), ...(HALL.diffOrder >= 2 ? { diffraction_order: HALL.diffOrder } : {}) }); else delete out.geometry;
+  else if (isDrawn()) out.geometry = Object.assign(base.geometry || {}, { plan: HALL.geom.plan, floor: HALL.geom.floor, ceiling: HALL.geom.ceil, materials: HALL.mats, ism_order: HALL.order, rays: Math.max(HALL.rays, 50000), diffraction: HALL.diff, ...(HALL.diffRefl ? { diffraction_refl: HALL.diffRefl } : {}), ...(HALL.diffOrder >= 2 ? { diffraction_order: HALL.diffOrder } : {}), ...seatDipConfig() }); else delete out.geometry;
+  if (out.geometry && !HALL.seatDip.on) delete out.geometry.seat_dip;
   if (S.calibration) out._calibration = S.calibration; else delete out._calibration;
   out._provenance = provenance();
   return out;
@@ -2680,7 +2768,7 @@ function calReport() {
 }
 $("bCal").onclick = () => $("fCal").click();
 $("fCal").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; if (!f) return; const r = new FileReader(); r.onload = () => calibrate(String(r.result), f.name); r.readAsText(f); };
-const spreadSig = () => JSON.stringify([OBJ.map((o) => o.pos), HALL.rays, HALL.order, HALL.diff, HALL.mats, isMesh() ? HALL.mesh.text.length : HALL.geom]);
+const spreadSig = () => JSON.stringify([OBJ.map((o) => o.pos), HALL.rays, HALL.order, HALL.diff, HALL.seatDip, HALL.mats, isMesh() ? HALL.mesh.text.length : HALL.geom]);
 $("bSpread").onclick = async () => {
   if (!isDrawn() || !$("busy").hidden) { $("spreadNote").textContent = "Wait until the hall is computed."; return; }
   const seat = seatObj(S.seat), srcs = [AMP(), PAL(), PAR()], runs = [metrics(S.seat, C, false)], keys = srcs.map((o) => S.seat + "|" + o.id);

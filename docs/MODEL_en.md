@@ -873,16 +873,54 @@ Model findings:
 These are laboratory-style comparisons at one listener position in two rooms; they do not say how audible the
 differences are.
 
-## Seat dip
+## Seat dip (`seatdip.py`, optional)
 
-Not modelled. A literature check found no closed-form or parametric model that predicts the seat-dip filter
-for a given hall: Meyer, Tahvanainen, Saarelma & Lokki (2023), JASA 154(3), 1628–1639,
-[doi:10.1121/10.0020826](https://doi.org/10.1121/10.0020826), review the analytical models (Takahashi 1997:
-qualitative only; Ishida 1995, Sakurai et al. 1993: not fully consistent with measurements) and rely on FDTD for
-simplified geometries; their results (dips near 80–100 Hz and 250 Hz, dependent on seat underpass, rake and stage
-height, mainly in the early response) are not a transfer function that can be applied per seat. A filter made
-up here would be an invented parameter set. Options if needed later: a measured seat-dip response per seat
-area (phase 2 measurements) applied to the direct sound, or wave-based simulation of the seating.
+Off by default. On with `"geometry": {"seat_dip": {"on": true, "spacing": 0.9, "preset": "standard"}}` (drawn and
+OBJ halls; in the page: Hall → Seat dip). A literature check found no closed-form or parametric model that predicts
+the seat-dip filter for a given hall: Meyer, Tahvanainen, Saarelma & Lokki (2023), JASA 154(3), 1628–1639,
+[doi:10.1121/10.0020826](https://doi.org/10.1121/10.0020826), review the analytical models and rely on FDTD for
+simplified geometries. AuralPaths therefore computes the effect numerically for generic seats, after the
+two-dimensional boundary element approach of Davies & Cox (2000), "Reducing seat dip attenuation", JASA 108(5),
+2211–2218 ([repository](https://salford-repository.worktribe.com/output/1466149/reducing-seat-dip-attenuation)).
+It is not a measured seat-dip filter of any hall.
+
+- **What it does.** For every source–listener pair whose listener sits above an audience floor (`aud` surfaces)
+  the cross-section through the seat rows along the path is solved with a 2-D BEM (rigid rows on a rigid floor,
+  half-space Green's function). T(f) = p(R) / p_free(R), rows and floor against the free field, is applied to the
+  direct sound as a filter; first-order reflections from the audience floor are left out, since T contains them
+  (2.5-D approximation, an engineering assumption).
+- **Seats from a few numbers.** Row spacing: given, or the median tread of the audience steps in a drawn section,
+  else 0.80 m. Seat back 0.80 m above the floor and the opening under the seat 0 / 0.10 / 0.24 m (presets closed /
+  standard / open): the range studied by Tahvanainen, Lokki, Jang & Jeon (2020), Acta Acustica 4, 15,
+  [doi:10.1051/aacus/2020016](https://doi.org/10.1051/aacus/2020016) (backs 0.64–0.88 m, openings 0–0.24 m).
+  Seat shape: one solid L per seat (pan 0.50 m deep, top 0.45 m; back 0.10 m thick); engineering assumption, no
+  source for a typical profile. Rigid, unoccupied. Rows parallel to the stage front (the page's x axis); a path at
+  angle φ to the row normal sees them stretched by 1/cos φ (φ ≤ 60°). The audience floor under the path becomes its
+  best-fit line (steps are not modelled). Modelled: the last 8 rows in front of the listener, the listener's own
+  row and 1 behind.
+- **Numerics.** Constant elements (≤ λ/8 and ≤ 5 cm), collocation at the centres, composite Gauss rule for
+  near-singular integrals; BEM up to 1 kHz on the bins of a 2048-point FFT (23 Hz at 48 kHz), above that the energy
+  mean of |T| over the last third octave (crossfaded). Checked against the series solution for a rigid half-cylinder
+  on a floor (0.002 dB). The interior resonances of the closed seat bodies are not suppressed: with CHIEF points
+  (least squares) the result changes by up to 0.3 dB in third-octave bands, up to 3 dB at single bins (drawn fan
+  hall). Python (direct solve) and browser (GMRES) agree to 1e-10 (`validation/check_seatdip_pyjs.py`, regression
+  check `seatdip`). About 4–5 s per source–listener pair on one core.
+- **Check against BRAS RS7** (15 blocks 0.24 m high, a seat-dip set-up at about 1:3.2; settings scaled;
+  `validation/rs7_seatdip_bem.py`), third-octave bands 125 Hz–4 kHz:
+
+  | | source in sight (4 pairs) | behind the first block (4) |
+  |---|---|---|
+  | mean abs. difference, without / with seat dip | 3.8–6.4 / **3.0–3.3 dB** | 5.6–9.1 / **3.4–6.7 dB** |
+  | median measured − simulated, without / with | −0.7 … −4.7 / **−1.3 … −2.2 dB** | −5.3 … −11.0 / **−2.8 … −7.2 dB** |
+
+  The 500 Hz dip appears only in part (400–500 Hz still 5–7 dB too loud, 9–12 dB without), and at 200 Hz the model
+  is now 8–9 dB too loud (4 dB too quiet without). T needs fine frequency resolution: four times finer bins give
+  3.5 instead of 4.1 dB mean. Behind the rows, modelling all 15 blocks is better (2.9–4.7 dB), but worse far from
+  the source in sight (4.3–4.6 dB).
+- **Limits.** 2-D (rows infinitely wide; the RS7 blocks are 4.1 m wide), generic seat shape, empty rigid seats, no
+  check in a real hall yet. The page's *Seat-dip range…* button shows how much the direct sound and the PA / direct
+  level ratio at the current seat change over the seat backs and openings above, i.e. how much the result depends on
+  seats that were not measured.
 
 ## Reproducibility (`out/manifest.json`)
 
@@ -976,7 +1014,7 @@ For other loudspeakers, use manufacturer data or your own measurements.
   factor (drawn and OBJ halls have both, see *Specular reflection factors*)
 - Diffraction: one edge per path (optionally with one reflection before and after it), straight edges of the drawn
   surfaces and thin plates; no double diffraction, no seats, no edge end points (see above)
-- No seat-dip effect (see above)
+- Seat dip: optional 2-D model with generic seats, partly checked (see above)
 - Level ratio is a BRIR energy ratio (white-input equivalent), not the stimulus RMS defined in the
   proposal. The simulator uses it only to set the PA gain; the listening-test program sets the
   experiment's levels with the proposal's RMS definition

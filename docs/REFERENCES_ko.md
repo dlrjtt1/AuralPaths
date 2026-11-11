@@ -25,7 +25,7 @@
 | 실제 홀 위치별 검증 (CR3·CR4: T30 8–11% 김, C80·Ts 0.8–2.3 JND, 1차 반사 중앙값 CR3 +1.6 dB·CR4 +2.7 dB(보정 전 +6.5)) | BRAS CR3·CR4 (Aspöck et al. 2020) | `validate_bras_cr.py`, `validation/bras_CR*` |
 | OBJ 3D 홀 계산·2.5D 변환 | 복셀 채우기 + 메시 Sabine 면적 → 2.5D Eyring 지수(자체 구현), fast-simplification(MIT) | `geometry.py`, `obj_to_hall.py` |
 | 실측 홀 지표 대조 (ULH 500 Hz–4 kHz 약 1 JND 이내, STC 약 15% 김) | Fratoni 데이터셋(CC BY 4.0), Fratoni 2022, Fratoni et al. 2023 | `validate_fratoni.py`, `validation/fratoni_*` |
-| 좌석 dip — **만들지 않음** | Meyer, Tahvanainen, Saarelma & Lokki 2023 (모델 부재 확인) | README "Seat dip" |
+| 좌석 dip — 일반 의자 2차원 BEM(선택 사항) | Meyer, Tahvanainen, Saarelma & Lokki 2023 (닫힌형 모델 부재), Davies & Cox 2000 (2차원 BEM 방식), Tahvanainen et al. 2020 (등받이·틈 범위) | docs/MODEL "Seat dip" |
 | 음원 지향성 CSV | B&K BP 1689, NTi DS3 데이터시트, Meyer CQ-1 / UPM-1P 데이터시트 | `directivity/*.csv` |
 | SOFA 지향성 불러오기 | h5wasm (브라우저) | `viewer_template.html` |
 | 도면 PDF 불러오기 | pdf.js (브라우저) | `viewer_template.html` |
@@ -133,7 +133,7 @@
 - **무엇:** Meyer, J., Tahvanainen, H., Saarelma, J., & Lokki, T. (2023). Investigation of the seat-dip effect using finite-difference time-domain simulations. *J. Acoust. Soc. Am.*, 154(3), 1628–1639. [doi:10.1121/10.0020826](https://doi.org/10.1121/10.0020826)
 - **결론:**
   - 해석적 모델들은 정성적이거나 실측과 맞지 않는다(Takahashi 1997, Ishida 1995, Sakurai et al. 1993; 원문은 위 논문 안에서 인용된 것으로만 확인했다).
-  - 좌석마다 적용할 수 있는 매개변수 모델이 없어서 **구현하지 않았다.**
+  - 좌석마다 적용할 수 있는 매개변수 모델이 없다. 그래서 2026-11-11에 일반적인 의자의 2차원 BEM(Davies & Cox 2000 방식)을 선택 사항으로 넣었다(`seatdip.py`; docs/MODEL "Seat dip").
 - **참고 수치(FDTD, 단순화 형상):**
   - 80–100 Hz와 약 250 Hz에 dip이 나타난다.
   - 좌석 아래 공간, 단의 기울기, 무대 높이에 의존한다.

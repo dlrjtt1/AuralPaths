@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import json
+import math
 import os
 from dataclasses import dataclass
 
@@ -577,15 +578,57 @@ def specular_factors(cfg, room, sel, src_pos, rec_pos):
     return reflections.image_factors(_geom(cfg), room, sel, src_pos, rec_pos, cfg["c"], g["materials"], fin, sca)
 
 
+_SEAT_CACHE = {}
+
+
+def seat_dip_on(cfg):
+    """Drawn and mesh halls with "geometry": {"seat_dip": {"on": true, ...}} (seatdip.py)."""
+    sd = cfg.get("geometry", {}).get("seat_dip") if cfg is not None and has_geometry(cfg) else None
+    return bool(sd) and sd.get("on", True)
+
+
+def seat_dip_T(cfg, src_pos, rec_pos):
+    """Seat-dip transfer function of the direct sound on the renderer's 1024-point bins, or None (seatdip.py)."""
+    if not seat_dip_on(cfg):
+        return None
+    import seatdip
+    prm = seatdip.seat_params(cfg["geometry"]["seat_dip"])
+    if is_mesh(cfg):          # rows face the page's +y; the page frame is the model turned by rotate_deg
+        ra = math.radians(float(cfg["geometry"]["mesh"].get("rotate_deg", 0) or 0))
+        prm["normal"] = (math.sin(ra), math.cos(ra))
+    key = json.dumps([cfg["geometry"], [float(x) for x in src_pos], [float(x) for x in rec_pos], cfg["fs"], cfg["c"]],
+                     sort_keys=True, default=str)
+    if key not in _SEAT_CACHE:
+        _SEAT_CACHE[key] = seatdip.path_transfer(_geom(cfg), src_pos, rec_pos, prm, cfg["fs"], cfg["c"])
+    return _SEAT_CACHE[key]
+
+
+def seat_dip_images(cfg, room, sel, T):
+    """With a seat dip on the path: mask over `sel` keeping all but the first-order reflections from the audience
+    floor (their part is in T), and the index (into sel) of the direct sound."""
+    S = room.sources[0]
+    G = _geom(cfg)
+    keep = np.array([not (S.orders[k] == 1 and S.walls[k] >= 0 and G["S"][S.walls[k]]["mat"] == "aud") for k in sel], bool)
+    return keep
+
+
 def _image_energy_hist(room, rec_pos, c, t_max, vis=None, cfg=None, src=None):
     S = room.sources[0]
     m = np.asarray(rec_pos, dtype=float)
     sel = np.arange(S.images.shape[1]) if vis is None else np.flatnonzero(vis)
+    T = seat_dip_T(cfg, cfg["sources"][src]["pos"], rec_pos) if cfg is not None and src is not None and vis is not None \
+        else None
+    if T is not None:
+        sel = sel[seat_dip_images(cfg, room, sel, T)]
     imgs, damp = S.images[:, sel], S.damping[:, sel]
     d = np.linalg.norm(imgs - m[:, None], axis=0)
     keep = (d / c < t_max) & (d > 1e-9)
     d, damp, sel = d[keep], damp[:, keep], sel[keep]
     E = (damp / d) ** 2 * np.exp(-np.asarray(room.air_absorption)[:, None] * d)
+    if T is not None:
+        import seatdip
+        tb = seatdip.band_energy(T, cfg["fs"], room.octave_bands.centers)
+        E[:, S.orders[sel] == 0] *= tb[:, None]
     if cfg is not None and src is not None:
         F = specular_factors(cfg, room, sel, cfg["sources"][src]["pos"], rec_pos)
         if F is not None:
@@ -816,7 +859,10 @@ def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len, spec=False):
     S = room.sources[0]
     vis = visible_images(room, 0)
     sel = np.flatnonzero(vis)
-    imgs, damp = S.images[:, vis], S.damping[:, vis]
+    T = seat_dip_T(cfg, cfg["sources"][src]["pos"], cfg["receivers"][rec]) if has_geometry(cfg) else None
+    if T is not None:                       # seat dip: the direct sound carries T, audience-floor reflections are in T
+        sel = sel[seat_dip_images(cfg, room, sel, T)]
+    imgs, damp = S.images[:, sel], S.damping[:, sel]
     m = np.array(cfg["receivers"][rec])
     v = imgs - m[:, None]
     dist = np.linalg.norm(v, axis=0)
@@ -829,8 +875,7 @@ def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len, spec=False):
     v, dist, damp, sel = v[:, keep], dist[keep], damp[:, keep], sel[keep]
 
     # 완결성 점검: 다음 차수의 최단 도달이 창 안에 들어오는지
-    orders = S.orders[vis]
-    max_ord_in = orders[keep].max()
+    max_ord_in = S.orders[sel].max()
 
     # 대역 진폭(감쇠/거리 + 공기흡음)
     band_f = room.octave_bands.centers
@@ -881,7 +926,12 @@ def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len, spec=False):
         X = Hcache[k] * g[None, :] * np.exp(-2j * np.pi * f * frac / fs)[None, :]
         y = np.fft.irfft(X, nfft, axis=-1)
         a = n0 - pre
-        lo, hi = max(a, 0), min(a + nfft, n_len)
+        if T is not None and i < len(sel) and S.orders[sel[i]] == 0:     # seat dip: the direct sound through T
+            import seatdip
+            hT = seatdip.fir(T)
+            y = np.stack([np.convolve(e, hT) for e in y])
+            a -= seatdip.PRE
+        lo, hi = max(a, 0), min(a + y.shape[1], n_len)
         if hi > lo:
             out[:, lo:hi] += y[:, lo - a:hi - a]
     if diff:
@@ -909,8 +959,13 @@ def early_binaural(cfg, src, rec, hrir: HRIRSet, n_len, spec=False):
     if has_geometry(cfg):
         hd = np.zeros((len(band_f), int(np.ceil((t_end + 0.01) / HIST_BIN))))
         idx_t = np.floor(dist / c / HIST_BIN).astype(int)
+        e2 = amp ** 2
+        if T is not None:
+            import seatdip
+            d0 = np.flatnonzero(S.orders[sel[:e2.shape[1]]] == 0) if len(sel) else []
+            e2[:, d0] *= seatdip.band_energy(T, fs, band_f)[:, None]
         for bb in range(len(band_f)):
-            np.add.at(hd[bb], idx_t, amp[bb] ** 2)
+            np.add.at(hd[bb], idx_t, e2[bb])
         for q in diff:
             k = int(q["t"] / HIST_BIN)
             if k < hd.shape[1]:
