@@ -71,8 +71,24 @@ def load(folder):
     return src, rec, H
 
 
-def config(src, rec, out, posthoc=False):
-    o = am.build(posthoc)
+SEAT_BERANEK = [0.54, 0.62, 0.68, 0.70, 0.68, 0.66]   # medium upholstered, unoccupied: Gade, Springer Handbook of
+                                                      # Acoustics ch. 9, table 9.3, after Beranek
+DETAIL_MATS = {"wall": "mat_CR2_plaster", "ceiling": "mat_CR2_plaster", "window": "mat_CR3_windows",
+               "floor": "mat_CR4_parquet", "stage": "mat_CR4_parquet", "shell": "mat_CR3_stagePanels",
+               "pitwall": "mat_CR4_brickwall", "aud": "mat_CR3_seating"}   # BRAS initial estimates (aud: s only)
+
+
+def bras_octaves(csv_path):
+    """Octave-band means (125 Hz - 4 kHz) of the third-octave absorption and scattering in a BRAS material file."""
+    rows = [r for r in csv.reader(open(csv_path)) if r]
+    f, a, s = (np.array(rows[i], float) for i in range(3))
+    sel = [(f >= b / 2 ** 0.5) & (f < b * 2 ** 0.5) for b in BANDS]
+    return [float(a[m].mean()) for m in sel], [float(s[m].mean()) for m in sel]
+
+
+def config(src, rec, out, posthoc=False, detail=None):
+    """detail: folder of BRAS initial-estimate CSVs (protocol item 15): detailed model, per-material values."""
+    o = am.build(posthoc, bool(detail))
     obj = os.path.join(out, "arvedi.obj")
     o.write(obj)
     mats = json.load(open(os.path.join(ROOT, "examples", "bras_cr3", "bras_cr3_config.json")))["geometry"]["materials"]
@@ -90,6 +106,15 @@ def config(src, rec, out, posthoc=False):
                         "ism_order": ISM, "rays": RAYS, "diffraction": False},
            "binaural": {"sofa_path": "", "early_window_ms": 100.0, "crossfade_ms": 10.0, "ism_order_early": 12,
                         "ism_order_omni": 60}}
+    if detail:
+        groups = dict(DETAIL_MATS)
+        cfg["geometry"]["mesh"]["groups"] = {k: k for k in groups}
+        mats = {}
+        for k, v in groups.items():
+            a_, s_ = bras_octaves(os.path.join(detail, v + ".csv"))
+            mats[k] = {"alpha": SEAT_BERANEK if k == "aud" else a_, "s": s_}
+        cfg["geometry"]["materials"] = mats
+        cfg["_note"] += "; detailed model and per-material values (protocol item 15)"
     for k in ("S1", "S2", "S3", "S4"):
         cfg["sources"][k] = {"pos": src[k].round(4).tolist(), "coverage": 90.0,
                              "aim": {"az": 90.0 * TURN[0], "el": 0.0},
@@ -131,15 +156,16 @@ def main():
     ap.add_argument("--skip-cal", action="store_true")
     ap.add_argument("--posthoc", action="store_true")
     ap.add_argument("--dodeca", default=None, help="directivity CSV of the B&K 4292-L (post hoc S0 run)")
+    ap.add_argument("--detail", default=None, help="folder of BRAS initial-estimate CSVs: detailed model (item 15)")
     ap.add_argument("--genelec", default=None, help="directivity CSV for S1 - S4 (post hoc: Genelec 8020A data)")
     a = ap.parse_args()
     if a.posthoc:
         TURN[:] = (-1.0, -1.0, 1.0)
         if a.out == os.path.join(ROOT, "out", "arvedi"):
-            a.out = os.path.join(ROOT, "out", "arvedi_posthoc")
+            a.out = os.path.join(ROOT, "out", "arvedi_detail" if a.detail else "arvedi_posthoc")
     os.makedirs(a.out, exist_ok=True)
     src, rec, H = load(a.data)
-    cfg = config(src, rec, a.out, a.posthoc)
+    cfg = config(src, rec, a.out, a.posthoc, a.detail)
     if a.genelec:
         for k in ("S1", "S2", "S3", "S4"):
             cfg["sources"][k].pop("coverage", None)
@@ -158,8 +184,10 @@ def main():
                                 round(float(e), 4) if np.isfinite(e) else ""])
     cal = os.path.join(a.out, "config_cal.json")
     if not a.skip_cal:
+        if a.detail:          # prediction before calibration, then only the seating is calibrated (item 15)
+            compare(bp.load_config(os.path.join(a.out, "config.json")), src, rec, H, "S0", "S0_uncalibrated", a.out)
         subprocess.run([sys.executable, os.path.join(ROOT, "calibrate.py"), os.path.join(a.out, "config.json"), t30,
-                        "--out", cal, "--iter", "6"], check=True, cwd=ROOT)
+                        "--out", cal, "--iter", "6"] + (["--adjust", "aud"] if a.detail else []), check=True, cwd=ROOT)
     cfg = bp.load_config(cal)
     print(f"model volume {bp._geom(cfg).get('volume', float('nan')):.0f} m3 (published 5300 m3)")
     compare(cfg, src, rec, H, "S0", "S0_primary", a.out)

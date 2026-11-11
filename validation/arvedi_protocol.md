@@ -80,4 +80,16 @@ Derived outputs stay in `out/` (not in the repository).
     measured audience (dataset +x), as in the photo of the measurement. S0: as item 13 (omnidirectional, and the
     4292-L horizontal polars as a second run). Everything else as items 1 - 13; all results post hoc.
 
-Results of the post hoc run: [arvedi_check.md](arvedi_check.md).
+15. **Detailed diagnostic run (2026-11-12, after the post hoc results; `--posthoc --detail`, out/arvedi_detail).**
+    Question: do the early-decay errors come from the simplified model and the uniform calibration? (a) Geometry:
+    wooden parapets 1.1 m high and 0.25 m thick on the walkway edge along both sides (x 14.6 - 32 m) and a 1 m lip on
+    the front of the high block, as in the photo and the sections; the pit walls under the walkway (x 15 - 29 m) as
+    textured panels. (b) Materials per surface, with sources, instead of CR3 by analogy: seating = medium-upholstered
+    unoccupied chairs (Gade, Springer Handbook of Acoustics ch. 9, table 9.3, after Beranek: 0.54 0.62 0.68 0.70 0.68
+    0.66); plaster walls and ceiling = BRAS mat_CR2_plaster, windows = mat_CR3_windows, walkway and stage = mat_CR4_
+    parquet, wood shells = mat_CR3_stagePanels, pit walls = mat_CR4_brickwall (BRAS initial estimates, i.e. before
+    the uniform fit; scattering from the same files, seating scattering from mat_CR3_seating). (c) Reported first
+    without any calibration (prediction from these values), then with only the seating absorption scaled to the
+    measured T30 of S0 (`calibrate.py --adjust aud`). Sources as in item 14. Results are diagnostic, not a check.
+
+Results of the post hoc runs: [arvedi_check.md](arvedi_check.md).

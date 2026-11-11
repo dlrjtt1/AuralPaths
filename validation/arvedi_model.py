@@ -109,7 +109,23 @@ def vside(o, xa, ya, xb, yb, za, zb, mat, split=None):
         o.face([(xa, ya, lo[0]), (xb, yb, lo[1]), (xb, yb, hi[1]), (xa, ya, hi[0])], mat)
 
 
-def build(posthoc=False):
+PARAPET = (14.6, 32.0, 0.25, 1.1)       # detail: parapets on the walkway edge between these x, thickness, height
+LIP = (14.35, 14.6, 1.0)                # detail: lip on the front of the high block (x range, height above 2.75 m)
+PIT = (15.0, 29.0)                      # detail: the pit walls under the walkway between these x are textured panels
+
+
+def box_quad(o, quad, z0, z1, mat):
+    """Closed prism over the ground quad (4 points, counter-clockwise) from z0 to z1."""
+    q = [tuple(p) for p in quad]
+    o.face([(x, y, z1) for x, y in q], mat)
+    o.face([(x, y, z0) for x, y in q[::-1]], mat)
+    for i in range(4):
+        (xa, ya), (xb, yb) = q[i], q[(i + 1) % 4]
+        o.face([(xa, ya, z0), (xb, yb, z0), (xb, yb, z1), (xa, ya, z1)], mat)
+
+
+def build(posthoc=False, detail=False):
+    """detail (post hoc, protocol item 15): parapets, front lip, textured pit walls as their own material."""
     global PROF_X, PROF_Z
     if posthoc:
         PROF_X, PROF_Z = PROF_POSTHOC
@@ -137,7 +153,17 @@ def build(posthoc=False):
         o.face([(x0, hi[i], ZG), (x1, hi[i + 1], ZG), (x1, W, ZG), (x0, W, ZG)], "floor")
         for (ya, yb), zt in (((lo[i], lo[i + 1]), ztop[0]), ((hi[i], hi[i + 1]), ztop[1])):
             # island side above the walkway, walkway side above the island: one vertical face from min to max
-            vside(o, x0, ya, x1, yb, np.minimum(zt, ZG), np.maximum(zt, ZG), "shell")
+            mat = "pitwall" if detail and np.all(zt < ZG) and PIT[0] <= x0 and x1 <= PIT[1] else "shell"
+            vside(o, x0, ya, x1, yb, np.minimum(zt, ZG), np.maximum(zt, ZG), mat)
+        if detail and PARAPET[0] - 1e-9 <= x0 and x1 <= PARAPET[1] + 1e-9:
+            t, hgt = PARAPET[2], PARAPET[3]
+            box_quad(o, [(x0, lo[i] - t), (x1, lo[i + 1] - t), (x1, lo[i + 1]), (x0, lo[i])], ZG, ZG + hgt, "shell")
+            box_quad(o, [(x0, hi[i]), (x1, hi[i + 1]), (x1, hi[i + 1] + t), (x0, hi[i] + t)], ZG, ZG + hgt, "shell")
+    if detail:
+        xa, xb, hgt = LIP
+        za = interp(xa, PROF_X, PROF_Z)
+        box_quad(o, [(xa, interp(xa, OUT_X, OUT_LO)), (xb, interp(xb, OUT_X, OUT_LO)), (xb, interp(xb, OUT_X, OUT_HI)),
+                     (xa, interp(xa, OUT_X, OUT_HI))], za, za + hgt, "shell")
     # steps in the island top between the stage zone (ring rows) and the profile next to it
     for xb in STAGE_ZONE:
         lo_b, hi_b = interp(xb, OUT_X, OUT_LO), interp(xb, OUT_X, OUT_HI)
