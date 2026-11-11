@@ -9,6 +9,7 @@ without this repository is the hist.py written next to the data); this script re
 
     python validation/arvedi_check.py <folder with pos_sources.csv, pos_receivers.csv, meas_hist_*.npz> [--out out/arvedi]
         [--skip-cal]      reuse <out>/config_cal.json
+        [--resume]        skip comparisons whose CSV already exists (after an interrupted run)
         [--posthoc]       after the blind run (protocol item 13): receivers on the high-end side (dataset turned by
                           180 deg), ring-row floors from the receiver heights, and S0 also with the B&K 4292-L
                           directivity (--dodeca <csv>); default output out/arvedi_posthoc
@@ -122,7 +123,13 @@ def config(src, rec, out, posthoc=False, detail=None):
     return cfg
 
 
+RESUME = [False]
+
+
 def compare(cfg, src, rec, H, s, label, out):
+    if RESUME[0] and os.path.exists(os.path.join(out, f"compare_{label}.csv")):
+        print(f"{label}: compare_{label}.csv exists, skipped (--resume)")
+        return
     Hs, cen = bp.energy_hists(cfg, s, list(rec), t_max=2.0, n_rays=RAYS)
     bi = [int(np.argmin(np.abs(np.asarray(cen) - b))) for b in BANDS]
     rows, D = [], {k: [] for k in JND}
@@ -158,7 +165,9 @@ def main():
     ap.add_argument("--dodeca", default=None, help="directivity CSV of the B&K 4292-L (post hoc S0 run)")
     ap.add_argument("--detail", default=None, help="folder of BRAS initial-estimate CSVs: detailed model (item 15)")
     ap.add_argument("--genelec", default=None, help="directivity CSV for S1 - S4 (post hoc: Genelec 8020A data)")
+    ap.add_argument("--resume", action="store_true", help="skip comparisons whose CSV already exists in <out>")
     a = ap.parse_args()
+    RESUME[0] = a.resume
     if a.posthoc:
         TURN[:] = (-1.0, -1.0, 1.0)
         if a.out == os.path.join(ROOT, "out", "arvedi"):
