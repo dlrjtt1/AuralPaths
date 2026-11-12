@@ -3,7 +3,7 @@
 `docs/MODEL_ko.md`의 검증을 짧게 요약한 문서다. AuralPaths의 BRIR을 어떤 용도에 써도 되는지, 예를 들어 지연된 확성(PA) 경로가
 있는 선행음 효과 청취 실험의 자극으로 써도 되는지 판단하려는 사람을 위해 썼다. 아래 수치는 모두 `docs/MODEL_ko.md`(영문
 `docs/MODEL_en.md`)의 해당 절(괄호 안 이름)에서 왔고, 방법과 데이터와 명령은 그 절에 있다. AuralPaths 0.7.0은
-https://doi.org/10.5281/zenodo.24053630 으로 보관되어 있다.
+https://doi.org/10.5281/zenodo.24053630 으로 보관되어 있다. 용도별 판단(쓸 수 있음, 조건부, 근거 부족)과 2019 라운드 로빈 프로그램들과의 비교: [BENCHMARK_ko.md](BENCHMARK_ko.md) 1절.
 
 사용한 측정 데이터: BRAS CR3 / CR4(Aspöck et al. 2020, [doi:10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3),
 CC BY-SA 4.0)와 Fratoni 데이터셋(Mendeley Data, [doi:10.17632/y7xnv6xg5s.1](https://doi.org/10.17632/y7xnv6xg5s.1), CC BY 4.0).

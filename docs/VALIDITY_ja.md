@@ -3,7 +3,7 @@
 `docs/MODEL_ja.md` の検証を短くまとめた文書である。AuralPaths の BRIR をある用途に使ってよいか、たとえば遅延した拡声(PA)経路を
 含む先行音効果の聴取実験の刺激として使ってよいかを判断する人のために書いた。以下の数値はすべて `docs/MODEL_ja.md`(英語版
 `docs/MODEL_en.md`)の該当節(括弧内の名称)によるものであり、方法、データ、コマンドはその節にある。AuralPaths 0.7.0 は
-https://doi.org/10.5281/zenodo.24053630 として保存されている。
+https://doi.org/10.5281/zenodo.24053630 として保存されている。用途別の判断(使用可、条件付き、根拠不十分)と 2019 年ラウンドロビンのプログラムとの比較: [BENCHMARK_ja.md](BENCHMARK_ja.md) 1 節。
 
 使用した実測データ: BRAS CR3 / CR4(Aspöck et al. 2020、[doi:10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3)、
 CC BY-SA 4.0)および Fratoni データセット(Mendeley Data、[doi:10.17632/y7xnv6xg5s.1](https://doi.org/10.17632/y7xnv6xg5s.1)、CC BY 4.0)。

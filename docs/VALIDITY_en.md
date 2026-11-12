@@ -3,7 +3,7 @@
 A short summary of the checks in `docs/MODEL_en.md`, written for someone deciding whether AuralPaths BRIRs can be
 used for a given purpose, for example stimuli for a listening test on the precedence effect with delayed loudspeaker
 (PA) paths. Every number below comes from a section of `docs/MODEL_en.md` (named in brackets), where the method,
-the data and the commands are given. AuralPaths 0.7.0 is archived as https://doi.org/10.5281/zenodo.24053630.
+the data and the commands are given. AuralPaths 0.7.0 is archived as https://doi.org/10.5281/zenodo.24053630. A table of uses with a verdict for each (usable, conditional, not supported) and the comparison with the 2019 round-robin programs: [BENCHMARK_en.md](BENCHMARK_en.md), section 1.
 
 Measured data used: BRAS CR3 / CR4 (Aspöck et al. 2020, [doi:10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3),
 CC BY-SA 4.0) and the Fratoni dataset (Mendeley Data, [doi:10.17632/y7xnv6xg5s.1](https://doi.org/10.17632/y7xnv6xg5s.1),
