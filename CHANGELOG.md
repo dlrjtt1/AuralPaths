@@ -4,6 +4,14 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Directional sources in the ray tracing: rays now leave a directional source with the energy of its pattern in their
+  launch direction (Python: `brir_proto.rt_add_source`, pyroomacoustics directive-source rays, amp^2 per band; browser:
+  `GEOM.rays` keeps the energy of the first 250 ms per launch sector, 64 Fibonacci sectors, and the page weights it by
+  the pattern, so a change of aim or directivity needs no new tracing). Before, the ray-traced energy was scaled by
+  1 / Q at every time, so the early reflections of a loudspeaker aimed at the audience were too weak and its C80 hardly
+  differed from an omnidirectional source (Arvedi Genelec S1: simulated C80 at 4 kHz 3.3 dB, S0 3.4 dB; measured
+  11.1 dB and 4.9 dB). Browser vs Python with a directional source as close as without one (one ray realisation:
+  0.1 - 1.1 dB in the first 80 ms, `validation/check_directional_rays_pyjs.py`).
 - Fix (Python engine): `energy_hists` (several receivers in one run: room-criteria checks, `geometry.shared_rays`)
   took the emission direction of every image source from the first receiver, so a directional source was weighted
   by the direction towards receiver 1 at all receivers. `emission_dirs` now takes the receiver's own position. Single-

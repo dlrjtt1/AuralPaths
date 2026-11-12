@@ -602,7 +602,13 @@ const GEOM = (() => {
   function rays(G, src, recs, opts, mats, air) {
     // k0 / k1: trace only rays k0 ... k1 - 1 of the n (each ray has its own random stream and the directions are
     // stratified over all n, so the parts of several workers add up to exactly the single-run result)
-    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null, k0 = 0, k1 = n, log = 0 } = opts, NB = air.length;
+    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null, k0 = 0, k1 = n, log = 0, nSect = 0, tSect = 0.25 } = opts, NB = air.length;
+    // nSect > 0 (directional sources): the receiver energy before tSect is also kept per launch sector (nSect Fibonacci
+    // directions), so that the page can weight the early ray-traced energy by the radiation pattern afterwards
+    // (without tracing again when the aim or the directivity changes); after tSect the pattern's mean, 1 / Q, is used
+    const nSb = nSect > 0 ? Math.round(tSect / bin) : 0, SD = [];
+    for (let q = 0; q < nSect; q++) { const z = 1 - 2 * (q + 0.5) / nSect, r = Math.sqrt(Math.max(0, 1 - z * z)), p = Math.PI * (1 + Math.sqrt(5)) * (q + 0.5); SD.push([r * Math.cos(p), r * Math.sin(p), z]); }
+    const HS = nSect > 0 ? recs.map(() => new Float32Array(nSect * NB * nSb)) : null;
     // log > 0 (diagnostics, validation/early_paths.py): every receiver hit before `log` seconds as
     // [receiver, t, reflections, first surface, last surface, last reflection point xyz, launch direction xyz, band energies...]
     const LOG = log > 0 ? [] : null;
@@ -623,7 +629,8 @@ const GEOM = (() => {
       const zc = 1 - 2 * (k + rnd()) / n, ph = 2 * Math.PI * rnd(), sr = Math.sqrt(Math.max(0, 1 - zc * zc));
       let dx = sr * Math.cos(ph), dy = sr * Math.sin(ph), dz = zc;
       let ox = src[0], oy = src[1], oz = src[2], L = 0, last = -1, twinPrev = false;
-      const e = new Float64Array(NB).fill(e0), d0 = [dx, dy, dz]; let firstS = -1;
+      const e = new Float64Array(NB).fill(e0), d0 = [dx, dy, dz]; let firstS = -1, ks = 0;
+      if (nSect > 0) { let bd = -2; for (let q = 0; q < nSect; q++) { const v = dx * SD[q][0] + dy * SD[q][1] + dz * SD[q][2]; if (v > bd) { bd = v; ks = q; } } }
       for (let bounce = 0; bounce < 400; bounce++) {
         // nearest surface
         let best = Infinity, bi = -1;
@@ -662,6 +669,7 @@ const GEOM = (() => {
           const hc = Math.sqrt(r2 - d2), ta = Math.max(0, tc - hc), tb = Math.min(best, tc + hc); if (tb <= ta) continue;
           const dist = L + (ta + tb) / 2, ib = Math.floor(dist / c / bin); if (ib >= nBins) continue;
           const f = (tb - ta) / Vs; for (let b = 0; b < NB; b++) H[m][b][ib] += e[b] * Math.exp(-air[b] * dist) * f;
+          if (ib < nSb) for (let b = 0; b < NB; b++) HS[m][(ks * NB + b) * nSb + ib] += e[b] * Math.exp(-air[b] * dist) * f;
           hits++;
           if (LOG && dist / c < log) LOG.push([m, dist / c, bounce, firstS, last, ox, oy, oz, d0[0], d0[1], d0[2], ...Array.from(e, (v, b) => v * Math.exp(-air[b] * dist) * f)]);
         }
@@ -696,7 +704,10 @@ const GEOM = (() => {
         last = bi; if (firstS < 0) firstS = bi;
       }
     }
-    return LOG ? { H, W, escaped, hits, n, leaked, LOG } : { H, W, escaped, hits, n, leaked };
+    const out = { H, W, escaped, hits, n, leaked };
+    if (HS) Object.assign(out, { HS, sect: SD, nSb });
+    if (LOG) out.LOG = LOG;
+    return out;
   }
 
   // ---------- loudspeaker directivity (generic, axisymmetric; an engineering assumption, not measured data)

@@ -498,6 +498,34 @@ def dir_amp(dm, e):
     return out
 
 
+def rt_add_source(rt, cfg, src, centers):
+    """Add source src to the ray-tracing room rt. A directional source launches its rays with energies amp(d)^2 per
+    band (dir_amp, on-axis 1), so that the early ray-traced energy follows the radiation pattern; the mean over the
+    sphere is 1 / Q, the factor applied uniformly to the ray histograms before 2026-11-12. Returns the model or None."""
+    dm = dir_model(cfg, src, centers)
+    if dm is None:
+        rt.add_source(cfg["sources"][src]["pos"])
+        return None
+    import pyroomacoustics.directivities as pdir
+    from pyroomacoustics.doa import fibonacci_spherical_sampling
+
+    class _RayPattern(pdir.Directivity):
+        is_impulse_response = False
+        filter_len_ir = 1
+
+        def get_response_cartesian(self, directions, magnitude=False):
+            return dir_amp(dm, np.asarray(directions, float).T).T
+
+        def sample_rays(self, n_rays, rng=None):
+            d = fibonacci_spherical_sampling(n_points=n_rays).T          # (n_rays, 3), as pyroomacoustics' omni rays
+            return d, (dir_amp(dm, d.T) ** 2).T
+
+    # Room.add_source accepts only pyroomacoustics' own directivity classes (others are silently dropped), so the
+    # source is added directly; Room.ray_tracing then calls sample_rays
+    rt.add(pra.SoundSource(cfg["sources"][src]["pos"], directivity=_RayPattern()))
+    return dm
+
+
 def emission_dirs(cfg, room, src_pos, idx, rec_pos=None):
     """Unit vectors [3, N] in which the paths of images idx leave the source, for the receiver at rec_pos (default:
     the room's first microphone; a room with several microphones must pass the receiver's own position).
@@ -788,7 +816,7 @@ def energy_hist(cfg, src, rec, t_max=2.5, return_resid=False, spec=False):
     rt = make_room(cfg, 0, ray_tracing=True)
     rt.set_ray_tracing(n_rays=int(g.get("rays", 50000)), receiver_radius=0.5, hist_bin_size=HIST_BIN,
                        time_thres=t_max, energy_thres=RT_ENERGY_THRES)
-    rt.add_source(cfg["sources"][src]["pos"])
+    rt_add_source(rt, cfg, src, room.octave_bands.centers)
     rt.add_microphone(cfg["receivers"][rec])
     import zlib
     pra.libroom.set_rng_seed(zlib.crc32(f"{src}|{rec}".encode()))   # reproducible rays per path (see manifest.json)
@@ -802,9 +830,6 @@ def energy_hist(cfg, src, rec, t_max=2.5, return_resid=False, spec=False):
     # air_absorption is exactly 1 in rt_histograms). The image-source part already includes it.
     t_c = (np.arange(h_rt.shape[1]) + 0.5) * HIST_BIN
     h_rt = h_rt * np.exp(-np.outer(np.asarray(room.air_absorption, float), c * t_c))
-    dm = dir_model(cfg, src, room.octave_bands.centers)
-    if dm is not None:                                 # directional source: diffuse power scales with 1 / Q
-        h_rt = h_rt * dm["diffuse"][:, None]
     resid = np.maximum(0.0, _smooth(h_rt) - _smooth(h_ism))
     if return_resid:      # diffuse energy the image sources do not explain (added as noise inside the early window)
         return h_ism + resid, room.octave_bands.centers, resid
@@ -1212,7 +1237,7 @@ def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None, return_resid
     rt = make_room(cfg, 0, ray_tracing=True)
     rt.set_ray_tracing(n_rays=int(n_rays or g.get("rays", 50000)), receiver_radius=0.5, hist_bin_size=HIST_BIN,
                        time_thres=t_max, energy_thres=RT_ENERGY_THRES)
-    rt.add_source(cfg["sources"][src]["pos"])
+    rt_add_source(rt, cfg, src, room.octave_bands.centers)
     rt.add_microphone_array(np.array(pos, float).T)
     pra.libroom.set_rng_seed(int(seed) if seed is not None else zlib.crc32(f"{src}|*".encode()))
     rt.ray_tracing()
@@ -1234,8 +1259,6 @@ def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None, return_resid
         h_rt[:, :n] = raw[:, :n]
         t_c = (np.arange(h_rt.shape[1]) + 0.5) * HIST_BIN
         h_rt = h_rt * np.exp(-np.outer(np.asarray(room.air_absorption, float), c * t_c))
-        if dm is not None:
-            h_rt = h_rt * dm["diffuse"][:, None]
         res[r] = np.maximum(0.0, _smooth(h_rt) - _smooth(h_ism))
         out[r] = h_ism + res[r]
     return (out, room.octave_bands.centers, res) if return_resid else (out, room.octave_bands.centers)

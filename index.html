@@ -1090,7 +1090,13 @@ const GEOM = (() => {
   function rays(G, src, recs, opts, mats, air) {
     // k0 / k1: trace only rays k0 ... k1 - 1 of the n (each ray has its own random stream and the directions are
     // stratified over all n, so the parts of several workers add up to exactly the single-run result)
-    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null, k0 = 0, k1 = n, log = 0 } = opts, NB = air.length;
+    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null, k0 = 0, k1 = n, log = 0, nSect = 0, tSect = 0.25 } = opts, NB = air.length;
+    // nSect > 0 (directional sources): the receiver energy before tSect is also kept per launch sector (nSect Fibonacci
+    // directions), so that the page can weight the early ray-traced energy by the radiation pattern afterwards
+    // (without tracing again when the aim or the directivity changes); after tSect the pattern's mean, 1 / Q, is used
+    const nSb = nSect > 0 ? Math.round(tSect / bin) : 0, SD = [];
+    for (let q = 0; q < nSect; q++) { const z = 1 - 2 * (q + 0.5) / nSect, r = Math.sqrt(Math.max(0, 1 - z * z)), p = Math.PI * (1 + Math.sqrt(5)) * (q + 0.5); SD.push([r * Math.cos(p), r * Math.sin(p), z]); }
+    const HS = nSect > 0 ? recs.map(() => new Float32Array(nSect * NB * nSb)) : null;
     // log > 0 (diagnostics, validation/early_paths.py): every receiver hit before `log` seconds as
     // [receiver, t, reflections, first surface, last surface, last reflection point xyz, launch direction xyz, band energies...]
     const LOG = log > 0 ? [] : null;
@@ -1111,7 +1117,8 @@ const GEOM = (() => {
       const zc = 1 - 2 * (k + rnd()) / n, ph = 2 * Math.PI * rnd(), sr = Math.sqrt(Math.max(0, 1 - zc * zc));
       let dx = sr * Math.cos(ph), dy = sr * Math.sin(ph), dz = zc;
       let ox = src[0], oy = src[1], oz = src[2], L = 0, last = -1, twinPrev = false;
-      const e = new Float64Array(NB).fill(e0), d0 = [dx, dy, dz]; let firstS = -1;
+      const e = new Float64Array(NB).fill(e0), d0 = [dx, dy, dz]; let firstS = -1, ks = 0;
+      if (nSect > 0) { let bd = -2; for (let q = 0; q < nSect; q++) { const v = dx * SD[q][0] + dy * SD[q][1] + dz * SD[q][2]; if (v > bd) { bd = v; ks = q; } } }
       for (let bounce = 0; bounce < 400; bounce++) {
         // nearest surface
         let best = Infinity, bi = -1;
@@ -1150,6 +1157,7 @@ const GEOM = (() => {
           const hc = Math.sqrt(r2 - d2), ta = Math.max(0, tc - hc), tb = Math.min(best, tc + hc); if (tb <= ta) continue;
           const dist = L + (ta + tb) / 2, ib = Math.floor(dist / c / bin); if (ib >= nBins) continue;
           const f = (tb - ta) / Vs; for (let b = 0; b < NB; b++) H[m][b][ib] += e[b] * Math.exp(-air[b] * dist) * f;
+          if (ib < nSb) for (let b = 0; b < NB; b++) HS[m][(ks * NB + b) * nSb + ib] += e[b] * Math.exp(-air[b] * dist) * f;
           hits++;
           if (LOG && dist / c < log) LOG.push([m, dist / c, bounce, firstS, last, ox, oy, oz, d0[0], d0[1], d0[2], ...Array.from(e, (v, b) => v * Math.exp(-air[b] * dist) * f)]);
         }
@@ -1184,7 +1192,10 @@ const GEOM = (() => {
         last = bi; if (firstS < 0) firstS = bi;
       }
     }
-    return LOG ? { H, W, escaped, hits, n, leaked, LOG } : { H, W, escaped, hits, n, leaked };
+    const out = { H, W, escaped, hits, n, leaked };
+    if (HS) Object.assign(out, { HS, sect: SD, nSb });
+    if (LOG) out.LOG = LOG;
+    return out;
   }
 
   // ---------- loudspeaker directivity (generic, axisymmetric; an engineering assumption, not measured data)
@@ -2407,8 +2418,8 @@ self.onmessage = (e) => {
   const m = e.data, G = m.geom.mesh ? GEOM.buildMesh(Object.assign({}, m.geom.mesh, { obj: GEOM.loadObj(m.geom.mesh.text) }), m.geom.mesh.seed) : GEOM.build(m.geom), E = m.diff ? GEOM.edges(G) : null;
   for (const t of m.tasks) {
     const src = m.srcs[t.i], ism = t.ism ? withDiffraction(G, E, src, m, GEOM.ism(G, src, m.recs, m.order, m.tWin, m.c, m.mats, m.air, m.bands, m.spec)).map((L) => L.map(slim)) : null;
-    const RT = GEOM.rays(G, src, m.recs, { n: m.rays, c: m.c, seed: 1000 + 7919 * m.seeds[t.i], tLate: tLateOf(src, m), k0: t.k0, k1: t.k1 }, m.mats, m.air);
-    self.postMessage({ job: m.job, i: t.i, ism, H: RT.H, W: RT.W, escaped: RT.escaped, n: RT.n }, RT.H.flat().map((a) => a.buffer).concat(RT.W ? RT.W.map((a) => a.buffer) : []));
+    const RT = GEOM.rays(G, src, m.recs, { n: m.rays, c: m.c, seed: 1000 + 7919 * m.seeds[t.i], tLate: tLateOf(src, m), k0: t.k0, k1: t.k1, nSect: m.nSect }, m.mats, m.air);
+    self.postMessage({ job: m.job, i: t.i, ism, H: RT.H, W: RT.W, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped, n: RT.n }, RT.H.flat().map((a) => a.buffer).concat(RT.W ? RT.W.map((a) => a.buffer) : [], RT.HS ? RT.HS.map((a) => a.buffer) : []));
   }
   self.postMessage({ job: m.job, done: true });
 };`;
@@ -2428,7 +2439,7 @@ function geomCompute(srcs, seats, seedOff = 0) {
     : { plan: HALL.geom.plan, floor: HALL.geom.floor, ceil: HALL.geom.ceil, stageY: HALL.dims[1] - HALL.stage };
   const msg = { job: ++jobId, geom,
     mats: workerMats(), air: D.air, c: D.c, order: isMesh() ? meshOrder() : HALL.order, rays: HALL.rays, tWin: Math.max(0.16, DISCRETE_MS / 1000), spec: isMesh() ? SPEC : null, diff: !isMesh() && !!HALL.diff, diffRefl: HALL.diffRefl | 0, diffOrder: HALL.diffOrder | 0, bands: D.praBands, lateDir: !!D.lateDir, tEarly: D.earlyMs / 1000,
-    seat: seatDipParams(), fs: D.fs,
+    seat: seatDipParams(), fs: D.fs, nSect: srcs.some((o) => dmOf(o)) ? RAY_SECT : 0,
     srcs: srcs.map((o) => o.pos.slice()), seeds: srcs.map((o) => pathIndex(o) + seedOff), recs: seats.map((s) => s.pos.slice()) };
   const progress = (k) => { $("busy").textContent = `Computing hall ${k}/${srcs.length}`; };
   progress(0);
@@ -2446,8 +2457,9 @@ function geomCompute(srcs, seats, seedOff = 0) {
           w.onmessage = (e) => { const m = e.data; if (m.job !== msg.job) return;
             if (m.done) { if (++finished === P) { URL.revokeObjectURL(url); ok(res); } return; }
             const r = res[m.i]; if (m.ism) r.ism = m.ism; r.escaped += m.escaped; r.parts++;
-            if (!r.H) { r.H = m.H; r.W = m.W; } else { m.H.forEach((bs, k) => bs.forEach((a, b) => { const t = r.H[k][b]; for (let j = 0; j < a.length; j++) t[j] += a[j]; }));
-              if (m.W) m.W.forEach((a, k) => { const t = r.W[k]; for (let j = 0; j < a.length; j++) t[j] += a[j]; }); }
+            if (!r.H) { r.H = m.H; r.W = m.W; r.HS = m.HS; r.sect = m.sect; r.nSb = m.nSb; } else { m.H.forEach((bs, k) => bs.forEach((a, b) => { const t = r.H[k][b]; for (let j = 0; j < a.length; j++) t[j] += a[j]; }));
+              if (m.W) m.W.forEach((a, k) => { const t = r.W[k]; for (let j = 0; j < a.length; j++) t[j] += a[j]; });
+              if (m.HS) m.HS.forEach((a, k) => { const t = r.HS[k]; for (let j = 0; j < a.length; j++) t[j] += a[j]; }); }
             nDone++; $("busy").textContent = `Computing hall ${res.filter((x) => x.parts === P).length}/${srcs.length}` + (P > 1 ? ` (${P} workers, ${Math.round(100 * nDone / nTask)} %)` : "");
           };
           w.onerror = (err) => { workerOK = false; no(err); };
@@ -2463,8 +2475,8 @@ function inline(msg, progress) { // fallback without a worker: same engine on th
     const G = msg.geom.mesh ? GM : GEOM.build(msg.geom), E = msg.diff ? GEOM.edges(G) : null, res = []; let i = 0;
     const step = () => {
       const src = msg.srcs[i], I = withDiffraction(G, E, src, msg, GEOM.ism(G, src, msg.recs, msg.order, msg.tWin, msg.c, msg.mats, msg.air, msg.bands, msg.spec));
-      const RT = GEOM.rays(G, src, msg.recs, { n: msg.rays, c: msg.c, seed: 1000 + 7919 * msg.seeds[i], tLate: tLateOf(src, msg) }, msg.mats, msg.air);
-      res[i] = { ism: I.map((L) => L.map(slim)), H: RT.H, W: RT.W, escaped: RT.escaped, n: RT.n };
+      const RT = GEOM.rays(G, src, msg.recs, { n: msg.rays, c: msg.c, seed: 1000 + 7919 * msg.seeds[i], tLate: tLateOf(src, msg), nSect: msg.nSect }, msg.mats, msg.air);
+      res[i] = { ism: I.map((L) => L.map(slim)), H: RT.H, W: RT.W, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped, n: RT.n };
       progress(++i); if (i < msg.srcs.length) setTimeout(step, 0); else ok(res);
     };
     setTimeout(step, 0);
@@ -2477,7 +2489,7 @@ async function geomRebuild(srcs, seats) {
   let lost = 0, total = 0;
   srcs.forEach((o, i) => {
     const r = res[i]; lost += r.escaped; total += r.n;
-    seats.forEach((s, k) => { GC[s.id + "|" + o.id] = { list: r.ism[k], H: r.H[k], W: r.W ? r.W[k] : null, pos: o.pos.slice(), seat: s.pos.slice() }; renderGeom(o, s); });
+    seats.forEach((s, k) => { GC[s.id + "|" + o.id] = { list: r.ism[k], H: r.H[k], W: r.W ? r.W[k] : null, HS: r.HS ? r.HS[k] : null, sect: r.sect, nSb: r.nSb, pos: o.pos.slice(), seat: s.pos.slice() }; renderGeom(o, s); });
   });
   LOST = total ? lost / total : 0;
 }
@@ -2487,6 +2499,8 @@ const GC = {};
 const DISCRETE_MS = 250;
 // 3D halls: higher-order specular paths found with rays (brir_proto.spec_on, specpaths.py)
 const SPEC = { order: 3, rays: 20000 };
+// launch sectors of the ray tracing (GEOM.rays nSect): early ray energy of a directional source weighted by its pattern
+const RAY_SECT = 64;
 // energy histogram of one path from its image-source list and ray histogram (also used for the ray-tracing spread)
 function geomHist(o, raw) {
   const dm = dmOf(o), nb = D.praBands.length;
@@ -2498,8 +2512,13 @@ function geomHist(o, raw) {
   for (const q of list) { const bin = Math.floor(q.t / ENG.HB); if (bin < ENG.HN) for (let b = 0; b < nb; b++) Hi[b][bin] += q.dif ? q.eb[b] : q.g[b] * q.g[b] * (q.tb ? q.tb[b] : 1); }
   for (let b = 0; b < nb; b++) for (let j = 0; j < ENG.HN; j++) if (Hi[b][j] < 0) Hi[b][j] = 0;   // diffraction interference term can be negative
   const resid = [], hist = [];
-  for (let b = 0; b < nb; b++) { // directional source: the diffuse (ray-traced) power scales with 1 / Q
-    const f = dm ? dm.diffuse[b] : 1, sr = smooth10(raw.H[b].map((v) => v * f)), si = smooth10(Hi[b]), rr = new Float64Array(ENG.HN), hh = new Float64Array(ENG.HN);
+  // directional source: ray energy before raw.nSb ms weighted per launch sector by the pattern (amp^2), later by its mean 1 / Q
+  // (brir_proto.rt_add_source weights every ray at launch; the sectors approximate that without tracing again)
+  const A2 = dm && raw.HS ? raw.sect.map((d) => dm.amp(d).map((a) => a * a)) : null;
+  for (let b = 0; b < nb; b++) {
+    const f = dm ? dm.diffuse[b] : 1, h = raw.H[b].map((v) => v * f);
+    if (A2) { const nS = raw.nSb, NBr = raw.HS.length / (A2.length * nS); for (let j = 0; j < Math.min(nS, h.length); j++) { let v = 0; for (let q = 0; q < A2.length; q++) v += raw.HS[(q * NBr + b) * nS + j] * A2[q][b]; h[j] = v; } }
+    const sr = smooth10(h), si = smooth10(Hi[b]), rr = new Float64Array(ENG.HN), hh = new Float64Array(ENG.HN);
     for (let j = 0; j < ENG.HN; j++) { rr[j] = Math.max(0, sr[j] - si[j]); hh[j] = Hi[b][j] + rr[j]; } resid.push(rr); hist.push(hh); }
   return { list, tD, hist, resid };
 }
@@ -4146,7 +4165,7 @@ $("bSpread").onclick = async () => {
     for (let k = 1; k <= 3; k++) {
       $("spreadNote").textContent = `Seed ${k + 1} of 4…`; $("busy").hidden = false;
       const res = await geomCompute(srcs, [seat], 100 * k), keep = keys.map((x) => HIST[x]);
-      srcs.forEach((o, i) => { HIST[keys[i]] = geomHist(o, { list: res[i].ism[0], H: res[i].H[0] }).hist; });
+      srcs.forEach((o, i) => { HIST[keys[i]] = geomHist(o, { list: res[i].ism[0], H: res[i].H[0], HS: res[i].HS ? res[i].HS[0] : null, sect: res[i].sect, nSb: res[i].nSb }).hist; });
       runs.push(metrics(S.seat, C, false));
       keys.forEach((x, i) => (HIST[x] = keep[i]));
     }
