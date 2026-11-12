@@ -106,3 +106,27 @@ EDT 3 - 11 % short (most at 2 kHz): the earlier close agreement of C80 and EDT w
 scattered energy offsetting other errors of this model (assumed scattering, flat side walls without the diffusers,
 generic KH 120 directivity). The browser engine never had the rain, so its accuracy in this hall corresponds to the
 new values.
+
+## Where the early interaural correlation is lost (2026-11-13, diagnostic)
+
+`validation/detmold_iacc_diag.py`, sources S2 and S7, 68 pairs, octave bands 500 Hz - 2 kHz, current engine. IACC per
+window after the direct sound; "discrete only" = image sources without the noise that carries the ray-traced energy
+they do not explain (the residual, rendered with the diffuse-field interaural coherence).
+
+| window | IACC measured | simulated | discrete only | residual share of the simulated energy | energy re 0 - 80 ms, measured / simulated |
+|---|---|---|---|---|---|
+| 0 - 20 ms | 0.79 | 0.63 | 0.82 | 34 % | -2.7 / -3.3 dB |
+| 20 - 50 ms | 0.35 | 0.30 | 0.58 | 78 % | -5.6 / -5.2 dB |
+| 50 - 80 ms | 0.30 | 0.29 | 0.61 | 91 % | -7.6 / -7.1 dB |
+| 0 - 80 ms | 0.45 | 0.34 | 0.67 | 63 % | |
+
+The energy per window agrees within 0.6 dB and the correlation after 20 ms within 0.05. The deficit is in the first
+20 ms: a third of the energy there is residual, mostly the scattered part of the floor / seating reflection that
+follows the direct sound by a few ms (seating scattering 0.6), and it is rendered as diffuse noise; measured, these
+20 ms are as correlated as the image sources alone.
+
+Tests (S2, 34 pairs; not in the engine): (a) residual rendered per window (0 - 20, 20 - 50, 50 - 110 ms) with the ear
+energies and coherence of the arrival directions of the scattered ray energy (`dirrays.window_direction_energy`):
+IACC 0 - 80 ms 0.35 -> 0.38 (measured 0.46), 20 - 50 ms 0.30 -> 0.35 (0.36), 0 - 20 ms 0.65 -> 0.67 (0.78). (b) as (a)
+and the residual of the first 20 ms arriving from the direction of the source: 0 - 20 ms 0.78 (0.78), 0 - 80 ms 0.43
+(0.46). (b) is an assumption fitted to this hall; it has not been checked in another hall.

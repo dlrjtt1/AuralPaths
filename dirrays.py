@@ -182,3 +182,99 @@ def late_direction_energy(G, src, recs, t_late, alpha, scat, air, c=343.0, n_ray
         D[idx] = newd
         last[idx] = bi
     return W
+
+
+def window_direction_energy(G, src, recs, t_edges, alpha, scat, air, c=343.0, n_rays=20000, seed=1,
+                            radius=1.0, max_bounce=400):
+    """Scattered energy per receiver, time window, direction bin and band: only rays that have had at least one
+    diffuse reflection are counted (the energy the image sources do not carry), in the windows t_edges[r] =
+    [t_0, t_1, ..., t_n] (seconds from emission; window k is t_k <= t < t_k+1). Otherwise as late_direction_energy.
+    Returns W [n_rec, n_windows, NBIN, nb]."""
+    diffraction.prepare(G)
+    Nn, Dp = G["N"], G["Dp"]
+    nS = len(G["S"])
+    alpha = np.asarray(alpha, float)
+    Rpow = 1 - alpha
+    nb = alpha.shape[1]
+    air = np.asarray(air, float)
+    recs = np.asarray(recs, float)
+    t_edges = np.asarray(t_edges, float)
+    t_max = float(t_edges.max())
+    nw = t_edges.shape[1] - 1
+    was_diffuse = np.zeros(n_rays, bool)
+    rng = np.random.default_rng(seed)
+    k = np.arange(n_rays)
+    zc = 1 - 2 * (k + rng.random(n_rays)) / n_rays
+    ph = 2 * math.pi * rng.random(n_rays)
+    sr = np.sqrt(np.maximum(0, 1 - zc * zc))
+    D = np.c_[sr * np.cos(ph), sr * np.sin(ph), zc]
+    O = np.tile(np.asarray(src, float), (n_rays, 1))
+    L = np.zeros(n_rays)
+    e0 = 4 * math.pi / n_rays
+    E = np.full((n_rays, nb), e0)
+    last = np.full(n_rays, -1)
+    alive = np.ones(n_rays, bool)
+    W = np.zeros((len(recs), nw, NBIN, nb))
+    Vs, r2, Lmax = 4 / 3 * math.pi * radius ** 3, radius * radius, c * t_max
+    binsW = np.c_[-BINS[:, 1], BINS[:, 0], BINS[:, 2]]          # bin centres in world coordinates
+    for _ in range(max_bounce):
+        idx = np.flatnonzero(alive)
+        if not idx.size:
+            break
+        o, d = O[idx], D[idx]
+        if nS > BIG_MESH:      # large meshes: nearest hit by triangles in chunks of rays (no rays x surfaces matrix)
+            import specpaths
+            best, bi = specpaths.ray_hits(G, o, d, last[idx])
+        else:
+            best, bi = _nearest(G, o, d, last[idx], Nn, Dp, nS)
+        hit = bi >= 0
+        alive[idx[~hit]] = False
+        idx, o, d, best, bi = idx[hit], o[hit], d[hit], best[hit], bi[hit]
+        if not idx.size:
+            break
+        # receivers along the segments
+        inc = np.argmax(-d @ binsW.T, axis=1)                     # incoming direction = -d
+        for m, R in enumerate(recs):
+            w = R - o
+            tc = np.einsum("ij,ij->i", w, d)
+            d2 = np.einsum("ij,ij->i", w, w) - tc * tc
+            sel = d2 < r2
+            if not sel.any():
+                continue
+            hc = np.sqrt(np.maximum(0, r2 - d2[sel]))
+            ta = np.maximum(0, tc[sel] - hc)
+            tb = np.minimum(best[sel], tc[sel] + hc)
+            ok = tb > ta
+            dist = L[idx[sel]][ok] + (ta[ok] + tb[ok]) / 2
+            tt = dist / c
+            wk = np.searchsorted(t_edges[m], tt, side="right") - 1
+            rows0 = np.flatnonzero(sel)[ok]
+            late = (wk >= 0) & (wk < nw) & was_diffuse[idx[rows0]]
+            if not late.any():
+                continue
+            rows = rows0[late]
+            en = E[idx[rows]] * np.exp(-np.outer(dist[late], air)) * ((tb[ok] - ta[ok])[late] / Vs)[:, None]
+            np.add.at(W[m], (wk[late], inc[rows]), en)
+        L[idx] += best
+        O[idx] = o + best[:, None] * d
+        E[idx] *= Rpow[bi]
+        dead = (L[idx] >= Lmax) | (E[idx].max(axis=1) < e0 * 1e-7)
+        alive[idx[dead]] = False
+        # reflection
+        n0 = Nn[bi]
+        diff = rng.random(idx.size) < np.asarray(scat, float)[bi]
+        dn = np.einsum("ij,ij->i", d, n0)
+        newd = d - 2 * dn[:, None] * n0
+        if diff.any():
+            nd = n0[diff]
+            t1 = np.where(np.abs(nd[:, :1]) < 0.9, np.array([[1.0, 0, 0]]), np.array([[0, 1.0, 0]]))
+            ax = np.cross(nd, t1)
+            ax /= np.linalg.norm(ax, axis=1)[:, None]
+            ay = np.cross(nd, ax)
+            u1, u2 = rng.random(nd.shape[0]), rng.random(nd.shape[0])
+            sq, phi = np.sqrt(u1), 2 * math.pi * u2
+            newd[diff] = (sq * np.cos(phi))[:, None] * ax + (sq * np.sin(phi))[:, None] * ay + np.sqrt(np.maximum(0, 1 - u1))[:, None] * nd
+        was_diffuse[idx[diff]] = True
+        D[idx] = newd
+        last[idx] = bi
+    return W
