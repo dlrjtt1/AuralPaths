@@ -498,13 +498,14 @@ def dir_amp(dm, e):
     return out
 
 
-def emission_dirs(cfg, room, src_pos, idx):
-    """Unit vectors [3, N] in which the paths of images idx leave the source.
+def emission_dirs(cfg, room, src_pos, idx, rec_pos=None):
+    """Unit vectors [3, N] in which the paths of images idx leave the source, for the receiver at rec_pos (default:
+    the room's first microphone; a room with several microphones must pass the receiver's own position).
     Shoebox: image coordinate 2kL +/- s per axis; odd parity flips that component.
     Polyhedral room: the wall chain is rebuilt from the generating walls (parent image = reflection of the
     image in its wall) and the path is back-traced from the receiver to the first reflection point."""
     S = room.sources[0]
-    m = np.asarray(room.mic_array.R[:, 0], dtype=float)
+    m = np.asarray(room.mic_array.R[:, 0] if rec_pos is None else rec_pos, dtype=float)
     s0 = np.asarray(src_pos, dtype=float)
     imgs = S.images[:, idx]
     if not has_geometry(cfg):
@@ -635,7 +636,7 @@ def _image_energy_hist(room, rec_pos, c, t_max, vis=None, cfg=None, src=None):
             E = E * F
     dm = dir_model(cfg, src, room.octave_bands.centers) if cfg is not None and src is not None else None
     if dm is not None:
-        E = E * dir_amp(dm, emission_dirs(cfg, room, cfg["sources"][src]["pos"], sel)) ** 2
+        E = E * dir_amp(dm, emission_dirs(cfg, room, cfg["sources"][src]["pos"], sel, m)) ** 2
     idx = np.floor(d / c / HIST_BIN).astype(int)
     hist = np.zeros((E.shape[0], int(round(t_max / HIST_BIN))))
     for b in range(E.shape[0]):

@@ -4,6 +4,12 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Fix (Python engine): `energy_hists` (several receivers in one run: room-criteria checks, `geometry.shared_rays`)
+  took the emission direction of every image source from the first receiver, so a directional source was weighted
+  by the direction towards receiver 1 at all receivers. `emission_dirs` now takes the receiver's own position. Single-
+  receiver paths (BRIRs, `image_arrivals`) and the browser engine were not affected. Found in the Arvedi diagnostic
+  (S1 direct sound at A109: -16.8 dB in a three-receiver run, -9.7 dB alone and after the fix). Checks with
+  directional sources (Arvedi S1 - S4, Detmold KH 120) are recomputed.
 - Seat dip (optional, `"geometry": {"seat_dip": {"on": true}}`, page: Hall → Seat dip): the direct sound of every
   source over the audience floor gets the transfer function of the seat rows from a 2-D boundary element model of
   generic seats along the path (Davies & Cox 2000 approach; `seatdip.py`, `engine_geom.js` seatPath, both engines,
