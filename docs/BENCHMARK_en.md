@@ -7,6 +7,8 @@ Every number on this page comes from public measured data and a script in this r
 rerun it (section 6). The measured data are not redistributed here. A good score on these scenes does not mean
 that every hall is simulated equally well; the weak spots are listed in section 5.
 
+**Note (2026-11-12).** Three engine fixes on this date (CHANGELOG) change the Python results wherever sources are directional or surfaces scatter; the largest: the pyroomacoustics ray tracer had counted scattered energy twice (reflected energy 1 - 3.5 dB too strong). Detmold and Arvedi are recomputed; the other Python results on this page (BRAS, Fratoni) are from before the fixes until they are recomputed. The browser engine never had the double counting.
+
 ## 1. Summary
 
 | what | result | details |
@@ -16,8 +18,8 @@ that every hall is simulated equally well; the weak spots are listed in section 
 | Diffraction behind a partition and behind a thick body (BRAS RS5, RS6) | 2.6 dB (RS5), 2.3 - 2.8 dB (RS6) mean abs. difference, with the diffraction options of section 3 | section 3 |
 | Rooms of the 2019 round robin (BRAS CR2 - CR4): T20, EDT, C80, D50 averaged over 10 source-receiver pairs, from the BRAS material data alone | mean error 2.2 - 4.0 JND; the six programs 1.3 - 6.4 JND (best of seven in CR3, second with C in CR4, sixth in CR2) | section 2.2 |
 | Coupled rooms (CR1), energy decay at 1 kHz | door 30.4 deg: 7.6 dB with the BRAS initial data, 1.7 dB with the fitted data (programs 2.5 - 7.5 dB); door 4.1 deg: 6.6 - 8.2 dB, worse than every program (4.1 - 5.1 dB) | section 2.3 |
-| Concert hall, 136 binaural source-seat pairs (Detmold Konzerthaus) | late spaciousness (IACC_L3) within 0.075 at 96 % of the pairs; EDT within 3 %; C80 within 0.6 dB on average (after the directional-source fixes of 2026-11-12) | section 4 |
-| Hall not used in development, modelled from published drawings (Arvedi Auditorium, Cremona; seating round the stage), 65 receivers, post hoc | T20 within 3 %; C80 at 250 Hz - 1 kHz -0.1 ... -0.9 dB; EDT 17 - 32 % too long; directional loudspeakers: C80 1.9 - 3.7 dB low at 2 - 4 kHz | section 4 |
+| Concert hall, 136 binaural source-seat pairs (Detmold Konzerthaus) | late spaciousness (IACC_L3) within 0.075 at 92 % of the pairs; early (IACC_E3) 0.11 low; C80 0.3 - 1.4 dB high and EDT 3 - 11 % short at 500 Hz - 2 kHz | section 4 |
+| Hall not used in development, modelled from published drawings (Arvedi Auditorium, Cremona; seating round the stage), 65 receivers, post hoc | T20 within 3 %; omnidirectional source: C80 within 1 dB at 250 Hz - 4 kHz, EDT 14 - 30 % too long; directional loudspeakers: C80 within 0.7 dB at 500 Hz - 1 kHz, 1.2 - 2.8 dB low at 2 - 4 kHz | section 4 |
 | Known weak spots | sound just above seat rows behind the first row: 5 - 11 dB too loud (3.3 - 6.2 dB off with the optional seat-dip model); early IACC too low; coupled rooms joined by a narrow gap (late decay 13 dB low) | section 5 |
 
 Shape error: rms over 1/3-octave bands of simulated minus measured level after removing the mean difference.
@@ -36,7 +38,7 @@ Strong:
   +35 %.
 - Prediction from material data alone in medium and large halls: best of seven in CR3, second with C in CR4.
 - Single reflections and finite plates: median shape error 1.5 dB (programs 1.0 - 2.8 dB).
-- Late spatial impression: IACC_L3 within 0.075 at 96 % of 136 seats (Detmold).
+- Late spatial impression: IACC_L3 within 0.075 at 92 % of 136 seats (Detmold).
 
 Weak:
 
@@ -46,11 +48,8 @@ Weak:
   measured reverberation time where one exists.
 - Grazing sound over seat rows behind the first row: 5 - 11 dB too loud without the optional seat-dip model; with it
   (generic seats, 2-D) 3.3 - 6.2 dB; the 400 - 500 Hz dip within 3 dB, but it starts about a third octave too low (RS7).
-- Early spatial impression in concert halls: IACC_E3 about 0.15 low; C80 within 1 dB on average (Detmold; 0.3 - 0.8 dB low before the directional-source fixes of 2026-11-12, 0.1 - 0.6 dB high after). With the seat-dip
-  model (default seats) 0.10 low and C80 within 0.2 dB on average.
-- Early decay near the stage in a hall modelled from published drawings (Arvedi, seating round the stage, post hoc):
-  EDT 17 - 32 % too long while T20 agrees; for directional loudspeakers the direct / early dominance at 2 - 4 kHz is
-  too weak (C80 1.9 - 3.7 dB low after the fixes of 2026-11-12; 3 - 8 dB before). Cause not established.
+- Early spatial impression in concert halls: IACC_E3 about 0.11 low (Detmold; 0.15 before the fixes of 2026-11-12); C80 0.3 - 1.4 dB high and EDT 3 - 11 % short there. The seat-dip results (IACC_E3 0.10 low, C80 within 0.2 dB) are from before those fixes.
+- Early decay near the stage in a hall modelled from published drawings (Arvedi, seating round the stage, post hoc): EDT 14 - 30 % too long while T20 agrees; for directional loudspeakers C80 1.2 - 2.8 dB low and EDT 2 - 3 times too long at 2 - 4 kHz. Not caused by aim, volume or image-source order; cause not established.
 - High frequencies of binaural responses: 4 - 6 dB too much energy at 9 - 15 kHz.
 - Shadowed positions behind objects need the slower diffraction options (section 3); with the defaults, four of
   eight positions behind the RS6 object receive no sound.
@@ -186,10 +185,10 @@ off by default because they cost time (up to tens of seconds per source-receiver
 
 | hall | data | result | details |
 |---|---|---|---|
-| Detmold Konzerthaus (about 600 seats), 4 stage sources x 34 seats, KU100 dummy head | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3 within 0.075 at 96 % of the pairs; IACC_E3 0.15 low on average (18 % within 0.075); EDT bias -2 ... -3 % (26 - 36 % of the pairs within 5 %); C80 +0.1 ... +0.6 dB (45 - 55 % within 1 dB; before the directional-source fixes of 2026-11-12: EDT 0 - 3 %, C80 0.3 - 0.8 dB low); T30 within 2.7 % after calibration. With the seat-dip model (default seats): IACC_E3 0.10 low (38 % within 0.075), C80 -0.2 ... +0.2 dB | [validation/detmold_kh.md](../validation/detmold_kh.md) |
+| Detmold Konzerthaus (about 600 seats), 4 stage sources x 34 seats, KU100 dummy head | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3 within 0.075 at 92 % of the pairs; IACC_E3 0.11 low on average (35 % within 0.075); EDT -3 / -6 / -11 % at 500 Hz / 1 / 2 kHz (14 - 29 % of the pairs within 5 %); C80 +0.3 / +0.7 / +1.4 dB (34 - 49 % within 1 dB); T30 within 3.2 % after calibration. After the engine fixes of 2026-11-12; before them: IACC_E3 0.15 low, EDT 0 ... +3 %, C80 0.3 - 0.8 dB low (with the seat-dip model, before the fixes: IACC_E3 0.10 low, C80 -0.2 ... +0.2 dB) | [validation/detmold_kh.md](../validation/detmold_kh.md) |
 | BRAS CR3 chamber music hall, CR4 auditorium (binaural, FABIAN head) | BRAS | direct-sound ITD within 5 us, 2 - 4 kHz spectrum within 1.4 dB; discrete reflections 14 - 70 ms after the direct sound: measured - model -1.1 dB (median, both halls); CR4 late IACC too low at seats under a flutter between ceiling panels and aisle | [validation/bras_brir_iacc_diag.md](../validation/bras_brir_iacc_diag.md) |
 | Fratoni lecture hall (ULH) and domed hall (STC) | Fratoni et al. dataset | ULH within about 1 JND at 500 Hz - 4 kHz; STC T30 about 15 % too long (calibrate first in such halls) | [validation/](../validation/) `fratoni_*.md` |
-| Auditorium Giovanni Arvedi, Cremona (about 470 seats round the stage), 5 stage sources x 65 receivers, 8-capsule array; simplified model from the published drawings | Politecnico di Milano, https://doi.org/10.5281/zenodo.20098848 (CC BY 4.0) | **post hoc** (the blind run placed the receivers on the wrong side and is void). Omnidirectional source: T20 within 3 % (48 - 75 % within 5 %), C80 -0.1 ... -0.9 dB at 250 Hz - 1 kHz and -1.3 ... -1.5 dB at 2 - 4 kHz, D50 within 0.04, EDT 17 - 32 % too long. Genelec loudspeakers (8020A data): early / direct dominance at 2 - 4 kHz too weak, C80 1.9 - 3.7 dB low, EDT 2 - 3.4 times too long (after the directional-source fixes of 2026-11-12; before: 3 - 8 dB, 2 - 5 times) | [validation/arvedi_check.md](../validation/arvedi_check.md) |
+| Auditorium Giovanni Arvedi, Cremona (about 470 seats round the stage), 5 stage sources x 65 receivers, 8-capsule array; simplified model from the published drawings | Politecnico di Milano, https://doi.org/10.5281/zenodo.20098848 (CC BY 4.0) | **post hoc** (the blind run placed the receivers on the wrong side and is void). After the engine fixes of 2026-11-12: omnidirectional source T20 within 3 % (45 - 78 % within 5 %), C80 -0.9 ... +0.2 dB at 250 Hz - 4 kHz, D50 within 0.06, EDT 14 - 30 % too long; Genelec loudspeakers (8020A data): C80 within 0.7 dB at 500 Hz - 1 kHz, 1.2 - 2.8 dB low at 2 - 4 kHz, EDT 2 - 3 times too long there. Before the fixes: C80 1.3 - 1.5 dB low at 2 - 4 kHz (omnidirectional), 3 - 8 dB (loudspeakers) | [validation/arvedi_check.md](../validation/arvedi_check.md) |
 
 Reference values: EDT 5 % and C80 1 dB from ISO 3382-1:2009 Annex A; IACC 0.075 as assumed in the thesis that
 accompanies the Detmold data (no primary source checked).
@@ -202,14 +201,8 @@ accompanies the Detmold data (no primary source checked).
   3 - 4 dB too loud; generic seats, two-dimensional, checked in one real hall with default seats (docs/MODEL_en.md,
   *Seat dip*). The deep notch at the lower edge of the dip is not explained (ruled out: 2-D approximation, block
   dimensions, surface absorption); read levels there qualitatively. Check such positions with measurements.
-- **Early spaciousness** (IACC_E3) about 0.15 too low in a concert hall (Detmold); C80 within 1 dB on average. The optional
-  seat-dip model narrows this to 0.10 and C80 to within 0.2 dB, but moves the first 15 ms further from the
-  measurement at 200 - 315 Hz.
-- **Early decay and direct / early balance near the stage** in a hall not used in development, modelled from
-  published drawings (Arvedi, post hoc): EDT 17 - 32 % too long with T20 right; with directional loudspeakers C80 1.9 -
-  3.7 dB low at 2 - 4 kHz. A more detailed model with per-surface published absorption (parapets, pit walls; diagnostic
-  run) shortened the EDT error below 1 kHz but not at 2 - 4 kHz; not yet tested: the volume (11 - 12 % small), the
-  loudspeaker data (8020A for 8020C) and aim ([validation/arvedi_check.md](../validation/arvedi_check.md)).
+- **Early spaciousness** (IACC_E3) about 0.11 too low in a concert hall (Detmold), where C80 is now 0.3 - 1.4 dB high and EDT 3 - 11 % short; the earlier close agreement of C80 and EDT was partly the double-counted scattered energy (fixed 2026-11-12). The optional seat-dip model had narrowed the IACC_E3 deficit (0.15 -> 0.10, before the fixes; not repeated) but moves the first 15 ms further from the measurement at 200 - 315 Hz.
+- **Early decay and direct / early balance near the stage** in a hall not used in development, modelled from published drawings (Arvedi, post hoc): EDT 14 - 30 % too long with T20 right; with directional loudspeakers C80 1.2 - 2.8 dB low and EDT 2 - 3 times too long at 2 - 4 kHz. Ruled out: aim (tilt -10 ... +5 deg), volume (model at 5206 m3), image-source order (3 instead of 2); a more detailed model with per-surface published absorption shortened the EDT error only below 1 kHz. Open: the loudspeaker data (8020A for 8020C) and how seating returns a beam aimed at it ([validation/arvedi_check.md](../validation/arvedi_check.md)).
 - **Flutter between parallel surfaces**: repeated reflections between finite panels are too weak at low
   frequencies with the default finite-reflector factor (RS3) and a ceiling-aisle flutter was underestimated in CR4.
 - Diffraction from edge end points, third and higher orders, plates between 5 cm and a few tenths of a metre thick:

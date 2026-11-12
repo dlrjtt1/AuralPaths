@@ -85,3 +85,24 @@ measured metrics as above. The seat-dip run was not repeated.
 Reading: the C80 bias moves from 0.3 - 0.8 dB low to 0.1 - 0.6 dB high (the early reflections of the aimed
 loudspeakers are now stronger), within the 1 dB reference on average either way; EDT stays within 3 % on average.
 The early-IACC deficit is unchanged: it does not come from the directivity handling.
+
+## After the diffuse-rain fix (2026-11-12, later)
+
+The pyroomacoustics ray tracer had counted scattered energy twice (CHANGELOG; `validation/check_rays_energy.py`):
+reflected energy 1 - 3.5 dB too strong wherever surfaces scatter. Recalibrated (T30 within 3.2 % after 4 iterations;
+before the fix the same materials gave a T30 3.7 - 12.9 % too short at the start, i.e. the rain had lengthened the
+decay), rendered and compared again, 136 pairs, without seat dip.
+
+| metric | measured | before (directional fixes only) | after the rain fix |
+|---|---|---|---|
+| IACC_E3 | 0.45 | 0.29 / -0.154 / 15 % | **0.34 / -0.106 / 35 %** |
+| IACC_E broadband | 0.43 | | 0.42 / -0.001 / 62 % |
+| IACC_L3 | 0.12 | 0.12 / +0.002 / 94 % | 0.13 / +0.011 / 92 % |
+| C80 500 Hz / 1 kHz / 2 kHz | 0.9 / 1.8 / 4.0 dB | +0.06 / +0.20 / +0.61 dB; 51 / 55 / 45 % | +0.31 / +0.68 / +1.39 dB; 49 / 46 / 34 % |
+| EDT 500 Hz / 1 kHz / 2 kHz | 1.46 / 1.41 / 1.16 s | -2 / -2 / -3 %; 35 / 36 / 26 % | -3 / -6 / -11 %; 29 / 23 / 14 % |
+
+Reading: the early-IACC deficit, unresolved before, shrinks from 0.15 to 0.11. C80 now comes out 0.3 - 1.4 dB high and
+EDT 3 - 11 % short (most at 2 kHz): the earlier close agreement of C80 and EDT was partly the double-counted
+scattered energy offsetting other errors of this model (assumed scattering, flat side walls without the diffusers,
+generic KH 120 directivity). The browser engine never had the rain, so its accuracy in this hall corresponds to the
+new values.

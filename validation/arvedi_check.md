@@ -13,7 +13,43 @@ T30 of S0, as planned) and the ring-row floors in front of the receivers (from t
 Model volume 4680 m3 (published 5300 m3). Calibration (S0, all receivers): simulated T30 within 2 % in all bands after
 three iterations (initial BRAS CR3 materials: 7 - 73 % too long).
 
-## S0, omnidirectional (B&K OmniPower 4292-L modelled as a point source)
+## Current engine (2026-11-12, after three fixes; post hoc)
+
+Recomputed with all three engine fixes of 2026-11-12 (CHANGELOG): emission direction per receiver, rays launched with
+the source pattern, and pyroomacoustics' diffuse rain switched off (it counted scattered energy twice and made the
+reflected energy 1 - 3.5 dB too strong). Same model and procedure as below (post hoc placement, uniform calibration on
+the T30 of S0: within 1.5 % after 3 iterations). Out/arvedi_posthoc_norain. The sections after this one are the
+earlier engine and are kept as the record.
+
+Bias per band, 125 Hz / 250 / 500 / 1 k / 2 k / 4 kHz:
+
+| run | EDT | T20 | C80 (dB) | D50 |
+|---|---|---|---|---|
+| S0 omnidirectional | +20 / +18 / +15 / +14 / +21 / +30 % | -1 / +3 / +2 / +0 / -0 / +2 % | +2.38 / +0.19 / -0.57 / -0.05 / -0.59 / -0.85 | +0.29 / +0.06 / +0.01 / +0.05 / +0.04 / +0.01 |
+| S0 seat dip | +20 / +18 / +16 / +15 / +22 / +30 % | -1 / +3 / +1 / +0 / -0 / +2 % | +2.14 / +0.30 / +0.19 / +0.13 / -0.33 / -0.62 | +0.27 / +0.06 / +0.06 / +0.06 / +0.06 / +0.03 |
+| S0 4292-L polars | +21 / +19 / +15 / +16 / +17 / +27 % | -2 / +1 / -1 / -3 / -2 / +0 % | +2.41 / +0.23 / -0.49 / -0.16 / -0.60 / -0.95 | +0.29 / +0.06 / +0.02 / +0.04 / +0.02 / -0.01 |
+| S1 Genelec | +65 / +22 / +20 / +20 / +79 / +196 % | +5 / -2 / -2 / -3 / -5 / +1 % | -0.82 / +2.20 / -0.65 / -0.51 / -2.07 / -2.83 | +0.06 / +0.22 / -0.01 / -0.00 / -0.06 / -0.07 |
+| S2 | +49 / +17 / +19 / +28 / +98 / +124 % | +7 / +5 / -1 / -0 / -0 / +4 % | -1.07 / +2.01 / -0.71 / -0.54 / -1.86 / -2.14 | +0.08 / +0.22 / +0.00 / +0.03 / -0.03 / -0.03 |
+| S3 | +41 / +24 / +25 / +33 / +97 / +98 % | +4 / +1 / +0 / +0 / +1 / +6 % | -0.52 / +2.14 / -0.56 / -0.33 / -1.40 / -1.38 | +0.11 / +0.24 / +0.02 / +0.04 / -0.01 / -0.01 |
+| S4 | +62 / +20 / +24 / +26 / +86 / +134 % | +6 / -1 / -2 / -3 / -4 / +0 % | -0.49 / +2.56 / -0.29 / -0.02 / -1.20 / -1.74 | +0.08 / +0.25 / +0.02 / +0.03 / -0.02 / -0.03 |
+
+Share of the 65 receivers within one JND, S0: EDT 6 - 26 %, T20 45 - 78 %, C80 46 - 72 % (250 Hz - 4 kHz), D50 35 -
+49 %. Loudspeakers: C80 12 - 55 %, D50 40 - 89 % (500 Hz - 4 kHz).
+
+Reading:
+- **Omnidirectional source:** C80 within 1 dB at 250 Hz - 4 kHz (before the fixes -1.3 ... -1.5 dB at 2 - 4 kHz), D50
+  within 0.06, T20 within 3 %. EDT remains 14 - 30 % long: the measured EDT is clearly shorter than T30, the
+  simulated one is not.
+- **Loudspeakers:** C80 within 0.7 dB at 500 Hz - 1 kHz; at 2 - 4 kHz still 1.2 - 2.8 dB low and EDT 2 - 3 times too
+  long, less than before (3 - 8 dB, 2 - 5 times). Not explained by the aim (tilt -10 ... +5 deg: within 0.35 dB), the
+  volume (5206 m3 model: no improvement) or the image-source order (3 instead of 2: no change) (`arvedi_sens.py`,
+  run with the engine before the rain fix). Remaining candidates: the loudspeaker data (8020A for 8020C, polars read
+  off plots, blend between the two planes), and how the seating returns energy of a beam aimed at it.
+- **125 - 250 Hz** behave differently in the measurement for all sources; not reproduced.
+- Change between sources (S_k - S0, `arvedi_delta.py`): C80 at 500 Hz - 1 kHz within 0.5 dB on average; at
+  2 - 4 kHz the simulated change is 1 - 2 dB smaller than measured (+5 ... +6 dB); EDT changes not reproduced.
+
+## S0, omnidirectional (B&K OmniPower 4292-L modelled as a point source) (earlier engine)
 
 Bias = simulated - measured (relative for EDT / T20); "within" = share of the 65 receivers within one JND (ISO
 3382-1 Annex A: EDT, T20 5 %, C80 1 dB, D50 0.05, Ts 10 ms).
@@ -40,9 +76,9 @@ Variants (bias per band, 125 Hz - 4 kHz):
 | S0 with the 4292-L horizontal polars (B&K data sheet BP 1689) | +23% / +22% / +17% / +19% / +27% / +31% | +2.15 / -0.14 / -0.89 / -0.71 / -1.64 / -1.83 |
 | void blind run, S0 (wrong side of the stage) | +24% / +25% / +21% / +21% / +31% / +36% | +1.77 / -0.54 / -1.40 / -1.15 / -1.95 / -2.24 |
 
-## S1 - S4, Genelec 8020C (modelled with the 8020A manufacturer polars, aimed horizontally at the audience)
+## S1 - S4, Genelec 8020C (modelled with the 8020A manufacturer polars, aimed horizontally at the audience; earlier engine)
 
-Recomputed 2026-11-12 after two engine fixes for directional sources (see the last section; CHANGELOG). Bias per band,
+Recomputed 2026-11-12 after two engine fixes (the third, the diffuse rain, came later; see the first section) for directional sources (see the last section; CHANGELOG). Bias per band,
 125 Hz - 4 kHz; in brackets the first post hoc run, before the fixes.
 
 | source | EDT bias | C80 bias (dB) | D50 bias |
@@ -57,7 +93,7 @@ T20 within 7 % for all four. Measured, the loudspeakers give much more early ene
 separated them; now it does, but not fully: C80 1.9 - 3.7 dB low and EDT 2 - 3.4 times too long at 2 - 4 kHz. The
 earlier one-receiver test (S1 C80 at 4 kHz 7.1 dB vs S0 4.4 dB) had been right; the 65-receiver runs were not (fix 1).
 
-## Reading
+## Reading (earlier engine)
 
 - **Agrees:** decay (T20 within 3 %, 48 - 75 % of the receivers within one JND) and, for the omnidirectional source,
   the energy ratios at 250 Hz - 1 kHz (C80 bias -0.1 ... -0.9 dB, D50 within 0.04, Ts within 5 ms).

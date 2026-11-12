@@ -41,3 +41,18 @@ Reading:
   500 Hz - 1 kHz as about right, and at 2 - 4 kHz as somewhat too small; it does not support simulated EDT changes
   at high frequencies or any change below 500 Hz. It is one hall and a change of source, not of delay; a delay sweep
   of a reinforcement loudspeaker against measurements has not been checked.
+
+## After the diffuse-rain fix (2026-11-12, later)
+
+Same comparison with the recalibrated run after the third engine fix (out/arvedi_posthoc_norain):
+
+| | band | measured delta | simulated delta | mean error | within 1 JND | r |
+|---|---|---|---|---|---|---|
+| C80 | 500 Hz | +1.3 ... +1.6 dB | +1.3 ... +1.8 dB | -0.2 ... +0.3 dB | 51 - 71 % | 0.34 - 0.74 |
+| C80 | 1 kHz | +2.8 ... +3.1 dB | +2.4 ... +3.1 dB | -0.5 ... +0.0 dB | 48 - 69 % | 0.46 - 0.64 |
+| C80 | 2 kHz | +5.0 ... +5.3 dB | +3.8 ... +4.5 dB | -1.5 ... -0.6 dB | 37 - 52 % | 0.45 - 0.77 |
+| C80 | 4 kHz | +5.3 ... +6.2 dB | +4.2 ... +4.9 dB | -2.0 ... -0.5 dB | 20 - 49 % | 0.42 - 0.84 |
+| EDT | 2 - 4 kHz | -32 ... -54 % | +2 ... -31 % | +17 ... +34 % | 6 - 18 % | 0.08 - 0.74 |
+
+Practically the same as before the fix: the rain fix moved S0 and the loudspeakers by similar amounts, so the
+changes between them barely moved. The reading above stands.
