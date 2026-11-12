@@ -64,3 +64,24 @@ a check of the default model in one hall, not evidence that it reproduces this h
 The seat-dip column is from T on 5.9 Hz bins (2026-11-11, later the same day). With the earlier 23 Hz bins it was:
 IACC_E3 -0.090 (40 % within), C80 -0.12 / -0.13 / +0.30 dB, EDT -1 / -2 / -7 %, early-spectrum shape error 4.9 dB,
 i.e. the finer grid changes the Detmold results by less than their spread over the pairs.
+
+## After the directional-source fixes (2026-11-12)
+
+Two engine changes found in the Arvedi diagnostic (CHANGELOG, 2026-11-12) affect this check, whose KH 120 sources are
+directional and whose BRIRs are made from one multi-receiver run per source (`brir_proto.energy_hists`): (1) the
+emission direction of every image source had been taken from the first receiver of the run; (2) the ray-traced energy
+had been scaled by 1 / Q at all times instead of following the pattern in the launch direction. Same configuration
+(`out/detmold/config_cal.json`, calibration unchanged: it uses the omnidirectional IRs), without seat dip, 136 pairs,
+measured metrics as above. The seat-dip run was not repeated.
+
+| metric | measured | before: simulated / mean diff. / within ref. | after: simulated / mean diff. / within ref. |
+|---|---|---|---|
+| IACC_E3 | 0.45 | 0.30 / -0.146 / 18 % | 0.29 / -0.154 / 15 % |
+| IACC_L3 | 0.12 | 0.12 / -0.003 / 96 % | 0.12 / +0.002 / 94 % |
+| IACC_L broadband | 0.16 | 0.27 / +0.110 / 19 % | 0.29 / +0.134 / 15 % |
+| C80 500 Hz / 1 kHz / 2 kHz | 0.9 / 1.8 / 4.0 dB | -0.26 / -0.76 / -0.71 dB; 38 / 51 / 51 % | +0.06 / +0.20 / +0.61 dB; 51 / 55 / 45 % |
+| EDT 500 Hz / 1 kHz / 2 kHz | 1.46 / 1.41 / 1.16 s | +0 / +2 / +3 %; 35 / 45 / 27 % | -2 / -2 / -3 %; 35 / 36 / 26 % |
+
+Reading: the C80 bias moves from 0.3 - 0.8 dB low to 0.1 - 0.6 dB high (the early reflections of the aimed
+loudspeakers are now stronger), within the 1 dB reference on average either way; EDT stays within 3 % on average.
+The early-IACC deficit is unchanged: it does not come from the directivity handling.
