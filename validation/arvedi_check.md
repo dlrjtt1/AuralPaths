@@ -42,18 +42,20 @@ Variants (bias per band, 125 Hz - 4 kHz):
 
 ## S1 - S4, Genelec 8020C (modelled with the 8020A manufacturer polars, aimed horizontally at the audience)
 
-| source | EDT bias | C80 bias (dB) |
-|---|---|---|
-| S1 | +63% / +22% / +22% / +31% / +148% / +366% | -1.48 / +1.55 / -2.60 / -3.65 / -6.83 / -8.10 |
-| S2 | +49% / +17% / +21% / +37% / +113% / +206% | -1.48 / +1.49 / -2.24 / -3.16 / -6.07 / -6.86 |
-| S3 | +43% / +24% / +27% / +41% / +123% / +182% | -0.86 / +1.74 / -1.54 / -2.34 / -4.24 / -4.79 |
-| S4 | +58% / +18% / +29% / +40% / +212% / +422% | -1.00 / +1.90 / -1.16 / -1.96 / -3.43 / -3.86 |
+Recomputed 2026-11-12 after two engine fixes for directional sources (see the last section; CHANGELOG). Bias per band,
+125 Hz - 4 kHz; in brackets the first post hoc run, before the fixes.
 
-Measured, the loudspeakers give much more early energy than the dodecahedron at 2 - 4 kHz (C80 9 - 11 dB against
-4 - 5 dB for S0, EDT 0.5 - 0.9 s against 1.1 - 1.3 s); the simulation hardly separates them (C80 3 - 7 dB).
-Aim checked as a cause and ruled out: the C80 deficit at 4 kHz is as large on the loudspeaker axis (0 - 20 deg:
--7 to -9 dB for S1 / S2) as off it. Directivity is applied by the engine (one receiver: S1 C80 at 4 kHz 7.1 dB vs
-S0 4.4 dB; diffuse share 1/Q = 0.13 at 4 kHz).
+| source | EDT bias | C80 bias (dB) | D50 bias |
+|---|---|---|---|
+| S1 | +63% / +22% / +20% / +22% / +96% / +243% (+63 / +22 / +22 / +31 / +148 / +366 %) | -1.14 / +1.79 / -1.06 / -1.19 / -2.81 / -3.70 (-1.48 / +1.55 / -2.60 / -3.65 / -6.83 / -8.10) | +0.04 / +0.21 / -0.02 / -0.03 / -0.08 / -0.09 |
+| S2 | +49% / +17% / +19% / +30% / +97% / +140% (+49 / +17 / +21 / +37 / +113 / +206 %) | -1.36 / +1.65 / -1.10 / -1.18 / -2.57 / -2.96 (-1.48 / +1.49 / -2.24 / -3.16 / -6.07 / -6.86) | +0.07 / +0.20 / -0.02 / -0.00 / -0.05 / -0.06 |
+| S3 | +42% / +24% / +21% / +29% / +94% / +100% (+43 / +24 / +27 / +41 / +123 / +182 %) | -0.72 / +1.85 / -0.88 / -0.93 / -2.17 / -2.13 (-0.86 / +1.74 / -1.54 / -2.34 / -4.24 / -4.79) | +0.10 / +0.22 / -0.00 / +0.01 / -0.04 / -0.03 |
+| S4 | +56% / +16% / +19% / +23% / +103% / +182% (+58 / +18 / +29 / +40 / +212 / +422 %) | -0.71 / +2.24 / -0.61 / -0.63 / -1.91 / -2.43 (-1.00 / +1.90 / -1.16 / -1.96 / -3.43 / -3.86) | +0.06 / +0.24 / -0.00 / +0.00 / -0.04 / -0.05 |
+
+T20 within 7 % for all four. Measured, the loudspeakers give much more early energy than the dodecahedron at 2 - 4 kHz
+(C80 9 - 11 dB against 4 - 5 dB for S0, EDT 0.5 - 0.9 s against 1.1 - 1.3 s). Before the fixes the simulation hardly
+separated them; now it does, but not fully: C80 1.9 - 3.7 dB low and EDT 2 - 3.4 times too long at 2 - 4 kHz. The
+earlier one-receiver test (S1 C80 at 4 kHz 7.1 dB vs S0 4.4 dB) had been right; the 65-receiver runs were not (fix 1).
 
 ## Reading
 
@@ -61,7 +63,8 @@ S0 4.4 dB; diffuse share 1/Q = 0.13 at 4 kHz).
   the energy ratios at 250 Hz - 1 kHz (C80 bias -0.1 ... -0.9 dB, D50 within 0.04, Ts within 5 ms).
 - **Does not agree:** the early decay. EDT is 17 - 32 % too long for S0 (measured EDT 1.1 - 1.5 s is clearly shorter
   than T30 1.4 - 1.6 s; simulated EDT is about T30), C80 1.3 - 1.5 dB low at 2 - 4 kHz, and for the directional
-  loudspeakers the early / direct dominance at 2 - 4 kHz is missing (C80 3 - 8 dB low, EDT 2 - 5 times too long).
+  loudspeakers the early / direct dominance at 2 - 4 kHz is too weak (after the fixes of 2026-11-12: C80 1.9 - 3.7 dB
+  low, EDT 2 - 3.4 times too long; before: 3 - 8 dB, 2 - 5 times).
 - **125 Hz** behaves differently in the measurement (S0: C80 0.3 dB, D50 0.29, Ts 111 ms); the model does not
   reproduce it.
 - **Not known which cause.** Candidates, not tested: early reflections the simplified model leaves out (the curved

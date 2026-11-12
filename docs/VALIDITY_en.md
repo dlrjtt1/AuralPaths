@@ -34,7 +34,7 @@ criteria averaged over receivers. That is a small sample; the results describe t
 | Late interaural cross-correlation, IACC_L | a third to a half of the measured value (the late part is rendered as an ideal diffuse field) | Binaural check; Late interaural coherence |
 | Halls far from the inputs' assumptions | STC about 15 % long; TCB (box-tier opera house) decays too fast and is not counted as a successful check | Room criteria against measured halls; The two opera houses |
 | Drawn 2.5D halls | reverberation and clarity within a few JND, but individual early reflections of a hall with balconies are not reproduced | Position-by-position check |
-| Hall not used in development, modelled from published drawings | Arvedi Auditorium (post hoc): T20 within 3 %, mid-frequency C80 within 1 dB, but EDT 17–32 % long and, for directional loudspeakers, C80 3–8 dB low at 2–4 kHz | `validation/arvedi_check.md` |
+| Hall not used in development, modelled from published drawings | Arvedi Auditorium (post hoc): T20 within 3 %, mid-frequency C80 within 1 dB, but EDT 17–32 % long and, for directional loudspeakers, C80 1.9–3.7 dB low at 2–4 kHz (after the directional-source fixes of 2026-11-12; 3–8 dB before) | `validation/arvedi_check.md` |
 
 ## 3. Not checked or not modelled
 
