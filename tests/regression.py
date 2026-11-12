@@ -24,6 +24,8 @@ Checks (name: what it guards):
                (validation/check_box_lambert.js)
   box_py       Python (pyroomacoustics) ray tracer T30 in a shoebox, against its baseline (catches changes of the
                energy floor brir_proto.RT_ENERGY_THRES and of the pyroomacoustics version)
+  rays_energy  ray-traced energy of both tracers in a scattering shoebox against exact image sources: scattering must
+               not create energy (validation/check_rays_energy.py; pyroomacoustics' diffuse rain is switched off)
   calibrate    calibrate.py reaches the synthetic example T30 within 2 % in at most 6 iterations
 Literature checks against measured halls (BRAS, Fratoni) need the datasets and are not run here; see validation/.
 """
@@ -159,6 +161,10 @@ print(__import__('json').dumps(out))"""
     return json.loads(run([PY, "-c", code]).strip().splitlines()[-1])
 
 
+def c_rays_energy():
+    return json.loads(run([PY, "validation/check_rays_energy.py", "--json"]).strip().splitlines()[-1])
+
+
 def c_calibrate():
     with tempfile.TemporaryDirectory() as d:
         out = run([PY, "calibrate.py", "examples/fan_hall_config.json", "examples/calibration_measurements_example.csv",
@@ -173,7 +179,8 @@ def c_calibrate():
 CHECKS = {"page": c_page, "page_load": c_page_load, "specular": c_specular, "diffraction": c_diffraction,
           "diffraction_plate": c_diffraction_plate,
           "diffraction_order2": c_diffraction_order2, "seatdip": c_seatdip,
-          "rays_split": c_rays_split, "box_js": c_box_js, "box_py": c_box_py, "calibrate": c_calibrate}
+          "rays_split": c_rays_split, "box_js": c_box_js, "box_py": c_box_py, "rays_energy": c_rays_energy,
+          "calibrate": c_calibrate}
 SLOW = {"calibrate"}
 
 

@@ -82,6 +82,11 @@
    "max": 0
   }
  },
+ "rays_energy": {
+  "max_abs_db": {
+   "max": 1.2
+  }
+ },
  "rays_split": {
   "max_abs_diff_rel_total": {
    "max": 1e-12

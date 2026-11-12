@@ -83,6 +83,8 @@ def make_room(cfg, max_order, rand_ism=False, ray_tracing=False):
             # overlapping solids (seat blocks) or tiny gaps; use the voxel room of geometry.build_mesh instead
             G = _geom(cfg)
             room.is_inside = lambda p, include_borders=True: geometry.inside(G, p)
+        if ray_tracing:
+            _no_diffuse_rain(room)
     else:
         ab = r["absorption_octave"]
         mat = pra.Material({"coeffs": ab["values"], "center_freqs": ab["_bands_hz"]}, r["scattering"])
@@ -91,6 +93,22 @@ def make_room(cfg, max_order, rand_ism=False, ray_tracing=False):
     room.set_sound_speed(cfg["c"])
     _fix_air_above_table(room)
     return room
+
+
+def _no_diffuse_rain(room):
+    """Make the pyroomacoustics (0.10) ray tracer conserve energy on scattering walls.
+
+    At every reflection on a wall with scattering s, libroom (room.cpp, simul_ray / scat_ray) both sends s times the
+    ray's energy straight to each receiver ("diffuse rain") and continues the ray with its full energy in the direction
+    s * Lambert + (1 - s) * specular, so that the scattered share is counted twice. In a shoebox the reflected energy then
+    exceeds that of the exact image sources by about 1 - 2 dB at s = 0.3 and 2 - 3.5 dB at s = 0.9 (2026-11-12,
+    validation/check_rays_energy.py); the browser tracer (engine_geom.js rays), which has no rain, is within 0.6 dB.
+    The rain is switched off here by setting each wall's per-band scattering to a negligible value after the wall
+    was built: the wall keeps the mean scattering (average_scatter, set in its constructor) that steers the direction,
+    and the rain, which uses the per-band values, falls below the energy floor. Same model as the browser."""
+    for w in room.walls:
+        w.scatter = np.full(np.shape(w.scatter), 1e-12, dtype=np.float32)
+    room._init_room_engine()
 
 
 def _iso9613_db_per_m(f, temp_c=20.0, rh=40.0, pa_kpa=101.325):

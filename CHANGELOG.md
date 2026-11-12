@@ -4,6 +4,13 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Fix (Python engine): the pyroomacoustics ray tracer counted the scattered energy twice: at every reflection on a
+  scattering wall it sent s times the ray's energy to the receivers ("diffuse rain") and continued the ray with its
+  full energy. Reflected energy in a shoebox: +1.1 ... +1.9 dB at s = 0.3, +2.2 ... +3.5 dB at s = 0.9 against exact
+  image sources; now within 0.8 dB, as the browser tracer, which never had the rain (`brir_proto._no_diffuse_rain`,
+  new check `validation/check_rays_energy.py`, regression `rays_energy`). It made the late field too strong relative
+  to the direct sound wherever surfaces scatter (seating), i.e. C80 too low and EDT too long; Python results of the
+  validations are being recomputed. Browser results were not affected.
 - Directional sources in the ray tracing: rays now leave a directional source with the energy of its pattern in their
   launch direction (Python: `brir_proto.rt_add_source`, pyroomacoustics directive-source rays, amp^2 per band; browser:
   `GEOM.rays` keeps the energy of the first 250 ms per launch sector, 64 Fibonacci sectors, and the page weights it by
