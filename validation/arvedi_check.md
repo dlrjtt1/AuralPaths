@@ -72,3 +72,50 @@ S0 4.4 dB; diffuse share 1/Q = 0.13 at 4 kHz).
   structure, reverberation and mid-frequency energy ratios can be expected; the early decay and the direct / early
   balance at high frequencies near the stage cannot. These are the quantities a precedence-effect study controls, so
   stimuli for such a study should use halls whose early reflections are checked against measurements.
+
+## Detailed diagnostic run and two engine fixes (2026-11-12, after the results above)
+
+Protocol item 15: parapets, the lip of the high block and the pit walls added to the model; materials per surface
+from published values instead of a uniform calibration (seating: Gade, Springer Handbook of Acoustics ch. 9,
+table 9.3, after Beranek; other surfaces: BRAS initial estimates). Out/arvedi_detail. Diagnostic, not a check.
+
+**Prediction without calibration (S0).** T20 +23 ... +60 % at 125 Hz - 1 kHz, within 5 % at 2 - 4 kHz; EDT +24 ...
++75 %; C80 -0.4 ... -2.3 dB. **Seating-only calibration** (`calibrate.py --adjust aud`) stopped after iteration 2:
+the seating reached the 0.95 limit at 125 Hz - 1 kHz with T30 still +21 ... +35 % long (2 - 4 kHz within 2 %).
+With the published values for the hard surfaces and the seating as the only free absorber, the model cannot reach
+the measured reverberation below 2 kHz: absorption is missing that neither the drawings nor the material values
+show (or the volume or the engine is off; not separated here). The comparisons below use the seating at that limit
+(set by hand from the iteration's factors; recorded in config_cal.json).
+
+| run (bias 125 Hz / 250 / 500 / 1 k / 2 k / 4 kHz) | T20 | EDT | C80 (dB) | D50 |
+|---|---|---|---|---|
+| S0, uncalibrated | +60 / +45 / +31 / +23 / +2 / -5 % | +75 / +53 / +37 / +30 / +24 / +24 % | -0.41 / -1.97 / -2.32 / -1.57 / -1.39 / -1.16 | +0.14 / -0.06 / -0.08 / -0.03 / -0.00 / -0.01 |
+| S0, seating at its limit | +7 / +10 / +5 / +1 / -3 / -3 % | +20 / +20 / +16 / +12 / +22 / +28 % | +2.21 / +0.04 / -0.68 / -0.03 / -1.18 / -1.47 | +0.27 / +0.05 / +0.01 / +0.05 / +0.01 / -0.02 |
+| S0, seat dip | +7 / +10 / +5 / +1 / -3 / -3 % | +19 / +21 / +21 / +13 / +23 / +30 % | +1.94 / +0.23 / +0.28 / +0.25 / -0.94 / -1.29 | +0.26 / +0.06 / +0.06 / +0.06 / +0.03 / -0.01 |
+| S0, 4292-L polars | +7 / +10 / +5 / +1 / -3 / -3 % | +20 / +20 / +16 / +12 / +21 / +26 % | +2.21 / +0.04 / -0.68 / -0.11 / -1.55 / -1.81 | +0.27 / +0.05 / +0.01 / +0.04 / -0.01 / -0.04 |
+| S1 (after both fixes) | +24 / +9 / +5 / +6 / +3 / +5 % | +57 / +19 / +28 / +25 / +82 / +197 % | -0.75 / +2.25 / -0.48 / -0.02 / -2.20 / -2.84 | +0.06 / +0.23 / +0.00 / +0.02 / -0.06 / -0.06 |
+| S2 | +25 / +15 / +6 / +6 / +4 / +6 % | +48 / +17 / +29 / +35 / +105 / +124 % | -0.75 / +2.29 / -0.35 / +0.06 / -2.05 / -2.22 | +0.10 / +0.24 / +0.02 / +0.04 / -0.04 / -0.04 |
+| S3 | +14 / +6 / +5 / +3 / +6 / +9 % | +46 / +29 / +38 / +46 / +117 / +85 % | -0.21 / +2.42 / -0.24 / +0.18 / -1.64 / -1.42 | +0.13 / +0.26 / +0.03 / +0.06 / -0.02 / -0.01 |
+| S4 | +16 / +6 / +3 / +1 / +3 / +6 % | +61 / +22 / +33 / +32 / +83 / +115 % | -0.42 / +2.69 / -0.02 / +0.54 / -1.26 / -1.65 | +0.08 / +0.27 / +0.03 / +0.05 / -0.02 / -0.03 |
+
+S0: the detailed model shortens the EDT error at 125 Hz - 1 kHz (+12 ... +20 % instead of +17 ... +23 %) but not at
+2 - 4 kHz (+22 ... +28 %), where T20 agrees; at 125 Hz - 1 kHz T30 stays 13 - 29 % long while T20 agrees (a slow
+late decay the measurement does not have).
+
+**Engine fixes found with the directional sources** (CHANGELOG, 2026-11-12). Splitting the simulated and measured
+energy of S1 into direct sound, 3 - 80 ms and the rest (`validation/arvedi_diag_directional.py`) showed that the
+simulated late share was the same for S1 and S0 (about -5 dB at 4 kHz) while the measured one fell from -6 to
+-12 dB. Two causes: (1) in a run with several receivers the emission direction of every image source had been taken
+from the first receiver (S1, receiver A109 on the loudspeaker axis: direct sound -16.8 dB in a three-receiver run,
+-9.7 dB alone; the one-receiver test quoted above was therefore right and the 65-receiver runs were not); (2) the
+ray-traced energy of a directional source had been scaled by 1 / Q at all times, which keeps the early-to-late ratio
+of the rays at its omnidirectional value; rays now leave the source with the pattern's energy in their launch
+direction. S1 C80 bias at 500 Hz / 1 / 2 / 4 kHz: -2.60 / -3.65 / -6.83 / -8.10 dB (first post hoc run) -> -0.76 /
+-0.73 / -3.58 / -4.96 dB (fix 1) -> -0.48 / -0.02 / -2.20 / -2.84 dB (both). Detmold recomputed
+([detmold_kh.md](detmold_kh.md)).
+
+Remaining for the loudspeakers: C80 1.3 - 2.8 dB low and EDT 1.8 - 3 times too long at 2 - 4 kHz. The measured
+decay there is dominated by the direct sound (C80 9 - 11 dB, EDT 0.5 - 0.8 s), where EDT reacts strongly to a small
+error of the direct-to-reverberant ratio. Inputs not known: 8020A data for the 8020C, the aim (horizontal, from a
+photo), the 11 % smaller model volume. 250 Hz: measured C80 of the loudspeakers 1 - 2 dB, simulated 3 - 4 dB, in all
+four; not investigated.
