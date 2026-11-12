@@ -7,7 +7,7 @@ Every number on this page comes from public measured data and a script in this r
 rerun it (section 6). The measured data are not redistributed here. A good score on these scenes does not mean
 that every hall is simulated equally well; the weak spots are listed in section 5.
 
-**Note (2026-11-12).** Three engine fixes on this date (CHANGELOG) change the Python results wherever sources are directional or surfaces scatter; the largest: the pyroomacoustics ray tracer had counted scattered energy twice (reflected energy 1 - 3.5 dB too strong). Detmold and Arvedi are recomputed; the other Python results on this page (BRAS, Fratoni) are from before the fixes until they are recomputed. The browser engine never had the double counting.
+**Note (2026-11-12).** Three engine fixes on this date (CHANGELOG) change the Python results wherever sources are directional or surfaces scatter; the largest: the pyroomacoustics ray tracer had counted scattered energy twice (reflected energy 1 - 3.5 dB too strong). All Python results on this page that use ray tracing were recomputed (2026-11-12/13): Arvedi improved clearly (C80 of the omnidirectional source within 1 dB at 2 - 4 kHz instead of 1.3 - 1.5 dB low); Detmold changed in both directions (early IACC better, C80 now slightly high); the round-robin rooms (BRAS CR2 - CR4, mean errors within 0.1 JND of the earlier values, ranks unchanged) and the Fratoni halls (within 0.3 JND, mostly within ray-tracing noise; 8 000 rays instead of 50 000) barely changed, because their materials scatter little. Values below are after the fixes unless marked; where a row still shows the earlier value the change is within these limits. The browser engine never had the double counting.
 
 ## 1. Summary
 

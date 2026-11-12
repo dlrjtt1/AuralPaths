@@ -1,5 +1,7 @@
 # Fratoni STC: measured vs AuralPaths (Python engine)
 
+**Recomputed 2026-11-13 after the engine fixes of 2026-11-12** (pyroomacoustics diffuse rain off; CHANGELOG) with 8 000 rays (50 000 below): every mean absolute error within 0.3 JND of the values below except the 2.5D model with source S2 (EDT 3.5 instead of 4.3, C80 0.4 instead of 0.7, Ts 1.1 instead of 1.6 JND over all bands); T30 still about 15 % too long. The tables below are from before the fixes.
+
 Data: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic simulations*, Mendeley Data, https://doi.org/10.17632/y7xnv6xg5s.1 (CC BY 4.0). Measured values: the dataset's Room_Criteria sheet (mean over the listed receivers). Inputs: the dataset's GA absorption / scattering, unchanged.
 
 ```
