@@ -158,3 +158,23 @@ decay there is dominated by the direct sound (C80 9 - 11 dB, EDT 0.5 - 0.8 s), w
 error of the direct-to-reverberant ratio. Inputs not known: 8020A data for the 8020C, the aim (horizontal, from a
 photo), the 11 % smaller model volume. 250 Hz: measured C80 of the loudspeakers 1 - 2 dB, simulated 3 - 4 dB, in all
 four; not investigated.
+
+## Early decay and scattering (2026-11-13, post hoc, diagnostic)
+
+The measured EDT is shorter than T30 (EDT / T30 0.82 - 0.92, shortest at 2 - 4 kHz); the simulated one equals T30
+(about 1.0), which is where the EDT error of S0 comes from (T30 within 3 %). Hypothesis tested: the model's scattering
+spreads the early energy over the hard surfaces before it reaches the absorbing seating. `validation/arvedi_scatter.py`,
+S0, 22 receivers, calibrated configuration of the current engine, scattering changed without recalibrating:
+
+| variant | EDT / T30 simulated, 125 Hz - 4 kHz (measured 0.92 0.91 0.90 0.90 0.84 0.82) | EDT bias | T30 bias |
+|---|---|---|---|
+| as calibrated | 1.02 1.04 1.01 1.01 1.01 1.05 | +14 ... +30 % | +1 ... +3 % |
+| seating scattering x 0.3 | 1.02 1.05 1.03 1.03 1.03 1.07 | +16 ... +33 % | +1 ... +3 % |
+| all surfaces 0.05 | 1.02 1.05 1.01 1.00 1.01 1.08 | +18 ... +36 % | +1 ... +7 % |
+| all surfaces x 2 (at most 0.99) | 0.98 1.00 0.98 0.98 0.98 0.99 | +7 ... +21 % | -3 ... +1 % |
+
+Rejected: less scattering does not make the early decay faster; more scattering shortens EDT a little, but the ratio
+stays at about 1.0 in every variant (it moves by 0.05 at most). Scattering is not what decides the shape of the decay
+here. Remaining: the distribution of the absorption (the uniform calibration puts alpha 0.13 - 0.20 on the plaster
+walls and ceiling; with the absorption concentrated on the seating, the detailed run gave a shorter EDT error below
+1 kHz) and early reflecting surfaces the simplified model does not have. Not tested.
