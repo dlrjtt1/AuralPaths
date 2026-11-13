@@ -55,5 +55,38 @@ C80 bias by row (dB, both sources):
   geometry (no lighting bridges or reflectors over the front stalls, solid balcony rings) is another candidate.
 - T30 after calibration within 6 %, as expected.
 
+## Seat-row experiment (`--seats`, 2026-11-14)
+
+Test of the reading above: backrests as thin strips on every row (`opera_model.seat_rows`: rows on the circles fitted
+to the measured seats, 1.7 cm residual, row spacing 0.945 m; strip 0.25 m behind the seat position, 0.9 m above the
+floor, assumptions fixed before the run; same absorption as the seating). Recalibrated (aud, stage), then both sources
+at all seats, 10000 rays, image sources order 1 (`out/opera_seats2/`). A first run with 5000 rays did not converge in
+T30 (+6 ... +28 %) and is not used: its longer decay alone lowered C80.
+
+| | 125 | 250 | 500 | 1k | 2k | 4k Hz |
+|---|---|---|---|---|---|---|
+| T30 bias | -9 % | -11 % | -1 % | -1 % | -4 % | 0 % |
+| C80 bias | +2.5 | +2.6 | +1.5 | +1.8 | +3.6 | +3.0 dB |
+| C80 bias without seat rows | +1.7 | +2.1 | +1.4 | +1.4 | +3.2 | +3.0 dB |
+
+C80 bias by row, median (dB), without / with seat rows:
+
+| row | 2 | 4 | 5 | 6 | 7 | 8 | 11 | 14 | 17 |
+|---|---|---|---|---|---|---|---|---|---|
+| 2 kHz without | +0.1 | +1.3 | +2.9 | +2.1 | +1.4 | +3.8 | +5.0 | +4.7 | +8.0 |
+| 2 kHz with | +0.5 | +1.8 | +1.8 | +1.6 | +4.1 | +3.6 | +5.6 | +6.0 | +9.0 |
+| 4 kHz without | -0.5 | +1.1 | +2.5 | +2.1 | +1.8 | +4.3 | +5.2 | +5.6 | +8.4 |
+| 4 kHz with | -0.6 | +0.9 | +1.0 | +1.0 | +3.9 | +2.7 | +5.0 | +5.4 | +9.3 |
+
+- The seat rows do not remove the C80 bias that grows with the distance from the stage; at rows 11 - 17 it stays at
+  +5 ... +9 dB at 2 - 4 kHz. The direct sound is not blocked (ears 1.2 m, backrests 0.9 m above the floor; 1 of 194
+  pairs loses more than 10 dB at 1 kHz), and geometric strips without diffraction do not model the attenuation of
+  sound grazing over seating. So the reading is not supported in this form; it is not ruled out for a wave-based
+  model of the seating.
+- Changes of a few dB at single rows (5 - 8) with and without the strips are within the scatter of the ray tracer at
+  these seats (the calibration still moved T30 by up to 20 % between iterations at 10000 rays; one seat at row 17 gives
+  no usable EDT fit).
+- Left open: the simplified geometry above the front stalls (lighting bridges, reflectors) and the balconies.
+
 Status: post hoc (the model was built after the measured means were looked at), diagnostic. Derived histograms,
 the balloon and simulated results stay in `out/opera/` (not in the repository; the RIRs are CC BY-NC).
