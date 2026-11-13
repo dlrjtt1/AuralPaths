@@ -14,8 +14,8 @@ same measures as the 2019 international round robin (Brinkmann et al. 2019, http
 in the range of the six participating simulation programs (anonymous, A - F), and has the smallest error of all in the
 reverberation and clarity of the chamber music hall (CR3) and in source lateralization. Reverberation time and the
 clarity of an omnidirectional source (C80, D50) agree to within about 1 JND once the model is calibrated to a measured
-reverberation time. Early spatial impression, the high frequencies of directional loudspeakers and sound grazing over
-the seating are not yet supported (section 5).
+reverberation time. Early spatial impression is slightly low (Detmold 0.04); the high frequencies of directional
+loudspeakers and sound grazing over the seating are not yet supported (section 5).
 
 ### Next to the other programs, on the same data
 
@@ -37,13 +37,13 @@ and was scored with the same measures after seeing the measurements (post hoc, s
 |---|---|---|
 | reverberation time, after calibration to a measured or target reverberation | T20 within 3 % (Arvedi), T30 within 3.2 % (Detmold); 0.8 JND at positions not used for the calibration (BRAS CR3, CR4) | usable |
 | reverberation time, predicted from material data only | CR3 and CR4 near the top of the round robin; CR2 30 - 35 % short | conditional: calibrate where possible |
-| clarity C80, D50, omnidirectional source | Arvedi C80 within 1 dB at 250 Hz - 4 kHz; CR3 C80 0.5 JND; Detmold C80 0.3 - 1.4 dB high | mostly usable (about 1 JND) |
+| clarity C80, D50, omnidirectional source | Arvedi C80 within 1 dB at 250 Hz - 4 kHz; CR3 C80 0.5 JND; Detmold C80 0.4 - 1.6 dB high | mostly usable (about 1 JND) |
 | how much C80, D50, Ts change when the source changes | 500 Hz - 1 kHz within 0.5 dB on average; at 2 - 4 kHz the change comes out 1 - 2 dB too small (Arvedi, change of source type and position; a change of delay is not checked) | usable at mid frequencies, underestimated at high frequencies |
 | source direction, direct-sound ITD | 0.3 - 0.6 deg; direct-sound ITD within 5 us (FABIAN) | usable |
 | binaural tone colour | 1.4 dB | usable |
 | late spaciousness IACC_L3 | within 0.075 at 92 % of 136 pairs (Detmold) | usable |
 | absolute EDT | follows the reverberation error in most rooms; 14 - 30 % long in Arvedi | conditional |
-| early spaciousness IACC_E3 | 0.11 low (Detmold) | not supported |
+| early spaciousness IACC_E3 | 0.04 low (Detmold, 54 % within 0.075); 0.08 / 0.07 low (BRAS CR3 / CR4) | conditional: trends only, post hoc |
 | C80, EDT of directional loudspeakers at 2 - 4 kHz | C80 1.2 - 2.8 dB low, EDT 2 - 3 times (Arvedi) | not supported |
 | sound grazing over the seating behind the first row | 5 - 11 dB too strong; 3.3 - 6.2 dB with the seat-dip model (RS7) | not supported: check by measurement |
 | coupled rooms through a narrow gap | late decay about 13 dB low (CR1, 4.1 deg) | not supported |
@@ -181,7 +181,7 @@ off by default because they cost time (up to tens of seconds per source-receiver
 
 | hall | data | result | details |
 |---|---|---|---|
-| Detmold Konzerthaus (about 600 seats), 4 stage sources x 34 seats, KU100 dummy head | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3 within 0.075 at 92 % of the pairs; IACC_E3 0.11 low on average (35 % within 0.075); EDT -3 / -6 / -11 % at 500 Hz / 1 / 2 kHz (14 - 29 % of the pairs within 5 %); C80 +0.3 / +0.7 / +1.4 dB (34 - 49 % within 1 dB); T30 within 3.2 % after calibration. After the engine fixes of 2026-11-12; before them: IACC_E3 0.15 low, EDT 0 ... +3 %, C80 0.3 - 0.8 dB low (with the seat-dip model, before the fixes: IACC_E3 0.10 low, C80 -0.2 ... +0.2 dB) | [validation/detmold_kh.md](../validation/detmold_kh.md) |
+| Detmold Konzerthaus (about 600 seats), 4 stage sources x 34 seats, KU100 dummy head | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3 within 0.075 at 93 % of the pairs; IACC_E3 0.04 low on average (54 % within 0.075); EDT -3 / -7 / -15 % at 500 Hz / 1 / 2 kHz (13 - 32 % of the pairs within 5 %); C80 +0.4 / +1.0 / +1.6 dB (34 - 41 % within 1 dB); T30 within 3.2 % after calibration. With the early-direction option of 2026-11-13 (default); without it: IACC_E3 0.11 low, EDT -3 / -6 / -11 %, C80 +0.3 / +0.7 / +1.4 dB. Before the engine fixes of 2026-11-12: IACC_E3 0.15 low, EDT 0 ... +3 %, C80 0.3 - 0.8 dB low (with the seat-dip model, before the fixes: IACC_E3 0.10 low, C80 -0.2 ... +0.2 dB) | [validation/detmold_kh.md](../validation/detmold_kh.md) |
 | BRAS CR3 chamber music hall, CR4 auditorium (binaural, FABIAN head) | BRAS | direct-sound ITD within 5 us, 2 - 4 kHz spectrum within 1.4 dB; discrete reflections 14 - 70 ms after the direct sound: measured - model -1.1 dB (median, both halls); CR4 late IACC too low at seats under a flutter between ceiling panels and aisle | [validation/bras_brir_iacc_diag.md](../validation/bras_brir_iacc_diag.md) |
 | Fratoni lecture hall (ULH) and domed hall (STC) | Fratoni et al. dataset | ULH within about 1 JND at 500 Hz - 4 kHz; STC T30 about 15 % too long (calibrate first in such halls) | [validation/](../validation/) `fratoni_*.md` |
 | Auditorium Giovanni Arvedi, Cremona (about 470 seats round the stage), 5 stage sources x 65 receivers, 8-capsule array; simplified model from the published drawings | Politecnico di Milano, https://doi.org/10.5281/zenodo.20098848 (CC BY 4.0) | **post hoc** (the blind run placed the receivers on the wrong side and is void). After the engine fixes of 2026-11-12: omnidirectional source T20 within 3 % (45 - 78 % within 5 %), C80 -0.9 ... +0.2 dB at 250 Hz - 4 kHz, D50 within 0.06, EDT 14 - 30 % too long; Genelec loudspeakers (8020A data): C80 within 0.7 dB at 500 Hz - 1 kHz, 1.2 - 2.8 dB low at 2 - 4 kHz, EDT 2 - 3 times too long there. Before the fixes: C80 1.3 - 1.5 dB low at 2 - 4 kHz (omnidirectional), 3 - 8 dB (loudspeakers) | [validation/arvedi_check.md](../validation/arvedi_check.md) |
@@ -200,7 +200,7 @@ it is not known whether other programs show similar errors there.
   3 - 4 dB too loud; generic seats, two-dimensional, checked in one real hall with default seats (docs/MODEL_en.md,
   *Seat dip*). The deep notch at the lower edge of the dip is not explained (ruled out: 2-D approximation, block
   dimensions, surface absorption); read levels there qualitatively. Check such positions with measurements.
-- **Early spaciousness** (IACC_E3) about 0.11 too low in a concert hall (Detmold), where C80 is now 0.3 - 1.4 dB high and EDT 3 - 11 % short; the earlier close agreement of C80 and EDT was partly the double-counted scattered energy (fixed 2026-11-12). The optional seat-dip model had narrowed the IACC_E3 deficit (0.15 -> 0.10, before the fixes; not repeated) but moves the first 15 ms further from the measurement at 200 - 315 Hz.
+- **Early spaciousness** (IACC_E3) about 0.04 too low in a concert hall (Detmold; BRAS CR3 0.08, CR4 0.07). It was 0.11 low before the default option of 2026-11-13 that sets the interaural coherence of the early residual from the arrival directions of the scattered energy; the fix came from a post hoc diagnosis, so it is not a blind check. In exchange C80 in Detmold is 0.4 - 1.6 dB high (0.3 - 1.4 without the option) and EDT 3 - 15 % short (3 - 11 without); the earlier close agreement of C80 and EDT was partly the double-counted scattered energy (fixed 2026-11-12). The optional seat-dip model had narrowed the IACC_E3 deficit (0.15 -> 0.10, before the fixes; not repeated) but moves the first 15 ms further from the measurement at 200 - 315 Hz.
 - **Early decay and direct / early balance near the stage** in a hall not used in development, modelled from published drawings (Arvedi, post hoc): EDT 14 - 30 % too long with T20 right; with directional loudspeakers C80 1.2 - 2.8 dB low and EDT 2 - 3 times too long at 2 - 4 kHz. Ruled out: aim (tilt -10 ... +5 deg), volume (model at 5206 m3), image-source order (3 instead of 2), scattering (0.05 to twice the value: EDT / T30 moves by 0.05 at most); a more detailed model with per-surface published absorption shortened the EDT error only below 1 kHz. Open: the loudspeaker data (8020A for 8020C) and how seating returns a beam aimed at it ([validation/arvedi_check.md](../validation/arvedi_check.md)).
 - **Flutter between parallel surfaces**: repeated reflections between finite panels are too weak at low
   frequencies with the default finite-reflector factor (RS3) and a ceiling-aisle flutter was underestimated in CR4.

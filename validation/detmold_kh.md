@@ -146,6 +146,7 @@ from the direct sound on), option off / on. BRAS: `validation/check_bras_brir.py
 
 Early spaciousness moves towards the measurement in all three halls (most in Detmold, little in CR4), the direct
 sound is unchanged, C80 and EDT stay within their earlier spread. The option is on by default where the directional
-late field is (`brir_proto.early_dir_on`); the browser engine does not have it yet. For CR4 the earlier record
+late field is (`brir_proto.early_dir_on`), and in the browser page since 2026-11-13 (`GEOM.rays` option `tEarly`;
+`validation/check_early_dirs_pyjs.py`). For CR4 the earlier record
 (`bras_brir_CR4_FABIAN_K8data_cal16.md`, before the diffuse-rain fix) had IACC_E3 0.66: most of the gain there came
 from that fix.

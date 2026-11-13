@@ -30,7 +30,7 @@ criteria averaged over receivers. That is a small sample; the results describe t
 | T30 without calibration | 8–11 % long with Eyring-fitted coefficients (BRAS RIRs); 15–25 % long in CR4 in the binaural check | Position-by-position check; Binaural check |
 | First-order reflection levels | median +1.6 dB (CR3) and +2.7 dB (CR4) re measured; reflection by reflection poor in CR4 | Position-by-position check |
 | Early energy and clarity at the binaural listener | C80 1–4 dB low at 500 Hz–1 kHz; in CR4 13–20 % of the 0–80 ms energy at 20–50 ms against 5–9 % measured (mainly the ceiling panels; cause not established) | Binaural check |
-| Early interaural cross-correlation, IACC_E3 | too low: 0.34 vs 0.52 (CR3) and 0.59 vs 0.83 (CR4) with the measured loudspeaker directivity | Binaural check |
+| Early interaural cross-correlation, IACC_E3 | slightly low: 0.44 vs 0.52 (CR3), 0.76 vs 0.83 (CR4) with the measured loudspeaker directivity, 0.41 vs 0.45 (Detmold); before the early-direction option (2026-11-13, default) 0.40, 0.75, 0.34 | Binaural check |
 | Late interaural cross-correlation, IACC_L | a third to a half of the measured value (the late part is rendered as an ideal diffuse field) | Binaural check; Late interaural coherence |
 | Halls far from the inputs' assumptions | STC about 15 % long; TCB (box-tier opera house) decays too fast and is not counted as a successful check | Room criteria against measured halls; The two opera houses |
 | Drawn 2.5D halls | reverberation and clarity within a few JND, but individual early reflections of a hall with balconies are not reproduced | Position-by-position check |
