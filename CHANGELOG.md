@@ -4,6 +4,12 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- New check: Arni variable-acoustics room (Aalto; https://doi.org/10.5281/zenodo.6985104, CC BY 4.0), 37 panel states
+  predicted after calibrating only the bare surfaces on the all-closed state (`validation/arni_model.py`,
+  `validation/arni_check.py`, `validation/arni_check.md`): 500 Hz - 4 kHz T30 / EDT -6 ... +7 %, C80 within 0.6 dB on
+  average; simulated EDT / T30 0.87 - 0.95 vs measured 0.91 - 0.96, so the engine does give an early decay faster than
+  the late one where the absorption calls for it (unlike the Arvedi model); 250 Hz +20 % (panel data); absorption on
+  the ceiling too effective in T30.
 - Fix (Python engine): the noise that carries the ray-traced energy the image sources do not explain (drawn and mesh
   halls) started up to about 5 ms before the direct sound, because the residual histogram is smoothed over 10 ms;
   it now starts at the direct sound.
