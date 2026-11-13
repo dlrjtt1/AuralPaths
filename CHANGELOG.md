@@ -11,6 +11,13 @@ files.
   coherence of the arrival directions of the scattered energy (windows 0 - 20, 20 - 50 ms, rest of the early part;
   the first window from the source direction) instead of the diffuse-field coherence. Off by default until checked
   in more halls (Detmold IACC_E3 0.34 -> 0.41, measured 0.45; validation/detmold_kh.md).
+  Now on by default (Python `early_dir_on`, after BRAS CR3 / CR4: IACC_E3 0.40 -> 0.44 and 0.75 -> 0.76, measured 0.52,
+  0.83) and in the browser: `GEOM.rays` option `tEarly` records the scattered energy per window and direction, the page
+  renders the early residual with one noise pair per window (kept with the hall results, so a re-aim needs no new
+  tracing; one tracing run, three more noise pairs per path when the hall changes). The browser residual also starts at
+  the direct sound now. Browser vs Python direction statistics (`validation/check_early_dirs_pyjs.py`): drawn hall
+  (Detmold) |Gamma| 500 Hz - 2 kHz within 0.04 after 20 ms; mesh box within 0.16, because the browser blends
+  directions in meshes (as pyroomacoustics) and the Python direction tracer scatters stochastically.
 - Fix (Python engine): the pyroomacoustics ray tracer counted the scattered energy twice: at every reflection on a
   scattering wall it sent s times the ray's energy to the receivers ("diffuse rain") and continued the ray with its
   full energy. Reflected energy in a shoebox: +1.1 ... +1.9 dB at s = 0.3, +2.2 ... +3.5 dB at s = 0.9 against exact

@@ -602,7 +602,7 @@ const GEOM = (() => {
   function rays(G, src, recs, opts, mats, air) {
     // k0 / k1: trace only rays k0 ... k1 - 1 of the n (each ray has its own random stream and the directions are
     // stratified over all n, so the parts of several workers add up to exactly the single-run result)
-    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null, k0 = 0, k1 = n, log = 0, nSect = 0, tSect = 0.25 } = opts, NB = air.length;
+    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null, tEarly = null, k0 = 0, k1 = n, log = 0, nSect = 0, tSect = 0.25 } = opts, NB = air.length;
     // nSect > 0 (directional sources): the receiver energy before tSect is also kept per launch sector (nSect Fibonacci
     // directions), so that the page can weight the early ray-traced energy by the radiation pattern afterwards
     // (without tracing again when the aim or the directivity changes); after tSect the pattern's mean, 1 / Q, is used
@@ -615,6 +615,11 @@ const GEOM = (() => {
     const nBins = Math.round(tMax / bin), H = recs.map(() => Array.from({ length: NB }, () => new Float64Array(nBins)));
     // late-field arrival directions (as dirrays.py): energy per Fibonacci bin (head frame) and band after tLate[m]
     const W = tLate ? recs.map(() => new Float64Array(FIB.length * NB)) : null, RW = 1.0, VW = 4 / 3 * Math.PI * RW ** 3;   // incoming direction -d, head frame [-dy, dx, -dz]
+    // early scattered-energy directions (as dirrays.window_direction_energy): per receiver, window k of tEarly[m] = [t0, t1,
+    // t2, t3] (s from emission) and Fibonacci bin, the energy of the scattered part of the rays only. The scattered share
+    // of a ray is 1 - q, q = product of (1 - s) over its reflections (mesh halls, blended direction) or 0 after a diffuse
+    // reflection (drawn halls); the expected value of Python's flag "has had a diffuse reflection".
+    const NW = tEarly ? tEarly[0].length - 1 : 0, WE = tEarly ? recs.map(() => new Float64Array(NW * FIB.length * NB)) : null;
     let st = seed >>> 0 || 1; const rnd = () => { st ^= st << 13; st >>>= 0; st ^= st >>> 17; st ^= st << 5; st >>>= 0; return st / 4294967296; };
     const Vs = 4 / 3 * Math.PI * radius ** 3, r2 = radius * radius, Lmax = c * tMax, e0 = 4 * Math.PI / n;
     const Rpow = {}; for (const m in mats) Rpow[m] = mats[m].R.map((r) => r * r);
@@ -629,7 +634,7 @@ const GEOM = (() => {
       const zc = 1 - 2 * (k + rnd()) / n, ph = 2 * Math.PI * rnd(), sr = Math.sqrt(Math.max(0, 1 - zc * zc));
       let dx = sr * Math.cos(ph), dy = sr * Math.sin(ph), dz = zc;
       let ox = src[0], oy = src[1], oz = src[2], L = 0, last = -1, twinPrev = false;
-      const e = new Float64Array(NB).fill(e0), d0 = [dx, dy, dz]; let firstS = -1, ks = 0;
+      const e = new Float64Array(NB).fill(e0), d0 = [dx, dy, dz]; let firstS = -1, ks = 0, qc = 1;
       if (nSect > 0) { let bd = -2; for (let q = 0; q < nSect; q++) { const v = dx * SD[q][0] + dy * SD[q][1] + dz * SD[q][2]; if (v > bd) { bd = v; ks = q; } } }
       for (let bounce = 0; bounce < 400; bounce++) {
         // nearest surface
@@ -659,6 +664,13 @@ const GEOM = (() => {
         for (let m = 0; m < recs.length; m++) {
           const r = recs[m], wx = r[0] - ox, wy = r[1] - oy, wz = r[2] - oz, tc = wx * dx + wy * dy + wz * dz;
           const d2 = wx * wx + wy * wy + wz * wz - tc * tc;
+          if (WE && qc < 1 && d2 < RW * RW) {
+            const hw = Math.sqrt(RW * RW - d2), a0 = Math.max(0, tc - hw), b0 = Math.min(best, tc + hw), te = tEarly[m];
+            if (b0 > a0) { const dw = L + (a0 + b0) / 2, tt = dw / c;
+              if (tt >= te[0] && tt < te[NW]) { let wk = 0; while (wk < NW - 1 && tt >= te[wk + 1]) wk++;
+                let bk = 0, bd = -2; for (let q = 0; q < FIB.length; q++) { const v = -dy * FIB[q][0] + dx * FIB[q][1] - dz * FIB[q][2]; if (v > bd) { bd = v; bk = q; } }
+                const fw = (b0 - a0) / VW * (1 - qc), o = (wk * FIB.length + bk) * NB; for (let b = 0; b < NB; b++) WE[m][o + b] += e[b] * Math.exp(-air[b] * dw) * fw; } }
+          }
           if (W && d2 < RW * RW) { // direction statistics: 1 m sphere (less Monte-Carlo noise; as dirrays.py)
             const hw = Math.sqrt(RW * RW - d2), a0 = Math.max(0, tc - hw), b0 = Math.min(best, tc + hw);
             if (b0 > a0) { const dw = L + (a0 + b0) / 2;
@@ -682,12 +694,13 @@ const GEOM = (() => {
         if (G.mesh) { // mesh halls: as the pyroomacoustics tracer used by the Python mesh path (libroom room.cpp), the new
           // direction is the normalised mix s*Lambert + (1-s)*specular with s the mean over bands; no energy split
           let p = 0; if (Array.isArray(sc)) { for (let b = 0; b < NB; b++) p += sc[Math.min(b, sc.length - 1)]; p /= NB; } else p = sc;
-          blend = p; scat = p > 0;
+          blend = p; scat = p > 0; qc *= 1 - p;
         } else if (Array.isArray(sc)) { // per-band scattering: one direction for all bands, chosen with the mean probability, energies reweighted (unbiased)
           let p = 0; for (let b = 0; b < NB; b++) p += sc[Math.min(b, sc.length - 1)]; p = Math.min(0.999, Math.max(0.001, p / NB));
           scat = rnd() < p;
           for (let b = 0; b < NB; b++) { const sb = sc[Math.min(b, sc.length - 1)]; e[b] *= scat ? sb / p : (1 - sb) / (1 - p); }
         } else scat = rnd() < sc;
+        if (scat && blend < 0) qc = 0;
         if (scat) { // Lambert reflection around the inward normal
           const u1 = rnd(), u2 = rnd(), sq = Math.sqrt(u1), phi = 2 * Math.PI * u2, n0 = s.n;
           const t1 = Math.abs(n0[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
@@ -704,7 +717,7 @@ const GEOM = (() => {
         last = bi; if (firstS < 0) firstS = bi;
       }
     }
-    const out = { H, W, escaped, hits, n, leaked };
+    const out = { H, W, WE, escaped, hits, n, leaked };
     if (HS) Object.assign(out, { HS, sect: SD, nSb });
     if (LOG) out.LOG = LOG;
     return out;
