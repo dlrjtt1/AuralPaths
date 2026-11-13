@@ -4,6 +4,13 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Fix (Python engine): the noise that carries the ray-traced energy the image sources do not explain (drawn and mesh
+  halls) started up to about 5 ms before the direct sound, because the residual histogram is smoothed over 10 ms;
+  it now starts at the direct sound.
+- New option `path_brir(..., ew=early_resid_directions(...))`: that early noise with the ear energies and interaural
+  coherence of the arrival directions of the scattered energy (windows 0 - 20, 20 - 50 ms, rest of the early part;
+  the first window from the source direction) instead of the diffuse-field coherence. Off by default until checked
+  in more halls (Detmold IACC_E3 0.34 -> 0.41, measured 0.45; validation/detmold_kh.md).
 - Fix (Python engine): the pyroomacoustics ray tracer counted the scattered energy twice: at every reflection on a
   scattering wall it sent s times the ray's energy to the receivers ("diffuse rain") and continued the ray with its
   full energy. Reflected energy in a shoebox: +1.1 ... +1.9 dB at s = 0.3, +2.2 ... +3.5 dB at s = 0.9 against exact

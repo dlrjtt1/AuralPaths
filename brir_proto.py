@@ -1238,6 +1238,8 @@ def path_brir(cfg, src, rec, hrir, hist, centers, n_len, seed, dirw=None, resid=
         late = late_binaural(cfg, hist, centers, hrir, n_len, seed, dirw, resid)
         if resid is not None:
             late, late_r = late
+    if late_r is not None:     # nothing arrives before the direct sound: the 10 ms smoothing of the residual histogram
+        late_r[:, :max(0, int(info["t_direct"] * cfg["fs"]))] = 0.0      # (energy_hist) would otherwise put noise there
     t0 = info["t_direct"] + cfg["binaural"]["early_window_ms"] / 1000
     we, wl = crossfade_windows(n_len, cfg["fs"], t0, cfg["binaural"]["crossfade_ms"])
     if hd is not None:
