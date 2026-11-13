@@ -160,7 +160,7 @@ def k8_onaxis_fir(path, fs, n=1024):
     return sg.minimum_phase(np.fft.fftshift(np.fft.irfft(mag ** 2, 4 * n)), method="homomorphic")[:n]
 
 
-def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None, materials=None):
+def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None, materials=None, early_dir=False):
     scene = os.path.join(bras, SCENES[hall])
     mats = vb.read_bras_materials(os.path.join(bras, "3 Surface descriptions"), hall, "fitted")
     if materials:   # calibrated absorption (calibrate.py output); scattering stays as fitted
@@ -206,7 +206,8 @@ def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None, mater
         t = time.time()
         hist, centers, resid = bp.energy_hist(cfg, s, "MP6", return_resid=True, spec=True)
         dirw = bp.late_directions(cfg, s, ["MP6"], centers, air)[0] if bp.late_on(cfg) else None
-        out[s], _ = bp.path_brir(cfg, s, "MP6", hrir, hist, centers, n_len, seed=j, dirw=dirw, resid=resid, spec=True)
+        ew = bp.early_resid_directions(cfg, s, ["MP6"], centers, air)[0] if early_dir else None
+        out[s], _ = bp.path_brir(cfg, s, "MP6", hrir, hist, centers, n_len, seed=j, dirw=dirw, resid=resid, spec=True, ew=ew)
         if k8:      # the K8's on-axis response (the balloon carries the pattern only)
             from scipy import signal as sg
             out[s] = sg.fftconvolve(out[s], k8_onaxis_fir(k8, fs)[None, :])[:, :n_len]
@@ -226,9 +227,10 @@ def main():
     ap.add_argument("--materials", default=None,
                     help="calibrated config (calibrate.py output) whose material absorption replaces the fitted estimates")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--early-dir", action="store_true", help="early residual with direction-dependent coherence (path_brir ew=)")
     a = ap.parse_args()
     out = a.out or os.path.join(HERE, f"bras_brir_{a.hall}")
-    sim = simulate(a.bras, a.hall, a.rays, a.hrir, coverage=a.coverage, k8=a.k8_mps, materials=a.materials)
+    sim = simulate(a.bras, a.hall, a.rays, a.hrir, coverage=a.coverage, k8=a.k8_mps, materials=a.materials, early_dir=a.early_dir)
     rows, lines = [], []
     for k in range(3, 8):
         x, fs = sf.read(os.path.join(a.bras, SCENES[a.hall], "BRIRs", "wav", f"{a.hall}_BRIR_LS{k}_MP6_HATO0.wav"))

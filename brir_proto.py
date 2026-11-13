@@ -1151,14 +1151,78 @@ def late_directions(cfg, src, recs, centers, air, n_rays=None):
                                          seed=zlib.crc32(f"late|{src}".encode()))
 
 
-def path_brir(cfg, src, rec, hrir, hist, centers, n_len, seed, dirw=None, resid=None, spec=False):
+EARLY_RESID_EDGES = (0.020, 0.050)      # s after the direct sound: windows 0 - 20 ms, 20 - 50 ms, 50 ms - end of the early part
+
+
+def early_resid_directions(cfg, src, recs, centers, air, n_rays=None):
+    """Arrival directions of the scattered energy inside the early window, for the noise that carries the ray-traced
+    energy the image sources do not explain (path_brir ew=): W [n_rec, 3, NBIN, n_bands] for the windows of
+    EARLY_RESID_EDGES (dirrays.window_direction_energy: rays after at least one diffuse reflection, omni source).
+    In the first window all of it is put in the direction of the source: there the residual is mostly the scattered
+    part of the floor / seating reflection that follows the direct sound by a few ms, and measured BRIRs are as
+    correlated in these 20 ms as the direct sound and its specular reflection alone (Detmold, 2026-11-13: IACC
+    500 Hz - 2 kHz 0.79 measured, 0.82 image sources only, 0.63 with the residual as diffuse noise; an assumption
+    drawn from that hall, validation/detmold_kh.md)."""
+    import dirrays
+    G = _geom(cfg)
+    mats = cfg["geometry"]["materials"]
+    nb = len(centers)
+    al = lambda m: [mats[m]["alpha"][i] if i < len(mats[m]["alpha"]) else mats[m]["alpha"][-1] for i in range(nb)]
+    alpha = np.array([al(q["mat"]) for q in G["S"]])
+    scat = np.array([float(np.mean(mats[q["mat"]].get("s", 0.0))) for q in G["S"]])
+    S = np.asarray(cfg["sources"][src]["pos"], float)
+    R = [np.asarray(cfg["receivers"][r], float) for r in recs]
+    span = (cfg["binaural"]["early_window_ms"] + cfg["binaural"]["crossfade_ms"]) / 1000
+    te = np.array([[0.0] + [np.linalg.norm(r - S) / cfg["c"] + e for e in EARLY_RESID_EDGES + (span,)] for r in R])
+    n = int(n_rays or cfg["geometry"].get("early_dir_rays", 20000))
+    W = dirrays.window_direction_energy(G, S, R, te, alpha, scat, air, cfg["c"], n)
+    for i, r in enumerate(R):
+        u = dirrays.world_to_head((S - r)[None, :])[0]
+        tot = W[i, 0].sum(axis=0)
+        W[i, 0] = 0.0
+        W[i, 0, int(np.argmax(dirrays.BINS @ (u / np.linalg.norm(u))))] = np.where(tot > 0, tot, 1.0)
+    return W
+
+
+def early_resid_binaural(cfg, resid, centers, hrir: HRIRSet, n_len, seed, W, t_direct):
+    """Noise [2, n_len] shaped by the residual energy, with ear energies and interaural coherence from the arrival
+    directions W [3, NBIN, n_bands] in each window of EARLY_RESID_EDGES (late_field); not yet windowed."""
+    fs = cfg["fs"]
+    fb = octave_filterbank(fs)
+    rng = np.random.default_rng(seed + 7919)
+    out = np.zeros((2, n_len))
+    t = np.arange(n_len) / fs
+    t_bin = np.minimum((t / HIST_BIN).astype(int), resid.shape[1] - 1)
+    edges = (-np.inf,) + tuple(t_direct + e for e in EARLY_RESID_EDGES) + (np.inf,)
+    f_tab = late_dir_tables(hrir)["f"]
+    for k in range(len(edges) - 1):
+        m = (t >= edges[k]) & (t < edges[k + 1])
+        if W[k].sum() > 0:
+            dfE, cg = late_field(hrir, W[k], centers, fs)
+            pair = coherent_pair_complex(rng, n_len, fs, f_tab, cg)
+        else:
+            dfE = hrir.df_band_energy
+            pair = coherent_pair(rng, n_len, fs, hrir.coh_f, hrir.coh) if hrir.coh is not None \
+                else (rng.standard_normal(n_len), rng.standard_normal(n_len))
+        for bi, (sos, (lo, hi), pb) in enumerate(zip(fb["sos"], fb["edges"], bank_to_band(fs, centers))):
+            env = np.convolve(resid[pb], np.ones(5) / 5, mode="same")[t_bin] / (HIST_BIN * fs) * (min(hi, fs / 2) - lo) / (fs / 2)
+            for ear in range(2):
+                n = signal.sosfiltfilt(sos, pair[ear])
+                n /= np.sqrt(np.mean(n ** 2)) + 1e-20
+                out[ear] += n * np.sqrt(env * dfE[ear, bi]) * m
+    return out
+
+
+def path_brir(cfg, src, rec, hrir, hist, centers, n_len, seed, dirw=None, resid=None, spec=False, ew=None):
     """Shoebox: early * w_early + late * w_late. With resid (drawn hall: ray energy the image sources do not
     explain), noise shaped by resid is added to the early part, so the first 100 ms carry the scattered energy too
     (as in the browser: noise * (env_late * w_late + env_resid * w_early)).
     Drawn / mesh halls (discrete_ms): the discrete arrivals are not windowed (they reach discrete_ms after the
     direct sound) and the late noise carries only the energy they do not explain:
         discrete + noise(resid) * w_early + noise(max(0, hist - h_disc)) * w_late.
-    spec=True: hist must come from energy_hist(..., spec=True) (the same set of paths)."""
+    spec=True: hist must come from energy_hist(..., spec=True) (the same set of paths).
+    ew: early_resid_directions(...)[receiver]; the residual noise then follows the arrival directions of the scattered
+    energy instead of the diffuse-field coherence."""
     early, info = early_binaural(cfg, src, rec, hrir, n_len, spec=spec)
     hd = info.get("h_disc")
     if hd is not None:
@@ -1166,10 +1230,14 @@ def path_brir(cfg, src, rec, hrir, hist, centers, n_len, seed, dirw=None, resid=
         n = min(hd.shape[1], hist.shape[1])
         h2[:, :n] = hd[:, :n]
         hist = np.maximum(hist - h2, 0.0)
-    late = late_binaural(cfg, hist, centers, hrir, n_len, seed, dirw, resid)
     late_r = None
-    if resid is not None:
-        late, late_r = late
+    if resid is not None and ew is not None:   # residual with the coherence of its arrival directions (early_resid_directions)
+        late = late_binaural(cfg, hist, centers, hrir, n_len, seed, dirw)
+        late_r = early_resid_binaural(cfg, resid, centers, hrir, n_len, seed, ew, info["t_direct"])
+    else:
+        late = late_binaural(cfg, hist, centers, hrir, n_len, seed, dirw, resid)
+        if resid is not None:
+            late, late_r = late
     t0 = info["t_direct"] + cfg["binaural"]["early_window_ms"] / 1000
     we, wl = crossfade_windows(n_len, cfg["fs"], t0, cfg["binaural"]["crossfade_ms"])
     if hd is not None:

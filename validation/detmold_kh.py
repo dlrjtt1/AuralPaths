@@ -143,16 +143,18 @@ def setup(a):
 def render(a):
     import soundfile as sf
     cfg = bp.load_config(a.config)
-    out = os.path.join(os.path.dirname(os.path.abspath(a.config)), "brir")
+    out = os.path.join(os.path.dirname(os.path.abspath(a.config)), a.brir_dir)
     os.makedirs(out, exist_ok=True)
     hrir = bp.load_hrir(cfg["binaural"]["sofa_path"], cfg["fs"])
     n_len = int(1.5 * cfg["fs"])
     recs = list(cfg["receivers"])
+    air = bp.make_room(cfg, 0).air_absorption
     for s in a.sources.split(","):
         h, centers, rs = bp.energy_hists(cfg, s, recs, return_resid=True)
+        ew = bp.early_resid_directions(cfg, s, recs, centers, air) if a.early_dir else None
         for i, r in enumerate(recs):
             y, _ = bp.path_brir(cfg, s, r, hrir, h[r] if isinstance(h, dict) else h[i], centers, n_len, seed=i,
-                                resid=rs[r] if isinstance(rs, dict) else rs[i])
+                                resid=rs[r] if isinstance(rs, dict) else rs[i], ew=None if ew is None else ew[i])
             sf.write(os.path.join(out, f"{s}{r}.wav"), np.asarray(y).T.astype(np.float32), cfg["fs"], subtype="FLOAT")
         print(s, "done", flush=True)
 
@@ -188,7 +190,7 @@ def _metrics(x, fs):
 
 def compare(a):
     import soundfile as sf
-    sim_dir = os.path.join(a.outdir, "brir")
+    sim_dir = os.path.join(a.outdir, a.brir_dir)
     meas_dir = os.path.join(a.detmold, "SetC_DenseKH_LSOrchestra", "Data", "DummyHead")
     known = {}
     if a.meas_csv:            # measured metrics of an earlier compare (compare.csv), instead of the measured BRIRs
@@ -228,7 +230,10 @@ def main():
     s1 = sp.add_parser("setup"); s1.add_argument("detmold"); s1.add_argument("seats")
     s1.add_argument("--hrir", required=True); s1.add_argument("--out", default=os.path.join(HERE, "..", "out", "detmold"))
     s2 = sp.add_parser("render"); s2.add_argument("config"); s2.add_argument("--sources", default="S2,S3,S6,S7")
+    s2.add_argument("--early-dir", action="store_true", help="early residual with direction-dependent coherence (path_brir ew=)")
+    s2.add_argument("--brir-dir", default="brir")
     s3 = sp.add_parser("compare"); s3.add_argument("detmold"); s3.add_argument("outdir")
+    s3.add_argument("--brir-dir", default="brir")
     s3.add_argument("--meas-csv", default=None, help="measured metrics from an earlier compare.csv (no measured BRIRs needed)")
     a = ap.parse_args()
     {"setup": setup, "render": render, "compare": compare}[a.cmd](a)
