@@ -82,7 +82,7 @@ def load(folder):
     return H
 
 
-def config(layout, sofa, rays, ism):
+def config(layout, sofa, rays, ism, seats=False):
     return {"name": "Finnish National Opera, main auditorium (validation/opera_check.py)",
             "_note": "data https://doi.org/10.5281/zenodo.8096639 (CC BY-NC 4.0); model validation/opera_model.py",
             "fs": 48000, "c": C,
@@ -91,8 +91,9 @@ def config(layout, sofa, rays, ism):
                             "role": "Genelec 8331A, measured directivity (Zenodo 10255555)"}
                         for k, v in om.sources(layout).items()},
             "receivers": om.receivers(layout),
-            "geometry": {"mesh": {"obj": "opera.obj", "obj_text": om.build(), "axes": "z-up",
-                                  "groups": {k: k for k in MATS}, "voxel": 0.1},
+            "geometry": {"mesh": {"obj": "opera.obj", "obj_text": om.build(seats), "axes": "z-up",
+                                  "groups": {k: k for k in MATS} | ({"seatback": "aud"} if seats else {}),
+                                  "voxel": 0.1},
                          "materials": {k: {"alpha": list(a), "s": [s] * 6} for k, (a, s) in MATS.items()},
                          "ism_order": ism, "rays": rays, "diffraction": False}}
 
@@ -133,12 +134,13 @@ def main():
     ap.add_argument("--out", default=os.path.join(ROOT, "out", "opera"))
     ap.add_argument("--rays", type=int, default=5000); ap.add_argument("--ism", type=int, default=1)
     ap.add_argument("--iter", type=int, default=4); ap.add_argument("--skip-cal", action="store_true")
+    ap.add_argument("--seats", action="store_true", help="seat-row experiment: backrests as strips (opera_model.seat_rows)")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     log = lambda s: print(s, flush=True)
     H = load(a.data)
-    bal = balloon_8331a(a.sofa, os.path.join(a.out, "genelec_8331A_balloon.json"))
-    cfg = config(os.path.join(a.data, "OperaRIR_layout.mat"), bal, a.rays, a.ism)
+    bal = balloon_8331a(a.sofa, os.path.join(os.path.dirname(a.out.rstrip("/")), "opera", "genelec_8331A_balloon.json"))
+    cfg = config(os.path.join(a.data, "OperaRIR_layout.mat"), bal, a.rays, a.ism, a.seats)
     cal = os.path.join(a.out, "config_cal.json")
     if a.skip_cal:
         cfg = json.load(open(cal))

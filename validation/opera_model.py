@@ -55,6 +55,12 @@ OPEN_W, OPEN_H, WALL_T = 14.6, 11.0, 0.6
 STAGE_X = (1.59, 27.19)                                   # plan y 123 ... 230 pt
 STAGE_Y = (-WALL_T, -19.7)
 STAGE_H = 26.0
+# seat rows (seat-row experiment): the measured seats lie on circles round (12.84, -11.75) m in OperaRIR
+# coordinates, radius 21.59 m for row 2 and 0.945 m more per row (fit to OperaRIR_layout.mat, rms 0.017 m);
+# backrests as thin strips 0.25 m behind each row's seat position, 0.9 m above the floor (assumptions)
+ROW_C = (12.84, -11.75)
+ROW_R2, ROW_DR = 21.59, 0.945
+BACK_OFF, BACK_H = 0.25, 0.9
 
 
 def outline():
@@ -136,7 +142,28 @@ def split_edges(pts, breaks):
     return out
 
 
-def build():
+def seat_rows(m, poly, h=BACK_H):
+    """Backrests of all stalls rows (row 1 to the back wall) as free-standing strips, group "seatback"."""
+    from shapely.geometry import LineString
+    cx, cy = ROW_C[0], ROW_C[1] - Y_SHIFT
+    n = 1
+    while True:
+        r = ROW_R2 + (n - 2) * ROW_DR + BACK_OFF
+        if cy + r > poly.bounds[3]:
+            break
+        a = np.linspace(np.radians(30), np.radians(150), int(r * np.radians(120) / 1.5) + 1)     # about 1.5 m segments
+        line = LineString(np.c_[cx + r * np.cos(a), cy + r * np.sin(a)]).intersection(poly.buffer(-0.05))
+        for g in getattr(line, "geoms", [line]):
+            if g.geom_type != "LineString":
+                continue
+            c = np.asarray(g.coords)
+            for (xa, ya), (xb, yb) in zip(c[:-1], c[1:]):
+                m.face([(xa, ya, zf(ya)), (xb, yb, zf(yb)), (xb, yb, zf(yb) + h), (xa, ya, zf(ya) + h)], "seatback")
+        n += 1
+    return n - 1
+
+
+def build(seats=False):
     from shapely.geometry import Polygon, Point
     m = Mesh()
     P = outline()
@@ -195,6 +222,8 @@ def build():
                 if poly.exterior.distance(mid) < 1e-3:
                     continue                                 # against the outer wall
                 m.face([(xa, ya, zu), (xb, yb_, zu), (xb, yb_, zt_), (xa, ya, zt_)], "front")
+    if seats:
+        seat_rows(m, poly)
     return m.text()
 
 
