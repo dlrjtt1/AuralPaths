@@ -47,6 +47,34 @@ MATS = {"aud": ([0.5, 0.6, 0.65, 0.7, 0.7, 0.7], 0.6), "wall": ([0.12, 0.10, 0.0
 ADJUST = ("aud", "stage")
 
 
+def balloon_8331a(sofa, out_json):
+    """Octave-band balloon of the Aalto loudspeaker SOFA files (Zenodo 10255555). Their ReceiverPosition holds
+    azimuth (deg, clockwise from the loudspeaker axis, as the record states), elevation (deg) and radius although the
+    file declares cartesian, so the generic SOFA reader cannot be used. Power per octave band, mean over the band's
+    FFT bins; written as the inline balloon form of brir_proto.load_balloon."""
+    if os.path.exists(out_json):
+        return json.load(open(out_json))
+    import sofar
+    s = sofar.read_sofa(sofa, verify=False, verbose=False)
+    rp = np.asarray(s.ReceiverPosition, float).reshape(-1, 3)
+    fs = float(np.atleast_1d(s.Data_SamplingRate)[0])
+    ir = np.asarray(s.Data_IR, np.float32)[0]
+    nfft = 1 << int(np.ceil(np.log2(ir.shape[-1])))
+    f = np.fft.rfftfreq(nfft, 1 / fs)
+    pw = np.zeros((len(BANDS), len(rp)))
+    for i0 in range(0, len(rp), 400):
+        P = np.abs(np.fft.rfft(ir[i0:i0 + 400], nfft, axis=-1)) ** 2
+        for b, fc in enumerate(BANDS):
+            sel = (f >= fc / np.sqrt(2)) & (f < fc * np.sqrt(2))
+            pw[b, i0:i0 + 400] = P[:, sel].mean(axis=1)
+    dirs = bp._sph_to_vec(np.c_[-rp[:, 0], rp[:, 1], np.ones(len(rp))], "spherical")
+    db = bp.balloon_from_points(dirs, pw)
+    out = {"name": "Genelec 8331A (Aalto, Zenodo 10255555, CC BY 4.0)",
+           "balloon": {"bands": list(BANDS), "db": np.round(db, 2).tolist()}}
+    json.dump(out, open(out_json, "w"))
+    return out
+
+
 def load(folder):
     H = {}
     for f in sorted(glob.glob(os.path.join(folder, "opera_hist_p*.npz"))):
@@ -109,7 +137,8 @@ def main():
     os.makedirs(a.out, exist_ok=True)
     log = lambda s: print(s, flush=True)
     H = load(a.data)
-    cfg = config(os.path.join(a.data, "OperaRIR_layout.mat"), os.path.abspath(a.sofa), a.rays, a.ism)
+    bal = balloon_8331a(a.sofa, os.path.join(a.out, "genelec_8331A_balloon.json"))
+    cfg = config(os.path.join(a.data, "OperaRIR_layout.mat"), bal, a.rays, a.ism)
     cal = os.path.join(a.out, "config_cal.json")
     if a.skip_cal:
         cfg = json.load(open(cal))
