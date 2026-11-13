@@ -40,7 +40,7 @@ AuralPaths는 실 8곳(BRAS CR1 – CR4, Detmold Konzerthaus, Arvedi Auditorium,
 | 후기 공간감 IACC_L3 | 136쌍 중 92 %에서 0.075 이내(Detmold) | 쓸 수 있음 |
 | EDT 절대값 | 대부분의 실에서 잔향 오차를 따라감; Arvedi에서는 14 – 30 % 김 | 조건부 |
 | 초기 공간감 IACC_E3 | 0.04 낮음(Detmold, 0.075 이내 54 %); 0.08 / 0.07 낮음(BRAS CR3 / CR4) | 조건부: 경향만, 사후 비교 |
-| 지향성 스피커의 2 – 4 kHz C80, EDT | C80 1.2 – 2.8 dB 낮음, EDT 2 – 3배(Arvedi) | 근거 부족 |
+| 지향성 스피커의 2 – 4 kHz C80, EDT | C80 1.2 – 2.8 dB 낮음, EDT 2 – 3배(Arvedi); 반대로 3.0 – 3.2 dB 높음, EDT 12 – 23 % 짧음(핀란드 국립 오페라, 실측 지향성; 뒷줄일수록 커짐) | 근거 부족 |
 | 첫 열 뒤 객석 바로 위를 스치는 소리 | 5 – 11 dB 과대; 좌석 dip 모델로 3.3 – 6.2 dB(RS7) | 근거 부족: 실측으로 확인 |
 | 좁은 틈으로 이어진 결합실 | 후기 감쇠 약 13 dB 낮음(CR1, 4.1°) | 근거 부족 |
 | 들었을 때의 그럴듯함 | 청취 실험 없음 | 미검증 |
@@ -173,6 +173,7 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
 | Fratoni 강의실(ULH)과 돔형 홀(STC) | Fratoni et al. 데이터셋 | ULH: 500 Hz – 4 kHz에서 약 1 JND 이내; STC: T30 약 15 % 김(이런 홀은 먼저 교정할 것) | [validation/](../validation/) `fratoni_*.md` |
 | Auditorium Giovanni Arvedi, Cremona(무대를 둘러싼 약 470석), 무대 음원 5개 × 수음점 65개, 8채널 구형 마이크; 공개 도면으로 만든 단순화 모델 | Politecnico di Milano, https://doi.org/10.5281/zenodo.20098848 (CC BY 4.0) | **사후 비교**(맞대결 계산은 수음점을 반대쪽에 놓아 무효). 2026-11-12 엔진 수정 후: 무지향 음원 T20 3 % 이내(45 – 78 %가 5 % 이내), 250 Hz – 4 kHz C80 −0.9 … +0.2 dB, D50 0.06 이내, EDT 14 – 30 % 김; Genelec 스피커(8020A 데이터): 500 Hz – 1 kHz C80 0.7 dB 이내, 2 – 4 kHz 1.2 – 2.8 dB 낮고 EDT 2 – 3배 김. 수정 전: 2 – 4 kHz C80 무지향 1.3 – 1.5 dB, 스피커 3 – 8 dB 낮음 | [validation/arvedi_check.md](../validation/arvedi_check.md) |
 | Arni 가변 음향실(Aalto, 8.9 × 6.3 × 3.6 m), 패널 55개 중 0 – 9개 열림, 37개 상태 × 마이크 5 | Arni 데이터셋, https://doi.org/10.5281/zenodo.6985104 (CC BY 4.0) | 모두 닫힌 상태 하나로 맨벽·커튼만 교정한 뒤 다른 36개 상태를 예측: 500 Hz – 4 kHz T30·EDT 평균 −6 … +7 %, C80 0.6 dB 이내; EDT/T30 시뮬 0.87 – 0.95 대 실측 0.91 – 0.96(250 Hz – 4 kHz); 250 Hz는 +20 %(패널의 저역 흡음 데이터 없음); 천장 쪽 흡음의 효과를 T30에서 과대(사후 비교) | [validation/arni_check.md](../validation/arni_check.md) |
+| 핀란드 국립 오페라 대극장(1,350석), 무대 위 Genelec 8331A 2대 × 1층 97석 | OperaRIR, https://doi.org/10.5281/zenodo.8096639 (CC BY-NC 4.0); 지향성 https://zenodo.org/records/10255555 | 공개 평면·단면도(Lokki et al. 2015)로 만든 간략 모델, T30로 객석·무대동 흡음만 교정: T30 6 % 이내; C80 500 Hz – 1 kHz +1.4 dB, 2 – 4 kHz +3.0 – 3.2 dB(1 dB 이내 13 – 21 %), 앞줄(2 – 8열)은 1 – 2 dB 이내, 17열은 2 – 4 kHz +7.5 – 8.1 dB; EDT 12 – 23 % 짧음(사후 비교, 진단) | [validation/opera_check.md](../validation/opera_check.md) |
 
 기준값: EDT 5 %와 C80 1 dB는 ISO 3382-1:2009 Annex A; IACC 0.075는 Detmold 데이터에 딸린 학위논문에서 가정한 값(1차 출처는
 확인하지 않음).

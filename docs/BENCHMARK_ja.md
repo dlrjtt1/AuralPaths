@@ -41,7 +41,7 @@ https://doi.org/10.1121/1.5096178)と同じデータ、同じ指標で採点す�
 | 後期の空間印象 IACC_L3 | 136 組中 92 % で 0.075 以内(Detmold) | 使用可 |
 | EDT の絶対値 | 多くの室で残響の誤差に従う; Arvedi では 14 – 30 % 長い | 条件付き |
 | 初期の空間印象 IACC_E3 | 0.04 低い(Detmold、0.075 以内 54 %); 0.08 / 0.07 低い(BRAS CR3 / CR4) | 条件付き: 傾向のみ、事後比較 |
-| 指向性スピーカーの 2 – 4 kHz の C80、EDT | C80 1.2 – 2.8 dB 低い、EDT 2 – 3 倍(Arvedi) | 根拠不十分 |
+| 指向性スピーカーの 2 – 4 kHz の C80、EDT | C80 1.2 – 2.8 dB 低い、EDT 2 – 3 倍(Arvedi); 逆に 3.0 – 3.2 dB 高い、EDT 12 – 23 % 短い(フィンランド国立歌劇場、実測指向性; 後方の列ほど大きい) | 根拠不十分 |
 | 最前列の後ろで客席のすぐ上をかすめる音 | 5 – 11 dB 過大; 座席ディップモデルで 3.3 – 6.2 dB(RS7) | 根拠不十分: 実測で確認 |
 | 狭い隙間でつながった結合室 | 後期減衰が約 13 dB 低い(CR1、4.1°) | 根拠不十分 |
 | 聴いたときのもっともらしさ | 聴取実験なし | 未検証 |
@@ -176,6 +176,7 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
 | Fratoni の講義室(ULH)とドーム型ホール(STC) | Fratoni et al. のデータセット | ULH: 500 Hz – 4 kHz で約 1 JND 以内; STC: T30 が約 15 % 長い(このようなホールではまず校正すること) | [validation/](../validation/) `fratoni_*.md` |
 | Auditorium Giovanni Arvedi、Cremona(舞台を囲む約 470 席)、舞台音源 5 × 受音点 65、8 チャンネル球形マイクロホン; 公開図面から作った簡略モデル | Politecnico di Milano, https://doi.org/10.5281/zenodo.20098848 (CC BY 4.0) | **事後比較**(ブラインド計算は受音点を反対側に置いたため無効)。2026-11-12 のエンジン修正後: 無指向性音源の T20 は 3 % 以内(45 – 78 % が 5 % 以内)、250 Hz – 4 kHz の C80 は −0.9 … +0.2 dB、D50 は 0.06 以内、EDT は 14 – 30 % 長い; Genelec スピーカー(8020A のデータ): 500 Hz – 1 kHz の C80 は 0.7 dB 以内、2 – 4 kHz で 1.2 – 2.8 dB 低く、EDT は 2 – 3 倍長い。修正前: 2 – 4 kHz の C80 が無指向性で 1.3 – 1.5 dB、スピーカーで 3 – 8 dB 低い | [validation/arvedi_check.md](../validation/arvedi_check.md) |
 | Arni 可変音響室(Aalto、8.9 × 6.3 × 3.6 m)、55 枚中 0 – 9 枚のパネルが開、37 状態 × マイク 5 | Arni データセット, https://doi.org/10.5281/zenodo.6985104 (CC BY 4.0) | 全閉の 1 状態だけで素の壁・カーテンを校正し、他の 36 状態を予測: 500 Hz – 4 kHz で T30・EDT 平均 −6 … +7 %、C80 0.6 dB 以内; EDT/T30 はシミュレーション 0.87 – 0.95 対実測 0.91 – 0.96(250 Hz – 4 kHz); 250 Hz は +20 %(パネルの低域吸音データなし); 天井側の吸音の効果を T30 で過大評価(事後比較) | [validation/arni_check.md](../validation/arni_check.md) |
+| フィンランド国立歌劇場メインホール(1,350 席)、舞台上の Genelec 8331A 2 台 × 1 階 97 席 | OperaRIR, https://doi.org/10.5281/zenodo.8096639 (CC BY-NC 4.0); 指向性 https://zenodo.org/records/10255555 | 公開の平面・断面図(Lokki et al. 2015)から作った簡略モデル、T30 で客席と舞台塔の吸音のみ校正: T30 6 % 以内; C80 は 500 Hz – 1 kHz で +1.4 dB、2 – 4 kHz で +3.0 – 3.2 dB(1 dB 以内 13 – 21 %)、前方 2 – 8 列は 1 – 2 dB 以内、17 列は 2 – 4 kHz で +7.5 – 8.1 dB; EDT は 12 – 23 % 短い(事後比較、診断) | [validation/opera_check.md](../validation/opera_check.md) |
 
 基準値: EDT 5 % と C80 1 dB は ISO 3382-1:2009 Annex A; IACC 0.075 は Detmold データに付随する学位論文で仮定された値
 (一次出典は未確認)。

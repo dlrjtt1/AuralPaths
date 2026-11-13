@@ -1,0 +1,59 @@
+# OperaRIR, Finnish National Opera: a directional loudspeaker in a large hall (2026-11-13)
+
+Question: with a directional loudspeaker of known directivity, does the engine get EDT and C80 right at 2 - 4 kHz in a
+large hall? (Arvedi, Genelec 8020: simulated C80 1.2 - 2.8 dB too low at 2 - 4 kHz.)
+
+Data and model (`validation/opera_model.py`, `validation/opera_check.py`):
+- RIRs: OperaRIR, https://doi.org/10.5281/zenodo.8096639 (CC BY-NC 4.0; Alary & Politis, Forum Acusticum 2023,
+  https://dael.euracoustics.org/confs/fa2023/data/articles/000833.pdf): two Genelec 8331A on 1.6 m stands on the empty
+  stage (curtain up), 97 seats in the stalls (rows 2 - 17), Eigenmike; here the W channel of the 4th-order SN3D RIRs,
+  reduced on the data side to octave-band energy histograms (`opera_hist.py`).
+- Loudspeaker: Genelec 8331A, measured directivity, https://zenodo.org/records/10255555 (CC BY 4.0). The SOFA file
+  declares cartesian receiver positions but holds azimuth / elevation / radius; read as such
+  (`opera_check.balloon_8331a`; 2 kHz: -15 dB at 90 deg, -20 dB at 180 deg). Aimed horizontally at the audience
+  (assumption).
+- Geometry: plan and section of Lokki et al., Proc. IOA 37 Pt. 3 (2015), Figure 1,
+  https://users.aalto.fi/~ktlokki/Publs/p6_2015.pdf, read off the vector drawing; seats and sources from the dataset.
+  Simplified: balconies as solid rings, upper walls on the stalls outline, ceiling by distance from the stage only,
+  no lighting bridges or reflectors, pit covered, stage house 26 m high with the wings closed, no seat rows (the
+  seating is a sloped absorbing plane). Volume of the model 19 300 m3 (hall and stage house).
+- Calibration: absorption of the seating and of the stage house, one factor per band, on the mean T30 of Source2 at
+  every 4th seat (4 runs, within 3 - 10 %); result seating 0.61 - 0.72, stage house 0.28 - 0.37. Then both sources at
+  all seats: 5000 rays, image sources order 1.
+
+## Results (194 seat x source pairs)
+
+| | 125 | 250 | 500 | 1k | 2k | 4k Hz |
+|---|---|---|---|---|---|---|
+| T30 bias | +3 % | 0 % | +1 % | +2 % | -1 % | -6 % |
+| EDT bias | -8 % | -15 % | -12 % | -20 % | -23 % | -12 % |
+| EDT / T30 measured | 1.02 | 0.98 | 0.87 | 0.88 | 0.92 | 0.90 |
+| EDT / T30 simulated | 0.90 | 0.86 | 0.80 | 0.75 | 0.95 | 1.03 |
+| C80 bias | +1.7 | +2.1 | +1.4 | +1.4 | +3.2 | +3.0 dB |
+| C80 within 1 dB | 18 % | 19 % | 21 % | 21 % | 13 % | 13 % |
+| D50 bias | +0.13 | +0.09 | +0.04 | +0.03 | +0.10 | +0.07 |
+
+C80 bias by row (dB, both sources):
+
+| row | 2 | 4 | 5 | 6 | 7 | 8 | 11 | 14 | 17 |
+|---|---|---|---|---|---|---|---|---|---|
+| 500 Hz | -0.7 | +0.5 | -0.9 | +0.9 | +1.0 | +1.4 | +2.2 | +2.7 | +3.6 |
+| 1 kHz | +0.1 | +0.7 | +0.4 | +0.9 | +0.6 | +0.9 | +1.9 | +2.6 | +3.8 |
+| 2 kHz | +0.1 | +1.3 | +2.3 | +2.1 | +1.5 | +2.9 | +4.8 | +5.2 | +7.5 |
+| 4 kHz | -0.9 | +0.8 | +2.2 | +1.8 | +1.8 | +2.8 | +4.7 | +5.5 | +8.1 |
+
+- Here the simulation has too much early energy, the opposite sign of Arvedi; there is no single directional
+  high-frequency bias of the engine. With the measured directivity, the simulated C80 at 2 - 4 kHz is still off by
+  more than 1 JND at most seats.
+- Rows 2 - 8 are within about 1 - 2 dB, the error grows with the distance from the stage, strongest at 2 - 4 kHz
+  (+7.5 / +8.1 dB at row 17). The direct sound relative to the late energy (after 200 ms) is 5 - 11 dB stronger in
+  the simulation from row 5 on at 2 - 4 kHz, and the simulation has almost no energy in the first 5 - 10 ms after the
+  direct sound where the measurement has a continuous early part. One reading, not tested: sound grazing over the
+  seat rows is attenuated in the hall and the model has no seat rows (the weak spot "sound grazing over the seating"
+  of docs/BENCHMARK); propagation across audience seating: Schultz & Watters 1964,
+  https://scholar.google.com/scholar?q=Propagation+of+sound+across+audience+seating+Schultz+Watters. The simplified
+  geometry (no lighting bridges or reflectors over the front stalls, solid balcony rings) is another candidate.
+- T30 after calibration within 6 %, as expected.
+
+Status: post hoc (the model was built after the measured means were looked at), diagnostic. Derived histograms,
+the balloon and simulated results stay in `out/opera/` (not in the repository; the RIRs are CC BY-NC).

@@ -4,6 +4,12 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- New check: OperaRIR, Finnish National Opera (https://doi.org/10.5281/zenodo.8096639, CC BY-NC 4.0), Genelec 8331A
+  with its measured directivity (Aalto SOFA, read as spherical although it declares cartesian), 97 stalls seats, model
+  from the published plan and section (`validation/opera_model.py`, `validation/opera_check.py`,
+  `validation/opera_check.md`): after a T30 calibration the simulated C80 is 3.0 - 3.2 dB too high at 2 - 4 kHz, the
+  opposite sign of Arvedi, growing from the front rows (within 1 - 2 dB) to row 17 (+8 dB); untested reading: no seat
+  rows in the model (grazing over the seating). Directional loudspeakers at 2 - 4 kHz stay "not supported".
 - New check: Arni variable-acoustics room (Aalto; https://doi.org/10.5281/zenodo.6985104, CC BY 4.0), 37 panel states
   predicted after calibrating only the bare surfaces on the all-closed state (`validation/arni_model.py`,
   `validation/arni_check.py`, `validation/arni_check.md`): 500 Hz - 4 kHz T30 / EDT -6 ... +7 %, C80 within 0.6 dB on
