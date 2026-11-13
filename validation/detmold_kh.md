@@ -130,3 +130,22 @@ energies and coherence of the arrival directions of the scattered ray energy (`d
 IACC 0 - 80 ms 0.35 -> 0.38 (measured 0.46), 20 - 50 ms 0.30 -> 0.35 (0.36), 0 - 20 ms 0.65 -> 0.67 (0.78). (b) as (a)
 and the residual of the first 20 ms arriving from the direction of the source: 0 - 20 ms 0.78 (0.78), 0 - 80 ms 0.43
 (0.46). (b) is an assumption fitted to this hall; it has not been checked in another hall.
+
+## Cross-check of the early-direction option in BRAS CR3 and CR4 (2026-11-13)
+
+`path_brir(..., ew=early_resid_directions(...))` (CHANGELOG): the early residual with the coherence of the arrival
+directions of the scattered energy, the first 20 ms from the source direction. Same engine (diffuse rain off, residual
+from the direct sound on), option off / on. BRAS: `validation/check_bras_brir.py --rays 5000 --k8-mps <K8 balloon>
+--materials out/bras_cal16_CRn/config_cal.json [--early-dir]`, FABIAN HRIRs, listener MP6, five loudspeakers.
+
+| hall | IACC_E3 measured | off | on | other measures, off -> on |
+|---|---|---|---|---|
+| Detmold (136 pairs) | 0.45 | 0.34 | 0.41 | C80 +0.3 / +0.7 / +1.4 -> +0.4 / +1.0 / +1.6 dB; EDT -3 / -6 / -11 -> -3 / -7 / -15 % |
+| BRAS CR3 | 0.52 | 0.40 | 0.44 | |ILD difference| 0.8 -> 0.3 dB; ITD unchanged; C80 bias -1.1 ... +1.1 -> -0.9 ... +1.6 dB |
+| BRAS CR4 | 0.83 | 0.75 | 0.76 | C80 bias -2.1 ... -0.1 -> -1.9 ... +0.7 dB; EDT -5 ... +18 -> -12 ... +19 % |
+
+Early spaciousness moves towards the measurement in all three halls (most in Detmold, little in CR4), the direct
+sound is unchanged, C80 and EDT stay within their earlier spread. The option is on by default where the directional
+late field is (`brir_proto.early_dir_on`); the browser engine does not have it yet. For CR4 the earlier record
+(`bras_brir_CR4_FABIAN_K8data_cal16.md`, before the diffuse-rain fix) had IACC_E3 0.66: most of the gain there came
+from that fix.

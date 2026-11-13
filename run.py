@@ -72,13 +72,21 @@ def main(cfg_path="config.json"):
                 dirw[s] = bp.late_directions(cfg, s, recs, centers, air)
             say(f"[late] directional late field: {cfg['geometry'].get('late_dir_rays', 20000)} rays per source, "
                 f"{len(dirw)} sources, 64 direction bins")
+        ew = {}
+        if bp.early_dir_on(cfg):   # arrival directions of the scattered energy inside the early window
+            air = bp.make_room(cfg, 0).air_absorption
+            for s in srcs:
+                ew[s] = bp.early_resid_directions(cfg, s, recs, centers, air)
+            say(f"[early] directional early residual: {cfg['geometry'].get('early_dir_rays', 20000)} rays per source, "
+                f"{len(ew)} sources, windows 0-20 / 20-50 ms / rest")
         if bp.diffraction_on(cfg):
             import diffraction
             say(f"[diffraction] first-order UTD on {len(diffraction.edges(bp._geom(cfg)))} convex edges")
         for i, r in enumerate(recs):
             for j, s in enumerate(srcs):
                 brir[(s, r)], info[(s, r)] = bp.path_brir(cfg, s, r, hrir, hist[(s, r)], centers, n_len, seed=100 * i + j,
-                                                          dirw=dirw[s][i] if s in dirw else None, resid=resid[(s, r)], spec=spec)
+                                                          dirw=dirw[s][i] if s in dirw else None, resid=resid[(s, r)], spec=spec,
+                                                          ew=ew[s][i] if s in ew else None)
                 sf.write(os.path.join(out, "brir", f"{r}_{s}.wav"), brir[(s, r)].T.astype(np.float32), fs, subtype="FLOAT")
                 if hpcf is not None:   # same BRIR through the headphone compensation filter, for headphone listening
                     from scipy.signal import fftconvolve

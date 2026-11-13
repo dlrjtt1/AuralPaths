@@ -1132,6 +1132,14 @@ def late_on(cfg):
     return cfg["binaural"].get("late_directional", default)
 
 
+def early_dir_on(cfg):
+    """Early residual with the coherence of its arrival directions (early_resid_directions): on by default wherever the
+    directional late field is on (drawn halls, meshes up to 3000 faces); "early_directional": false in binaural turns it
+    off. Checked 2026-11-13: IACC_E3 Detmold 0.34 -> 0.41 (measured 0.45), BRAS CR3 0.40 -> 0.44 (0.52), CR4 0.75 -> 0.76
+    (0.83); C80 and EDT within the earlier spread (validation/detmold_kh.md)."""
+    return bool(cfg["binaural"].get("early_directional", late_on(cfg)))
+
+
 def late_directions(cfg, src, recs, centers, air, n_rays=None):
     """Direction energies W [n_rec, nbin, n_bands] after the early window (dirrays.late_direction_energy), omni source.
     Seed from the path names, so the result is reproducible."""
