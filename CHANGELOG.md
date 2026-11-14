@@ -4,6 +4,9 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Fix: criteria of a condition with a delayed loudspeaker (`run.py`, `iso3382_energy`): the start bin and the shift of
+  the delayed histograms were rounded differently, so the first direct sound could fall one 1 ms bin before the start
+  and be left out (seen only in 0 ms conditions; up to 1 dB C80 at single receivers). New `brir_proto.hist_start`.
 - Scattering and the effect of a reinforcement condition (`validation/scatter_delta.py`, `validation/scatter_delta.md`,
   plan committed before the run): the change of C80 by a condition depends on the scattering of the hard surfaces by
   less than half a JND on the hall mean, except Arvedi with B at +6 dB and 0 / 30 ms (+0.6 dB); robustness is shown

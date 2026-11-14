@@ -143,7 +143,11 @@ def main(cfg_path="config.json"):
                 t0 = min(tA, tBL, tBR)
                 g2 = p["gain_B"] ** 2
                 m = bp.iso3382_energy([(hist[(bp.AMP, r)], p["delay_A_s"], 1.0), (hist[("B_L", r)], p["delay_B_s"], g2),
-                                       (hist[("B_R", r)], p["delay_B_s"], g2)], t0, centers=centers)
+                                       (hist[("B_R", r)], p["delay_B_s"], g2)],
+                                      bp.hist_start([(bp.direct_time(cfg, bp.AMP, r), p["delay_A_s"]),
+                                                     (bp.direct_time(cfg, "B_L", r), p["delay_B_s"]),
+                                                     (bp.direct_time(cfg, "B_R", r), p["delay_B_s"])]),
+                                      centers=centers)
                 row = {
                     "receiver": r, "itdg_nominal_ms": itdg, "level_ratio_nominal_db": lr,
                     "delay_B_ms": round(p["delay_B_s"] * 1000, 3), "delay_A_ms": round(p["delay_A_s"] * 1000, 3),

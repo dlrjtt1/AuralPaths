@@ -1391,10 +1391,19 @@ def iso3382_omni(rir, fs, t0, bands=(500, 1000)):
     return {k: float(np.nanmean(v)) for k, v in res.items()}
 
 
+def hist_start(arrivals):
+    """Start time for iso3382_energy when the parts are delayed: arrivals = [(direct time, delay)] in s, one per part.
+    iso3382_energy shifts a part by round(delay / HIST_BIN) bins and starts at floor(t0 / HIST_BIN); with
+    t0 = min(direct + delay) the two roundings can disagree by one bin and the first direct sound is cut off.
+    Returns the centre of the first bin that holds a direct sound after the shift."""
+    return (min(int(np.floor(t / HIST_BIN)) + int(round(d / HIST_BIN)) for t, d in arrivals) + 0.5) * HIST_BIN
+
+
 def iso3382_energy(parts, t0, bands=(500, 1000), centers=None):
     """C80, D50, Ts, EDT, T30 from summed energy histograms.
 
     parts: list of (hist [n_bands, n_bins], delay_s, power_gain). Mean over the given octave bands.
+    t0: direct-sound time; with delayed parts use hist_start().
     """
     res = {k: [] for k in ("C80", "D50", "Ts_ms", "EDT", "T30")}
     n = parts[0][0].shape[1] + 200

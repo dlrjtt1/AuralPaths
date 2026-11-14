@@ -111,3 +111,13 @@ dependence from the ray noise there. It is not evidence of robustness.
   condition need more rays, several seeds, or reporting over groups of receivers.
 - Engineering setup only: omnidirectional sources at chosen positions, not a real installation; the result says
   how the simulator's condition effect depends on its scattering input, not how a hall responds.
+
+### Correction (2026-11-15, after the results)
+
+`iso3382_energy` shifts a delayed part by round(delay / 1 ms) bins and starts at floor(t0 / 1 ms); with
+t0 = min(direct + delay) the two can disagree by one bin and the first direct sound was cut off (0 ms conditions
+only: 1 of 97 receivers in OperaRIR, 6 of 34 in Detmold, 16 of 65 in Arvedi). Fixed with `brir_proto.hist_start`
+(also in `run.py`). OperaRIR and Detmold re-evaluated from the cached histograms: single values change by up to
+1.0 dB C80 / 1.2 % EDT (OperaRIR) and 0.2 dB / 0.3 % (Detmold) in the 0 ms conditions, the means of d by at most
+0.03 % and the shares within 1 JND by at most 3 points; the reading above is unchanged. The Arvedi numbers above
+are from before the fix (its histograms were not cached; a rerun takes about 2 h).

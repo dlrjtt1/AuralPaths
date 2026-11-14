@@ -106,8 +106,9 @@ def metrics(cfg, hist, centers):
             p = bp.condition_params(cfg, itdg, lr, E_A, E_B)
             g2 = p["gain_B"] ** 2
             for r in recs:
-                t0 = min(bp.direct_time(cfg, bp.AMP, r) + p["delay_A_s"],
-                         bp.direct_time(cfg, "B_L", r) + p["delay_B_s"], bp.direct_time(cfg, "B_R", r) + p["delay_B_s"])
+                t0 = bp.hist_start([(bp.direct_time(cfg, bp.AMP, r), p["delay_A_s"]),
+                                    (bp.direct_time(cfg, "B_L", r), p["delay_B_s"]),
+                                    (bp.direct_time(cfg, "B_R", r), p["delay_B_s"])])
                 parts = [(hist[(bp.AMP, r)], p["delay_A_s"], 1.0), (hist[("B_L", r)], p["delay_B_s"], g2),
                          (hist[("B_R", r)], p["delay_B_s"], g2)]
                 for b in BANDS:
