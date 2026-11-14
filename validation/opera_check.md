@@ -180,3 +180,36 @@ Late energy relative to the direct sound at 2 kHz (after 80 ms vs -1 ... +3 ms),
   and the overhang is not the main cause. Remaining candidates (not tested): the spatial distribution of the late
   energy in the ray tracer (scattering of the hall surfaces at 2 - 4 kHz, start values 0.1 - 0.3), the coupling to
   the stage house.
+
+## Scattering of the hard surfaces 0.5 (`--scatter 0.5`, 2026-11-14)
+
+Sensitivity test, value fixed before the run: scattering 0.5 in all bands on walls, ceiling, balcony fronts and
+soffits (start values 0.1 - 0.3), seating and stage house unchanged; recalibrated on T30 (from the first run's
+absorption), 5000 rays, image sources order 1 (`out/opera_s05/`).
+
+| | 125 | 250 | 500 | 1k | 2k | 4k Hz |
+|---|---|---|---|---|---|---|
+| T30 bias | -2 % | -8 % | -6 % | -6 % | -5 % | +1 % |
+| EDT bias | -1 % | -8 % | -5 % | -13 % | -11 % | +4 % |
+| EDT bias, s 0.1 - 0.3 | -8 % | -15 % | -12 % | -20 % | -23 % | -12 % |
+| C80 bias | +1.4 | +1.9 | +1.2 | +1.3 | +2.2 | +1.4 dB |
+| C80 bias, s 0.1 - 0.3 | +1.7 | +2.1 | +1.4 | +1.4 | +3.2 | +3.0 dB |
+| C80 within 1 dB | 23 % | 22 % | 30 % | 29 % | 23 % | 23 % |
+
+C80 bias by row, median (dB), s 0.1 - 0.3 / 0.5:
+
+| row | 2 | 4 | 6 | 8 | 11 | 14 | 17 |
+|---|---|---|---|---|---|---|---|
+| 2 kHz | +0.1 / 0.0 | +1.3 / +1.2 | +2.1 / +1.6 | +3.8 / +2.6 | +5.0 / +3.0 | +4.7 / +3.2 | +8.0 / +6.0 |
+| 4 kHz | -0.5 / -0.9 | +1.1 / +0.4 | +2.1 / +0.5 | +4.3 / +1.9 | +5.2 / +2.0 | +5.6 / +3.0 | +8.4 / +5.4 |
+
+Late energy relative to the direct sound at 2 kHz, open seats, measured minus simulated (Source1 / Source2): Y 8 - 14 m
++2.3 / +1.5 dB, 14 - 18 m +3.2 / +3.7 dB, 18 - 24 m +4.7 / +4.5 dB (with s 0.1 - 0.3: +2.4 / +2.7, +5.2 / +5.0,
++6.9 / +5.8 dB).
+
+- Higher scattering reduces the C80 bias at 2 - 4 kHz by 1 - 1.6 dB on average and by 2 - 3 dB in the rear stalls,
+  and moves EDT 7 - 16 % towards the measurement; the growth with the distance from the stage is about halved but
+  stays (row 17 +5.4 ... +6.0 dB). So the scattering of the hall surfaces explains part of the bias; the rest is open.
+- 0.5 is one value fixed in advance, not a measured or fitted scattering coefficient of this hall; no source for the
+  scattering of its surfaces was found. Changing the defaults would need the other checks (Arvedi, Detmold, BRAS)
+  again: in Arvedi the simulated C80 at 2 - 4 kHz is too low, and more scattering there is untested.

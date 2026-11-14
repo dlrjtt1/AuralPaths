@@ -22,6 +22,9 @@ files.
 - OperaRIR: balcony overhang checked against the published drawing (same as the model; 3 - 4 m over the rear stalls);
   the late-energy error grows with the distance also at seats not under a balcony, so the overhang is not the main
   cause.
+- OperaRIR scattering sensitivity (`opera_check.py --scatter 0.5`, fixed in advance): C80 bias at 2 / 4 kHz +3.2 /
+  +3.0 -> +2.2 / +1.4 dB, row 17 +8 -> +6 / +5.4 dB, EDT 7 - 16 % closer; part of the bias, the growth with the
+  distance about halved. Defaults unchanged.
 - New check: Arni variable-acoustics room (Aalto; https://doi.org/10.5281/zenodo.6985104, CC BY 4.0), 37 panel states
   predicted after calibrating only the bare surfaces on the all-closed state (`validation/arni_model.py`,
   `validation/arni_check.py`, `validation/arni_check.md`): 500 Hz - 4 kHz T30 / EDT -6 ... +7 %, C80 within 0.6 dB on
