@@ -16,7 +16,7 @@ until the mean simulated T30 of Source2 at every 4th seat is within 3 % of the m
 the hard surfaces keep their start values. Then both sources at all seats are simulated once.
 
     python validation/opera_check.py <folder with opera_hist_p*.npz and OperaRIR_layout.mat> --sofa <8331A.sofa>
-        [--out out/opera] [--rays 5000] [--ism 1] [--iter 4] [--skip-cal] [--seats] [--start <config_cal.json>]
+        [--out out/opera] [--rays 5000] [--ism 1] [--iter 4] [--skip-cal] [--seats] [--start <config_cal.json>] [--seat-dip]
 
 Writes <out>/config_cal.json, sim_<source>.npz, results.csv (measured / simulated per seat, source, metric, band).
 """
@@ -135,6 +135,7 @@ def main():
     ap.add_argument("--rays", type=int, default=5000); ap.add_argument("--ism", type=int, default=1)
     ap.add_argument("--iter", type=int, default=4); ap.add_argument("--skip-cal", action="store_true")
     ap.add_argument("--seats", action="store_true", help="seat-row experiment: backrests as strips (opera_model.seat_rows)")
+    ap.add_argument("--seat-dip", action="store_true", help="engine seat-dip model on the direct sound (seatdip.py), row spacing 0.945 m")
     ap.add_argument("--start", help="config_cal.json of an earlier run: its calibrated absorption is the start value")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
@@ -151,6 +152,8 @@ def main():
     else:
         cfg = calibrate(cfg, H, a.rays, a.iter, log)
         json.dump(cfg, open(cal, "w"), indent=1)
+    if a.seat_dip:
+        cfg["geometry"]["seat_dip"] = {"on": True, "spacing": om.ROW_DR}
     for g in ADJUST:
         log(f"{g} alpha {cfg['geometry']['materials'][g]['alpha']}")
     rows = []
