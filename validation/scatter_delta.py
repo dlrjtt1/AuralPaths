@@ -67,7 +67,8 @@ def piece(cfg, rays, seed, name, s, out):
     if os.path.exists(fn):
         z = np.load(fn)
         if list(z["recs"]) == recs and int(z["rays"]) == rays and int(z["seed"]) == seed:
-            return {r: z["h"][i] for i, r in enumerate(recs)}, z["centers"]
+            H = z["h"]                                # NpzFile reads the whole array on every access: read once
+            return {r: H[i] for i, r in enumerate(recs)}, z["centers"]
     t = time.time()
     h, centers = bp.energy_hists(cfg, s, recs, n_rays=rays, seed=seed)
     np.savez(fn + ".tmp.npz", h=np.array([h[r] for r in recs]), centers=np.asarray(centers), recs=np.array(recs),

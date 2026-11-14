@@ -4,6 +4,11 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Scattering and the effect of a reinforcement condition (`validation/scatter_delta.py`, `validation/scatter_delta.md`,
+  plan committed before the run): the change of C80 by a condition depends on the scattering of the hard surfaces by
+  less than half a JND on the hall mean, except Arvedi with B at +6 dB and 0 / 30 ms (+0.6 dB); robustness is shown
+  only for C80 in Arvedi and Detmold with B at 0 dB. Elsewhere the per-receiver ray noise at 20000 rays (about 1 JND
+  or more for EDT in all three halls, for C80 in OperaRIR) is too large to decide. Defaults unchanged.
 - New check: OperaRIR, Finnish National Opera (https://doi.org/10.5281/zenodo.8096639, CC BY-NC 4.0), Genelec 8331A
   with its measured directivity (Aalto SOFA, read as spherical although it declares cartesian), 97 stalls seats, model
   from the published plan and section (`validation/opera_model.py`, `validation/opera_check.py`,
