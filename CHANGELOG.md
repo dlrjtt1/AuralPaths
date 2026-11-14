@@ -19,6 +19,9 @@ files.
 - OperaRIR: seat-dip BEM with absorbing seats up to 4 kHz (`validation/seat_bem_hf.py`): at most 2 dB change of the
   direct path at 2 - 4 kHz. Levels by row show that the measured direct sound falls with distance as the simulated
   one; the C80 bias comes from the late energy, which in the simulation falls more steeply towards the rear stalls.
+- OperaRIR: balcony overhang checked against the published drawing (same as the model; 3 - 4 m over the rear stalls);
+  the late-energy error grows with the distance also at seats not under a balcony, so the overhang is not the main
+  cause.
 - New check: Arni variable-acoustics room (Aalto; https://doi.org/10.5281/zenodo.6985104, CC BY 4.0), 37 panel states
   predicted after calibrating only the bare surfaces on the all-closed state (`validation/arni_model.py`,
   `validation/arni_check.py`, `validation/arni_check.md`): 500 Hz - 4 kHz T30 / EDT -6 ... +7 %, C80 within 0.6 dB on

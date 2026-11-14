@@ -157,3 +157,26 @@ assumption), measured minus simulated, dB:
   the late energy falls more steeply with the distance from the stage than in the hall. Candidates, not tested: the
   balcony overhang over the rear stalls and the balconies as solid rings in the model, the coupling to the stage
   house, the scattering of the hall surfaces at 2 - 4 kHz (start values, not calibrated).
+
+## Balcony overhang against the drawing (2026-11-14)
+
+Lokki et al. 2015, Figure 1 re-read (plan and section, https://users.aalto.fi/~ktlokki/Publs/p6_2015.pdf): on the
+centre line the first balcony front is at Y = 23.6 m (light arc of the plan) and the rear wall of the stalls at
+Y = 26.7 - 27.3 m (plan / section), so the rear balcony overhangs the last 3 - 4 m of the stalls; the side balconies
+run along the side walls to about 8 m from the proscenium. The model has the same overhang (front circle radius
+9.67 m round (12.83, 13.80) m, from Y = 7.8 m). Row 17 on the centre line (Y = 23.2 m) is not under the balcony; 19
+of the 97 seats are (the outer seats of the middle and rear rows). The lowest balcony underside is drawn at about
+3.2 m above the stage floor, 2.75 m in the model (small; not changed).
+
+Late energy relative to the direct sound at 2 kHz (after 80 ms vs -1 ... +3 ms), measured minus simulated, median:
+
+| Y (m) | 8 - 14 | 14 - 18 | 18 - 24 |
+|---|---|---|---|
+| open seats, Source1 / Source2 | +2.4 / +2.7 dB (n = 42) | +5.2 / +5.0 dB (19) | +6.9 / +5.8 dB (13) |
+| seats under a balcony | -3.1 / +1.6 dB (7) | +2.0 / +3.7 dB (3) | +9.0 / +8.0 dB (9) |
+
+- The error grows with the distance from the stage also at seats with open sky, by about 4 dB from the front to the
+  rear stalls; under the rear overhang it is about 2 dB larger. The drawing gives no reason to change the balconies,
+  and the overhang is not the main cause. Remaining candidates (not tested): the spatial distribution of the late
+  energy in the ray tracer (scattering of the hall surfaces at 2 - 4 kHz, start values 0.1 - 0.3), the coupling to
+  the stage house.
