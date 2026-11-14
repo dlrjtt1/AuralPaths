@@ -4,6 +4,10 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Ray noise against the ray count (`validation/ray_noise.py`, `validation/ray_noise.md`; Detmold, 20000 - 320000
+  rays, two seeds): the noise falls with the square root of the ray count and the hall means do not drift, but at
+  20000 rays the hall means of T30 and EDT differ by 5 - 10 % and 4 % between two seeds (the receivers share the
+  rays), which is the uncertainty of the T30 calibrations of the hall checks.
 - Fix: criteria of a condition with a delayed loudspeaker (`run.py`, `iso3382_energy`): the start bin and the shift of
   the delayed histograms were rounded differently, so the first direct sound could fall one 1 ms bin before the start
   and be left out (seen only in 0 ms conditions; up to 1 dB C80 at single receivers). New `brir_proto.hist_start`.
