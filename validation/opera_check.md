@@ -212,4 +212,5 @@ Late energy relative to the direct sound at 2 kHz, open seats, measured minus si
   stays (row 17 +5.4 ... +6.0 dB). So the scattering of the hall surfaces explains part of the bias; the rest is open.
 - 0.5 is one value fixed in advance, not a measured or fitted scattering coefficient of this hall; no source for the
   scattering of its surfaces was found. Changing the defaults would need the other checks (Arvedi, Detmold, BRAS)
-  again: in Arvedi the simulated C80 at 2 - 4 kHz is too low, and more scattering there is untested.
+  again: in Arvedi the simulated C80 at 2 - 4 kHz is too low. Tested since in Detmold and Arvedi
+  ([detmold_kh.md](detmold_kh.md), [arvedi_check.md](arvedi_check.md)): differs by hall, defaults unchanged.

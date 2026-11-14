@@ -150,3 +150,24 @@ late field is (`brir_proto.early_dir_on`), and in the browser page since 2026-11
 `validation/check_early_dirs_pyjs.py`). For CR4 the earlier record
 (`bras_brir_CR4_FABIAN_K8data_cal16.md`, before the diffuse-rain fix) had IACC_E3 0.66: most of the gain there came
 from that fix.
+
+## Scattering sensitivity, 0.5 on the hard surfaces (2026-11-14, diagnostic)
+
+Same test as in OperaRIR ([opera_check.md](opera_check.md)), value fixed before the run: scattering 0.5 in every band
+on walls, ceiling and stage (seating unchanged, 0.6), recalibrated on T30 (`calibrate.py`, within 2 % after one
+iteration), rendered with `--early-dir`, compared with the same measurement as the default run
+(`out/detmold/compare_ed.csv`), 136 pairs. Mean difference simulated minus measured, share within one JND:
+
+| measure | default scattering | 0.5 |
+|---|---|---|
+| C80 500 Hz | +0.38 dB, 41 % | -0.68 dB, 35 % |
+| C80 1 kHz | +1.02 dB, 41 % | -0.11 dB, 53 % |
+| C80 2 kHz | +1.60 dB, 34 % | +0.46 dB, 57 % |
+| EDT 500 Hz | -3 %, 32 % | +7 %, 32 % |
+| EDT 1 kHz | -7 %, 21 % | +3 %, 37 % |
+| EDT 2 kHz | -15 %, 13 % | -5 %, 23 % |
+| IACC_E3 | -0.036, 54 % | -0.046, 56 % |
+| IACC_L | +0.127, 17 % | +0.100, 28 % |
+
+C80 and EDT at 1 - 2 kHz move towards the measurement, as in OperaRIR; at 500 Hz C80 overshoots to the other side.
+Late spaciousness (IACC_L) slightly closer, early spaciousness unchanged. Arvedi: [arvedi_check.md](arvedi_check.md).

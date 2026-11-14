@@ -178,3 +178,31 @@ stays at about 1.0 in every variant (it moves by 0.05 at most). Scattering is no
 here. Remaining: the distribution of the absorption (the uniform calibration puts alpha 0.13 - 0.20 on the plaster
 walls and ceiling; with the absorption concentrated on the seating, the detailed run gave a shorter EDT error below
 1 kHz) and early reflecting surfaces the simplified model does not have. Not tested.
+
+## Scattering 0.5 with recalibration (2026-11-14, diagnostic)
+
+The test of OperaRIR and Detmold, value fixed before the run (`arvedi_check.py --posthoc --scatter 0.5`): scattering
+0.5 in every band on every surface except the seating, recalibrated on T30 (within 2 % after two iterations), same
+sources and receivers as the run without rain. Mean bias at 2 / 4 kHz, default scattering -> 0.5:
+
+| source | EDT 2 kHz | EDT 4 kHz | C80 2 kHz | C80 4 kHz |
+|---|---|---|---|---|
+| S0 (dodecahedron) | +21 -> +19 % | +30 -> +20 % | -0.59 -> -0.89 dB | -0.85 -> -0.92 dB |
+| S1 (8020) | +79 -> +47 % | +196 -> +160 % | -2.07 -> -1.82 dB | -2.83 -> -2.49 dB |
+| S2 | +98 -> +58 % | +124 -> +96 % | -1.86 -> -2.27 dB | -2.14 -> -2.29 dB |
+| S3 | +97 -> +58 % | +98 -> +62 % | -1.40 -> -1.67 dB | -1.38 -> -1.37 dB |
+| S4 | +86 -> +62 % | +134 -> +123 % | -1.20 -> -1.44 dB | -1.74 -> -1.66 dB |
+
+S0 EDT at 500 Hz - 1 kHz +15 / +14 -> +8 / +10 %. EDT moves towards the measurement for every source (unlike the
+earlier test without recalibration above, the ratio EDT / T30 now falls to 0.9 - 1.0 at 2 - 4 kHz for S0). C80 does
+not: it changes by -0.4 ... +0.3 dB, mostly lower, where it was already too low. So in this hall the EDT and the C80
+errors at 2 - 4 kHz do not have one common cause in the scattering, and the three halls disagree on C80:
+
+| hall | C80 2 kHz bias, default -> 0.5 | EDT 2 kHz |
+|---|---|---|
+| OperaRIR | +3.2 -> +2.2 dB | -23 -> -11 % |
+| Detmold | +1.6 -> +0.5 dB | -15 -> -5 % |
+| Arvedi S0 / loudspeakers | -0.6 -> -0.9 / -1.2 ... -2.1 -> -1.4 ... -2.3 dB | +21 ... +98 -> +19 ... +62 % |
+
+Defaults unchanged: a higher scattering helps EDT in all three halls and C80 in two, and makes C80 slightly worse in
+the hall where it was already too low.

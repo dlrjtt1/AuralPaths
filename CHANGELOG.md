@@ -25,6 +25,10 @@ files.
 - OperaRIR scattering sensitivity (`opera_check.py --scatter 0.5`, fixed in advance): C80 bias at 2 / 4 kHz +3.2 /
   +3.0 -> +2.2 / +1.4 dB, row 17 +8 -> +6 / +5.4 dB, EDT 7 - 16 % closer; part of the bias, the growth with the
   distance about halved. Defaults unchanged.
+- Scattering 0.5 also in Detmold and Arvedi (recalibrated, fixed in advance): EDT at 2 kHz closer in all three halls
+  (Detmold -15 -> -5 %, Arvedi +21 ... +98 -> +19 ... +62 %); C80 at 2 kHz closer in OperaRIR and Detmold (+1.6 ->
+  +0.5 dB) but 0.2 - 0.4 dB lower in Arvedi, where it was already too low. Differs by hall; defaults unchanged
+  (`validation/detmold_kh.md`, `validation/arvedi_check.md`).
 - New check: Arni variable-acoustics room (Aalto; https://doi.org/10.5281/zenodo.6985104, CC BY 4.0), 37 panel states
   predicted after calibrating only the bare surfaces on the all-closed state (`validation/arni_model.py`,
   `validation/arni_check.py`, `validation/arni_check.md`): 500 Hz - 4 kHz T30 / EDT -6 ... +7 %, C80 within 0.6 dB on
