@@ -13,7 +13,11 @@ two configurations are compared:
 A third run of the default configuration with another ray seed gives the ray noise of d.
 
     python validation/scatter_delta.py <hall> <config_default> <config_s05> --out out/scatter_delta/<hall>
-        [--rays 20000]
+        [--rays 20000] [--only <run>:<source>]
+
+The energy histograms of every (run, source) are cached in <out>/hist_<run>_<source>.npz; --only computes one of
+them and exits, so the pieces can run in separate processes (the result is the same: each source is traced by its own
+energy_hists call with the run's seed either way).
 """
 import argparse
 import csv
@@ -53,11 +57,31 @@ def setup(path, hall):
     return cfg
 
 
-def simulate(cfg, rays, seed):
+SOURCES = (bp.AMP, "B_L", "B_R")
+
+
+def piece(cfg, rays, seed, name, s, out):
+    """Energy histograms of one source for one run, cached in out/hist_<run>_<source>.npz."""
+    fn = os.path.join(out, f"hist_{name}_{s}.npz")
+    recs = list(cfg["receivers"])
+    if os.path.exists(fn):
+        z = np.load(fn)
+        if list(z["recs"]) == recs and int(z["rays"]) == rays and int(z["seed"]) == seed:
+            return {r: z["h"][i] for i, r in enumerate(recs)}, z["centers"]
+    t = time.time()
+    h, centers = bp.energy_hists(cfg, s, recs, n_rays=rays, seed=seed)
+    np.savez(fn + ".tmp.npz", h=np.array([h[r] for r in recs]), centers=np.asarray(centers), recs=np.array(recs),
+             rays=rays, seed=seed)
+    os.replace(fn + ".tmp.npz", fn)
+    print(f"  {name} {s}: {time.time() - t:.0f} s", flush=True)
+    return h, centers
+
+
+def simulate(cfg, rays, seed, name, out):
     recs = list(cfg["receivers"])
     hist = {}
-    for s in (bp.AMP, "B_L", "B_R"):
-        h, centers = bp.energy_hists(cfg, s, recs, n_rays=rays, seed=seed)
+    for s in SOURCES:
+        h, centers = piece(cfg, rays, seed, name, s, out)
         for r in recs:
             hist[(s, r)] = h[r]
     return hist, centers
@@ -100,14 +124,20 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("hall", choices=sorted(HALLS)); ap.add_argument("config_default"); ap.add_argument("config_s05")
     ap.add_argument("--out", required=True); ap.add_argument("--rays", type=int, default=20000)
+    ap.add_argument("--only", default=None, help="<run>:<source> - compute and cache one piece, then exit")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     runs = {"default": (a.config_default, 1), "s05": (a.config_s05, 1), "default_seed2": (a.config_default, 2)}
+    if a.only:
+        name, s = a.only.split(":")
+        path, seed = runs[name]
+        piece(setup(path, a.hall), a.rays, seed, name, s, a.out)
+        return
     M = {}
     for name, (path, seed) in runs.items():
         t = time.time()
         cfg = setup(path, a.hall)
-        hist, centers = simulate(cfg, a.rays, seed)
+        hist, centers = simulate(cfg, a.rays, seed, name, a.out)
         M[name] = metrics(cfg, hist, centers)
         print(f"{name}: {time.time() - t:.0f} s, reference receiver {cfg['conditions']['reference_receiver']}", flush=True)
     recs = list(cfg["receivers"])
