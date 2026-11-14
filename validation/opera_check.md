@@ -88,5 +88,25 @@ C80 bias by row, median (dB), without / with seat rows:
   no usable EDT fit).
 - Left open: the simplified geometry above the front stalls (lighting bridges, reflectors) and the balconies.
 
+## Engine seat-dip model (`--seat-dip`, 2026-11-14)
+
+The engine's seat-dip model (`seatdip.py`: 2-D BEM of rigid seat rows along the path, after Davies & Cox 2000,
+https://salford-repository.worktribe.com/output/1466149/reducing-seat-dip-attenuation; solved up to 1 kHz, above that
+the mean of the last third octave) on the direct sound, row spacing 0.945 m, otherwise defaults; calibration of the
+first run reused (the model changes only the direct sound and the first-order reflections from the seating), 5000 rays
+(`out/opera_dip/`). Row 2 gets no seat dip (fewer than 2 rows in front of it in the model).
+
+| | 125 | 250 | 500 | 1k | 2k | 4k Hz |
+|---|---|---|---|---|---|---|
+| C80 bias, seat-dip model | +1.4 | +1.7 | +1.7 | +2.3 | +4.3 | +4.1 dB |
+| C80 bias, without | +1.7 | +2.1 | +1.4 | +1.4 | +3.2 | +3.0 dB |
+| direct-sound gain of the model, rows 4 / 8 / 11 / 17 | -3.4 / -2.9 / -2.9 / -1.5 | -1.7 / -2.0 / -3.5 / -6.7 | +1.9 / +1.6 / +0.8 / -0.4 | +2.7 / +3.6 / +3.6 / +1.9 | +2.7 / +3.5 / +3.7 / +1.8 | same as 2k dB |
+
+- The model lowers C80 by 0.2 - 0.5 dB at 125 - 250 Hz (the seat dip) and raises it by 0.9 - 1.1 dB at 1 - 4 kHz;
+  the growth with the row stays (row 17: +9.0 / +9.3 dB at 2 / 4 kHz). Above 500 Hz the transfer function of rigid
+  rows adds the floor reflection in phase (+2 ... +4 dB) where the image-source model had it reduced by the seating
+  absorption; at 2 - 4 kHz this is the extrapolated 1 kHz value. So the model does not describe the attenuation of
+  grazing sound above 1 kHz in this hall (rigid, empty rows; no absorption of the upholstery in the BEM).
+
 Status: post hoc (the model was built after the measured means were looked at), diagnostic. Derived histograms,
 the balloon and simulated results stay in `out/opera/` (not in the repository; the RIRs are CC BY-NC).

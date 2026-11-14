@@ -13,6 +13,9 @@ files.
 - OperaRIR seat-row experiment (`opera_check.py --seats`, `--start`): backrests as geometric strips on every row,
   recalibrated on T30, 10000 rays. The C80 bias still grows from the front rows to row 17 (+9 dB at 2 - 4 kHz); the
   missing seat rows as geometry do not explain it (no diffraction in the model; see `validation/opera_check.md`).
+- OperaRIR with the engine seat-dip model (`opera_check.py --seat-dip`): C80 0.2 - 0.5 dB lower at 125 - 250 Hz,
+  0.9 - 1.1 dB higher at 1 - 4 kHz (rigid rows add the floor reflection, +2 ... +4 dB on the direct sound above
+  500 Hz, extrapolated above 1 kHz); the growth with the row stays.
 - New check: Arni variable-acoustics room (Aalto; https://doi.org/10.5281/zenodo.6985104, CC BY 4.0), 37 panel states
   predicted after calibrating only the bare surfaces on the all-closed state (`validation/arni_model.py`,
   `validation/arni_check.py`, `validation/arni_check.md`): 500 Hz - 4 kHz T30 / EDT -6 ... +7 %, C80 within 0.6 dB on
