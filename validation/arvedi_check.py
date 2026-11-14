@@ -9,6 +9,7 @@ without this repository is the hist.py written next to the data); this script re
 
     python validation/arvedi_check.py <folder with pos_sources.csv, pos_receivers.csv, meas_hist_*.npz> [--out out/arvedi]
         [--skip-cal]      reuse <out>/config_cal.json
+        [--scatter <s>]   sensitivity test: scattering of all surfaces but the seating set to s
         [--resume]        skip comparisons whose CSV already exists (after an interrupted run)
         [--posthoc]       after the blind run (protocol item 13): receivers on the high-end side (dataset turned by
                           180 deg), ring-row floors from the receiver heights, and S0 also with the B&K 4292-L
@@ -166,6 +167,8 @@ def main():
     ap.add_argument("--detail", default=None, help="folder of BRAS initial-estimate CSVs: detailed model (item 15)")
     ap.add_argument("--genelec", default=None, help="directivity CSV for S1 - S4 (post hoc: Genelec 8020A data)")
     ap.add_argument("--resume", action="store_true", help="skip comparisons whose CSV already exists in <out>")
+    ap.add_argument("--scatter", type=float, default=None, help="sensitivity test: scattering of every surface but the "
+                    "seating set to this value in all bands (before calibration); the seat-dip run is skipped")
     a = ap.parse_args()
     RESUME[0] = a.resume
     if a.posthoc:
@@ -180,6 +183,10 @@ def main():
             cfg["sources"][k].pop("coverage", None)
             cfg["sources"][k]["directivity"] = os.path.abspath(a.genelec)
             cfg["sources"][k]["role"] = "Genelec 8020C in the dataset; 8020A manufacturer polars (protocol item 14)"
+    if a.scatter is not None:
+        for k, m in cfg["geometry"]["materials"].items():
+            if k != "aud":
+                m["s"] = [a.scatter] * len(m["s"])
     json.dump(cfg, open(os.path.join(a.out, "config.json"), "w"), indent=1)
     t30 = os.path.join(a.out, "t30_S0.csv")
     with open(t30, "w", newline="") as f:
@@ -200,10 +207,11 @@ def main():
     cfg = bp.load_config(cal)
     print(f"model volume {bp._geom(cfg).get('volume', float('nan')):.0f} m3 (published 5300 m3)")
     compare(cfg, src, rec, H, "S0", "S0_primary", a.out)
-    c2 = copy.deepcopy(cfg)
-    c2["geometry"]["seat_dip"] = {"on": True}
-    c2["geometry"]["mesh"]["rotate_deg"] = 90.0       # rows across the hall (normal along x)
-    compare(c2, src, rec, H, "S0", "S0_seatdip", a.out)
+    if a.scatter is None:
+        c2 = copy.deepcopy(cfg)
+        c2["geometry"]["seat_dip"] = {"on": True}
+        c2["geometry"]["mesh"]["rotate_deg"] = 90.0       # rows across the hall (normal along x)
+        compare(c2, src, rec, H, "S0", "S0_seatdip", a.out)
     if a.dodeca:
         c3 = copy.deepcopy(cfg)
         c3["sources"]["S0"]["directivity"] = a.dodeca
