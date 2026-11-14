@@ -48,8 +48,8 @@ C80 bias by row (dB, both sources):
 - Rows 2 - 8 are within about 1 - 2 dB, the error grows with the distance from the stage, strongest at 2 - 4 kHz
   (+7.5 / +8.1 dB at row 17). The direct sound relative to the late energy (after 200 ms) is 5 - 11 dB stronger in
   the simulation from row 5 on at 2 - 4 kHz, and the simulation has almost no energy in the first 5 - 10 ms after the
-  direct sound where the measurement has a continuous early part. One reading, not tested: sound grazing over the
-  seat rows is attenuated in the hall and the model has no seat rows (the weak spot "sound grazing over the seating"
+  direct sound where the measurement has a continuous early part. One reading (tested below, not supported): sound grazing
+  over the seat rows is attenuated in the hall and the model has no seat rows (the weak spot "sound grazing over the seating"
   of docs/BENCHMARK); propagation across audience seating: Schultz & Watters 1964,
   https://scholar.google.com/scholar?q=Propagation+of+sound+across+audience+seating+Schultz+Watters. The simplified
   geometry (no lighting bridges or reflectors over the front stalls, solid balcony rings) is another candidate.
@@ -110,3 +110,50 @@ first run reused (the model changes only the direct sound and the first-order re
 
 Status: post hoc (the model was built after the measured means were looked at), diagnostic. Derived histograms,
 the balloon and simulated results stay in `out/opera/` (not in the repository; the RIRs are CC BY-NC).
+
+## Absorbing seats, 2-D BEM up to 4 kHz (`validation/seat_bem_hf.py`, 2026-11-14)
+
+The seat-dip cross-section of the engine (same seat shape, row spacing 0.945 m) solved up to 4 kHz with a locally
+reacting impedance on the seat pan top, the front and the top of the back (assumption). Absorption per band = the
+calibrated seating absorption of this hall (0.61 - 0.72, from T30, not from C80), converted to a real impedance with
+the Paris formula; both roots (soft zeta 0.4 - 0.5, stiff zeta 5 - 7). Source2, the most central seat of rows 4 - 17,
+10 frequencies per octave band. Absorption set to zero reproduces the engine's BEM (same values to 0.01 dB).
+
+Energy gain of the direct path (|T|^2, dB), rigid / soft / stiff:
+
+| row | 125 Hz | 1 kHz | 2 kHz | 4 kHz |
+|---|---|---|---|---|
+| 4 | -3.6 / -9.2 / -6.9 | +3.2 / +4.0 / +3.1 | -1.3 / -0.6 / -1.4 | +2.7 / +0.5 / +1.1 |
+| 8 | -3.0 / -10.3 / -7.1 | +4.0 / +4.1 / +3.6 | -1.4 / 0.0 / -0.8 | +2.0 / +1.2 / +0.8 |
+| 11 | -2.5 / -11.1 / -7.2 | +4.0 / +3.8 / +3.4 | +1.2 / +1.7 / +1.2 | +1.4 / +0.8 / +0.7 |
+| 14 | -2.1 / -11.1 / -7.0 | +3.2 / +3.0 / +2.8 | +2.2 / +3.1 / +2.0 | +0.7 / +0.1 / +0.2 |
+| 17 | -1.9 / -10.7 / -6.6 | +2.5 / +2.0 / +2.0 | +3.6 / +3.7 / +3.1 | +0.2 / -1.1 / -0.4 |
+
+- Absorbing seats deepen the dip at 125 Hz but change the direct path at 2 - 4 kHz by at most 2 dB; the gain stays
+  between -1.4 and +3.7 dB. The line of sight passes 0.47 - 0.56 m above the seat backs, about two first Fresnel-zone
+  radii at 4 kHz (0.27 m at the row in front), so no strong high-frequency shielding is expected for this source
+  height. Rows of infinite width (2-D) shield more than real seats with gaps; a 3-D model is not expected to give more
+  attenuation (engineering argument, not tested).
+
+## Direct, early and late energy by row (2026-11-14)
+
+Measured and simulated levels of the direct sound (-1 ... +3 ms), 3 - 80 ms and after 80 ms, each relative to its own
+mean over rows 2 - 4 (the RIRs share one measurement chain, so level differences between seats are meaningful;
+assumption), measured minus simulated, dB:
+
+| | row 4 | 6 | 8 | 11 | 14 | 17 |
+|---|---|---|---|---|---|---|
+| direct, 2 kHz, Source1 / Source2 | 0.0 / -0.1 | -0.6 / -0.6 | -1.0 / -0.9 | -1.2 / -0.6 | -1.0 / -1.0 | -2.8 / -3.1 |
+| 3 - 80 ms, 2 kHz | -1.1 / -0.5 | -0.7 / -2.4 | -1.0 / -2.5 | -1.5 / -3.5 | -2.1 / -2.1 | -0.4 / -0.2 |
+| after 80 ms, 2 kHz | -0.3 / +0.2 | +1.0 / -0.6 | +2.3 / +0.5 | +2.7 / +1.5 | +4.8 / +1.4 | +7.8 / +2.7 |
+
+(4 kHz within 1 dB of 2 kHz; Source1 row 5 has a strong early reflection in the measurement, +7 dB, left out.)
+
+- The measured direct sound falls with distance as the simulated one, within about 1 dB up to row 14 and 3 dB at
+  row 17. The direct sound is not over-strong in the simulation; the reading "sound grazing over the seat rows is
+  attenuated" (above) is not supported by the data.
+- The C80 bias comes from the reflected sound: relative to the front rows the measurement has more energy after 80 ms
+  further back (up to +8 dB at row 17, Source1) and less between 3 and 80 ms (1 - 4 dB, Source2). In the simulation
+  the late energy falls more steeply with the distance from the stage than in the hall. Candidates, not tested: the
+  balcony overhang over the rear stalls and the balconies as solid rings in the model, the coupling to the stage
+  house, the scattering of the hall surfaces at 2 - 4 kHz (start values, not calibrated).

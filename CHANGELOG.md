@@ -16,6 +16,9 @@ files.
 - OperaRIR with the engine seat-dip model (`opera_check.py --seat-dip`): C80 0.2 - 0.5 dB lower at 125 - 250 Hz,
   0.9 - 1.1 dB higher at 1 - 4 kHz (rigid rows add the floor reflection, +2 ... +4 dB on the direct sound above
   500 Hz, extrapolated above 1 kHz); the growth with the row stays.
+- OperaRIR: seat-dip BEM with absorbing seats up to 4 kHz (`validation/seat_bem_hf.py`): at most 2 dB change of the
+  direct path at 2 - 4 kHz. Levels by row show that the measured direct sound falls with distance as the simulated
+  one; the C80 bias comes from the late energy, which in the simulation falls more steeply towards the rear stalls.
 - New check: Arni variable-acoustics room (Aalto; https://doi.org/10.5281/zenodo.6985104, CC BY 4.0), 37 panel states
   predicted after calibrating only the bare surfaces on the all-closed state (`validation/arni_model.py`,
   `validation/arni_check.py`, `validation/arni_check.md`): 500 Hz - 4 kHz T30 / EDT -6 ... +7 %, C80 within 0.6 dB on
