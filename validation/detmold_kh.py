@@ -4,8 +4,9 @@ Neumann KU100 BRIRs at the same seats (Detmold SRIR database, Set C: loudspeaker
 grid; Detmold University of Music, https://zenodo.org/records/4116247, CC BY 4.0).
 
     python validation/detmold_kh.py setup <DetmoldSRIR_v01 folder> <section image> --hrir <KU100.sofa> [--out out/detmold]
-    python calibrate.py out/detmold/config.json out/detmold/t30.csv --out out/detmold/config_cal.json --iter 4 --avg mean
-        (--avg mean: as in the documented run; the default is the median now, see validation/ray_noise.md)
+    python calibrate.py out/detmold/config.json out/detmold/t30.csv --out out/detmold/config_cal.json --iter 4
+        (positions combined by the median; the results documented before 2026-11-15 used --avg mean, see
+        validation/ray_noise.md)
     python validation/detmold_kh.py render out/detmold/config_cal.json [--sources S2,S3,S6,S7]
     python validation/detmold_kh.py compare <DetmoldSRIR_v01 folder> out/detmold [--meas-csv <earlier compare.csv>]
 

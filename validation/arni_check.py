@@ -106,6 +106,9 @@ def main():
     ap.add_argument("data"); ap.add_argument("--out", default=os.path.join(ROOT, "out", "arni"))
     ap.add_argument("--per-nc", type=int, default=4); ap.add_argument("--rays", type=int, default=10000)
     ap.add_argument("--skip-cal", action="store_true"); ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--avg", choices=("mean", "median", "summed"), default="median",
+                    help="combination of the positions in the calibration (calibrate.py --avg); the runs documented "
+                         "before 2026-11-15 used mean")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     H, setup = load(a.data)
@@ -124,7 +127,7 @@ def main():
                     w.writerow([f"S-{mic}", *am.SRC, *p, b, round(float(t), 4), round(float(e), 4)])
         subprocess.run([sys.executable, os.path.join(ROOT, "calibrate.py"), os.path.join(a.out, "config.json"),
                         os.path.join(a.out, "t30_cal.csv"), "--adjust", "shell,curtain", "--out", cal,
-                        "--avg", "mean"], check=True)
+                        "--avg", a.avg], check=True)
     cfg_cal = bp.load_config(cal)
     runs = [(55, 0)] + pick(H, setup, a.per_nc)
     res = os.path.join(a.out, "results.csv")

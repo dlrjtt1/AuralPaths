@@ -80,7 +80,7 @@ def main():
                 if row[0][3:] in sub:
                     w.writerow(row)
         cal = os.path.join(a.out, "config_vol_cal.json")
-        subprocess.run([sys.executable, os.path.join(ROOT, "calibrate.py"), p, t30, "--out", cal, "--iter", "4", "--avg", "mean"], check=True, cwd=ROOT)
+        subprocess.run([sys.executable, os.path.join(ROOT, "calibrate.py"), p, t30, "--out", cal, "--iter", "4"], check=True, cwd=ROOT)
         cv = bp.load_config(cal)
         print(f"\nvolume variant: ceiling {zc0:.2f} -> {am.ZC:.2f} m, model volume {bp._geom(cv).get('volume'):.0f} m3", flush=True)
         for s in ["S0"] + srcs:

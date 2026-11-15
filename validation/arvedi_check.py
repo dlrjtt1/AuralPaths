@@ -162,6 +162,9 @@ def main():
     ap.add_argument("data")
     ap.add_argument("--out", default=os.path.join(ROOT, "out", "arvedi"))
     ap.add_argument("--skip-cal", action="store_true")
+    ap.add_argument("--avg", choices=("mean", "median", "summed"), default="median",
+                    help="combination of the positions in the calibration (calibrate.py --avg); the runs documented "
+                         "before 2026-11-15 used mean")
     ap.add_argument("--posthoc", action="store_true")
     ap.add_argument("--dodeca", default=None, help="directivity CSV of the B&K 4292-L (post hoc S0 run)")
     ap.add_argument("--detail", default=None, help="folder of BRAS initial-estimate CSVs: detailed model (item 15)")
@@ -203,7 +206,7 @@ def main():
         if a.detail:          # prediction before calibration, then only the seating is calibrated (item 15)
             compare(bp.load_config(os.path.join(a.out, "config.json")), src, rec, H, "S0", "S0_uncalibrated", a.out)
         subprocess.run([sys.executable, os.path.join(ROOT, "calibrate.py"), os.path.join(a.out, "config.json"), t30,
-                        "--out", cal, "--iter", "6", "--avg", "mean"] + (["--adjust", "aud"] if a.detail else []), check=True, cwd=ROOT)
+                        "--out", cal, "--iter", "6", "--avg", a.avg] + (["--adjust", "aud"] if a.detail else []), check=True, cwd=ROOT)
     cfg = bp.load_config(cal)
     print(f"model volume {bp._geom(cfg).get('volume', float('nan')):.0f} m3 (published 5300 m3)")
     compare(cfg, src, rec, H, "S0", "S0_primary", a.out)

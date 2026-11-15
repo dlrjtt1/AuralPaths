@@ -12,7 +12,8 @@ Data:
 - Geometry: validation/opera_model.py.
 
 Calibration: the absorption of the seating ("aud") and of the stage house ("stage") is scaled by one factor per band
-until the mean simulated T30 of Source2 at every 4th seat is within 3 % of the measured mean (at most --iter runs);
+until the median (--avg; mean before 2026-11-15) simulated T30 of Source2 at every 4th seat is within 3 % of the
+measured one (at most --iter runs);
 the hard surfaces keep their start values. Then both sources at all seats are simulated once.
 
     python validation/opera_check.py <folder with opera_hist_p*.npz and OperaRIR_layout.mat> --sofa <8331A.sofa>
@@ -108,9 +109,10 @@ def t0(cfg, src, rec):
     return float(np.linalg.norm(np.subtract(cfg["sources"][src]["pos"], cfg["receivers"][rec])) / C)
 
 
-def calibrate(cfg, H, rays, n_iter, log):
+def calibrate(cfg, H, rays, n_iter, log, avg="median"):
     recs = list(cfg["receivers"])[::4]
-    tm = np.nanmean([metrics(H[f"{r}_Source2"], T0_MEAS)["T30"] for r in recs], axis=0)
+    f = np.nanmedian if avg == "median" else np.nanmean      # positions combined as in calibrate.py --avg
+    tm = f([metrics(H[f"{r}_Source2"], T0_MEAS)["T30"] for r in recs], axis=0)
     k = np.ones(len(BANDS))
     base = {g: np.asarray(cfg["geometry"]["materials"][g]["alpha"], float) for g in ADJUST}
     for it in range(n_iter):
@@ -118,8 +120,8 @@ def calibrate(cfg, H, rays, n_iter, log):
         for g in ADJUST:
             c["geometry"]["materials"][g]["alpha"] = np.clip(base[g] * k, 0.01, 0.95).round(4).tolist()
         S = run(c, "Source2", recs, rays)
-        ts = np.nanmean([metrics(S[r], t0(c, "Source2", r))["T30"] for r in recs], axis=0)
-        log(f"calibration {it}: T30 measured {np.round(tm, 2)} simulated {np.round(ts, 2)} factor {np.round(k, 3)}")
+        ts = f([metrics(S[r], t0(c, "Source2", r))["T30"] for r in recs], axis=0)
+        log(f"calibration {it} ({avg}): T30 measured {np.round(tm, 2)} simulated {np.round(ts, 2)} factor {np.round(k, 3)}")
         if np.all(np.abs(ts / tm - 1) < 0.03):
             return c
         k = k * ts / tm
@@ -138,6 +140,8 @@ def main():
     ap.add_argument("--seat-dip", action="store_true", help="engine seat-dip model on the direct sound (seatdip.py), row spacing 0.945 m")
     ap.add_argument("--scatter", type=float, help="scattering coefficient of all hard surfaces (wall, ceiling, front, "
                     "soffit), all bands; sensitivity test")
+    ap.add_argument("--avg", choices=("mean", "median"), default="median",
+                    help="combination of the calibration seats; the runs documented before 2026-11-15 used mean")
     ap.add_argument("--start", help="config_cal.json of an earlier run: its calibrated absorption is the start value")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
@@ -155,7 +159,7 @@ def main():
     if a.skip_cal:
         cfg = json.load(open(cal))
     else:
-        cfg = calibrate(cfg, H, a.rays, a.iter, log)
+        cfg = calibrate(cfg, H, a.rays, a.iter, log, a.avg)
         json.dump(cfg, open(cal, "w"), indent=1)
     if a.seat_dip:
         cfg["geometry"]["seat_dip"] = {"on": True, "spacing": om.ROW_DR}
