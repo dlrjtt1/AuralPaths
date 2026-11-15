@@ -4,6 +4,12 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Arvedi, early decay (`validation/arvedi_placement.py`, `validation/arvedi_decay_shape.py`,
+  `validation/arvedi_placement.md`): moving the absorption between the seating / stage and the walls / ceiling by
+  a factor of 4 at constant T30 changes the EDT bias by 5 points only (EDT / T30 1.07 -> 1.02, measured 0.90). The
+  mean decays agree within 0.3 dB from 80 ms on; in the first 80 ms the simulation has 1 - 2 dB too much energy
+  before 20 ms and 4 - 5 dB too little at 20 - 50 ms. The EDT error is an error of the early reflection pattern
+  (model geometry), not of absorption, scattering or the late field.
 - `engine_js.py`: the browser engine from Python (Node). `energy_hists(cfg, src, recs)` returns what
   `brir_proto.energy_hists` returns, computed as the page computes a path. For this the page's path assembly moved
   into `engine_geom.js` (`GEOM.withDiffraction`, `GEOM.withSeatDip`, `GEOM.pathHist`; the page calls them, its
