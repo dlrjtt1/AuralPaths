@@ -11,7 +11,7 @@ authors:
   - family-names: "You"
     given-names: "Dong-Gyun"
     orcid: "https://orcid.org/0009-0000-0075-4695"
-version: "0.8.0"
+version: "0.8.1"
 date-released: "2026-11-15"
 license: MIT
 repository-code: "https://github.com/dlrjtt1/AuralPaths"
