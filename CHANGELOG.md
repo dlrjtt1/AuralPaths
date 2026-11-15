@@ -10,7 +10,13 @@ files.
   in the late-noise rendering on the main thread.
 - Found with it (`validation/check_drawn_pyjs.py`): in a drawn hall the two engines do not agree. Detmold, same
   materials: browser T30 1.94 s, Python 1.51 s at 1 kHz (Sabine 2.03 s, Eyring 1.87 s). The browser scatters a ray
-  with probability s, pyroomacoustics mixes the direction; in mesh halls both mix and agree. Not resolved.
+  with probability s, pyroomacoustics mixes the direction; in mesh halls both mix and agree.
+- Detmold with the browser engine and both scattering models (`validation/detmold_js.py`, `validation/detmold_js.md`;
+  new diagnostic option `GEOM.rays(..., { mix: true })`, off by default): the mixed direction reproduces the Python
+  engine (T30 1.33 s with the start materials, Python 1.34 - 1.39 s; either-or 1.50 s). Calibrated on T30 separately,
+  both models and the Python engine agree with the measured EDT and C80 about equally (C80 within 0.3 dB of each
+  other, EDT at 500 Hz - 1 kHz within 3 points); the absorption they need differs (factor 0.97 against 0.72 at
+  1 kHz). Page default unchanged.
 - Detmold calibrated and compared at 20000 and 80000 rays (`validation/ray_noise.md`): the T30 calibration is not
   robust. Single-position T30 has outliers (up to 2.8 s against 1.4 s) from the ray-starved late histogram, and the
   mean over positions gave an absorption factor of 0.74 (20000 rays) or 1.00 (80000 rays) at 1 kHz; with the latter

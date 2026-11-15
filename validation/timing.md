@@ -68,6 +68,6 @@ either specularly or by Lambert's law with probability s, pyroomacoustics sends 
 s * Lambert + (1 - s) * specular. In mesh halls the browser uses the mixed direction too and the engines agree
 (`check_mesh_pyjs.py`: T30 within 2 %). In this hall the absorption sits on the floor (seating 0.53, s 0.6) and the
 walls and ceiling are hard (0.035, s 0.3); the mixed direction turns every wall reflection a little towards the
-floor, the either-or model keeps 70 % of them specular. Not decided here which is closer to a real hall. Consequence:
+floor, the either-or model keeps 70 % of them specular. `validation/detmold_js.md`: calibrated on T30 separately, the two models agree with the measurement about equally. Consequence:
 absorption calibrated with one engine does not carry over to the other in a drawn hall; the Detmold check
 (`detmold_kh.md`) is a check of the Python engine.
