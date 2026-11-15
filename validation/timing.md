@@ -71,3 +71,12 @@ walls and ceiling are hard (0.035, s 0.3); the mixed direction turns every wall 
 floor, the either-or model keeps 70 % of them specular. `validation/detmold_js.md`: calibrated on T30 separately, the two models agree with the measurement about equally. Consequence:
 absorption calibrated with one engine does not carry over to the other in a drawn hall; the Detmold check
 (`detmold_kh.md`) is a check of the Python engine.
+
+## Page with a drawn hall (fan hall example, 12 paths, 50000 rays; added 2026-11-15)
+
+Loading `examples/fan_hall_config.json` into the page, headless Chromium, 2 cores: 55 - 64 s. Main thread before the
+change below: 34 % idle (waiting for the ray-tracing worker), `lateDir` 24 %, `fftAny` 13 %, the Gaussian random
+numbers of `lateDir` 22 % (`gs`, `rn`), `runBiquad` 3 %: about 3 s per path for the four noise-pair sets of the
+directional late field and the early windows. These are now computed in a pool of workers; the main thread is 97 %
+idle, the BRIRs are identical, the total time on 2 cores is the same (57 - 66 s, one worker). With more cores the
+pool has up to 6 workers; not measured.

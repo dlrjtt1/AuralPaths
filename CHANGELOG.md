@@ -4,6 +4,12 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page: the noise pairs of the directional late field and of the early scattered-energy windows (four per path;
+  two thirds of the main-thread time of a drawn hall, `validation/timing.md`) are computed in a pool of workers
+  (up to 6) before the paths are rendered. Same code and seeds: the BRIRs of the fan hall are identical to before
+  (largest difference 0). The page stays responsive while it renders (main thread 97 % idle instead of 34 %); on
+  the 2-core test machine the total time is unchanged (one worker), the gain on machines with more cores was not
+  measured. `DSPLIB` and `lateDirFactory` hold the shared code.
 - Page: the level ratio follows `make_stimuli.py`. With dry files loaded in *Listen*, the PA gain of a nominal
   level ratio is set from the energy of the ear signals those files give at the reference seat (PA over direct,
   unamplified sources with a file included in the direct sound), no longer from the BRIR energies alone; the
