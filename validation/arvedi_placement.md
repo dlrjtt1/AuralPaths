@@ -55,6 +55,9 @@ Backward-integrated decay of the mean histogram at 1 kHz, measured / simulated: 
 
 ## Reading
 
+The same comparison in halls with better geometry agrees within about 1 dB in the first 80 ms (BRAS CR3 / CR4,
+`bras_decay_shape.md`; Detmold, `detmold_js.md`), so the deficit is a property of this model.
+
 The EDT error in Arvedi is an error of the early reflection pattern (which reflections arrive when in the first
 80 ms), not of the absorption, the scattering or the engine's late field. A T30 + EDT calibration of the absorption
 would not repair it. Comparing the decay in time windows, as here, is the direct check for any hall that has

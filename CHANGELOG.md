@@ -4,6 +4,9 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- BRAS CR3 / CR4, decay in time windows (`validation/bras_decay_shape.py`, `validation/bras_decay_shape.md`): with
+  the measured halls' own 3-D models the energy of every window of the first 80 ms is within about 1.3 dB at
+  500 Hz - 4 kHz. The Arvedi deficit at 20 - 80 ms is a property of that model, not of the engine.
 - Detmold, decay in time windows (`validation/detmold_decay_shape.py`, `validation/detmold_js.md`): in the drawn
   hall the mean energy of every window of the first 80 ms is within about 1 dB of the measurement at 500 Hz -
   4 kHz (Arvedi: -4 ... -5 dB at 20 - 50 ms), with both scattering models.
