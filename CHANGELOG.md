@@ -4,6 +4,15 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page: the level ratio follows `make_stimuli.py`. With dry files loaded in *Listen*, the PA gain of a nominal
+  level ratio is set from the energy of the ear signals those files give at the reference seat (PA over direct,
+  unamplified sources with a file included in the direct sound), no longer from the BRIR energies alone; the
+  displayed effective level ratio uses the same definition. Without a file for the amplified source nothing
+  changes. Fan hall, 20 ms / 0 dB: PA gain -3.30 dB (one file) and -0.59 dB (with an unamplified source) in the
+  page and in `make_stimuli.py`; effective level ratio at seat L -0.91 dB in both. This changes the criteria the
+  page shows once a file is loaded.
+- `make_stimuli.py`: `"input_brirs": {"<input>": "<BRIR name>"}` convolves an input of path A with its own BRIR
+  (the page's unamplified sources at their own positions); default unchanged.
 - `make_stimuli.py`: `"brir_sofa"` takes the SOFA file the page exports instead of a folder of WAV files, so that
   the listening-test stimuli are built from exactly the BRIRs the page plays (its provenance record and the file's
   hash go into the manifest). Checked on the fan hall: the BRIRs read from the SOFA equal the page's arrays, and the

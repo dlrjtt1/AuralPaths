@@ -85,6 +85,15 @@ The page rebuilds every BRIR itself, so these work without rerunning Python:
   or typed value; the A/B inputs take the same ranges. Python reference values exist for the grid in
   `config.json` (`conditions`: ITDG 0 / 20 / 40 / 60 ms × level ratio −9 / −6 / −3 / 0 / +3 / +6 dB). The trend
   plot draws ITDG 0 / 20 / 40 / 60 ms over the whole level range; the ring is the current condition.
+  **Level ratio**: energy of the PA ear signals over that of the direct ear signals at the reference seat, both
+  ears, as `make_stimuli.py` defines it. With dry files loaded in *Listen* it is taken over the signals those
+  files give (the amplified source through its direct path and the PA pair, every unamplified source with a file
+  through its own direct path), so the page's criteria and the stimuli of `make_stimuli.py` belong to the same PA
+  gain (fan hall, 20 ms / 0 dB: -3.30 dB with one file, -0.59 dB with an unamplified source added, in both).
+  Without a file for the amplified source it is the ratio of the BRIR energies (a white signal of the amplified
+  source alone). Loading a file therefore changes the PA gain of a nominal level ratio and with it C80, EDT etc.
+  The PA delay is set from the geometric arrival times; `make_stimuli.py` uses the BRIR onsets (0.4 ms apart in
+  the fan hall).
 - **PA aiming**: coverage (Omni, 120°, 90°, 60°), azimuth (0° = straight down the hall, + towards +x) and
   elevation (+ up) per PA; **Aim at seat** points it at the selected seat. In `config.json`:
   `"coverage": 90, "aim": {"az": 29.7, "el": -1.4}` on `B_L` / `B_R`.
