@@ -2,7 +2,7 @@
 Material calibration from measured reverberation times.
 
     python calibrate.py <config.json> <measurements.csv> [--adjust aud,wall,ceil] [--source-directivity file.csv]
-                        [--out calibrated_config.json] [--tol 0.02] [--iter 10]
+                        [--out calibrated_config.json] [--tol 0.02] [--iter 10] [--avg mean|median|summed]
 
 measurements.csv (one row per position pair and octave band; EDT optional, used for checking only):
     label,src_x,src_y,src_z,rec_x,rec_y,rec_z,band_hz,T30_s,EDT_s
@@ -17,6 +17,13 @@ kept within 0.01 ... 0.95. Groups not listed in --adjust keep their values (e.g.
 
 This fits one number per band. It cannot tell which surface is wrong; several material sets can give the same T30.
 Use positions for calibration that are not used for validation (proposal section 3.1).
+
+--avg: how the simulated T30 of the positions is combined (default mean, as before). The late part of a
+single-position ray histogram holds few rays, so single-position T30 has outliers (validation/ray_noise.md).
+  median  median over the positions, simulated and measured
+  summed  T30 of the summed decay: the energy histograms of the positions, each starting at its direct sound and
+          normalised to unit energy, are added and T30 is evaluated once per band; compared with the measured MEAN
+          (the measured decays are not available, so the two sides are not the same estimator)
 
 Output: the calibrated config (materials replaced, a "_calibration" record added) and a report next to it
 (<out>_report.csv / .md): measured, simulated before and after, per band and position.
@@ -78,6 +85,7 @@ def simulate(cfg, pos, src_dir):
                 for b in BANDS:
                     m = bp.iso3382_energy([(H[f"CAL_R_{lab}"], 0.0, 1.0)], t0, bands=(b,), centers=centers)
                     out[lab][b] = (m["T30"], m["EDT"])
+                out[lab]["_e"] = _aligned(H[f"CAL_R_{lab}"], t0, centers)
         return out
     for lab, p in pos.items():
         c = copy.deepcopy(cfg)
@@ -89,7 +97,32 @@ def simulate(cfg, pos, src_dir):
         for b in BANDS:
             m = bp.iso3382_energy([(hist, 0.0, 1.0)], t0, bands=(b,), centers=centers)
             out[lab][b] = (m["T30"], m["EDT"])
+        out[lab]["_e"] = _aligned(hist, t0, centers)
     return out
+
+
+def _aligned(hist, t0, centers):
+    """Histogram from the direct sound on, unit energy per band; rows in the order of BANDS (for --avg summed)."""
+    i0 = int(np.floor(t0 / bp.HIST_BIN))
+    rows = [int(np.argmin(np.abs(np.asarray(centers) - b))) for b in BANDS]
+    e = np.asarray(hist)[rows, i0:]
+    return e / np.maximum(e.sum(axis=1, keepdims=True), 1e-300), i0
+
+
+def summed_T30(sim):
+    """T30 per band of the summed decay of all positions (iso3382_energy on the sum, start at bin 0)."""
+    n = min(sim[l]["_e"][0].shape[1] for l in sim)
+    i0 = max(sim[l]["_e"][1] for l in sim)          # the shortest histogram sets the decay-range window
+    tot = sum(sim[l]["_e"][0][:, :n] for l in sim)
+    pad = np.concatenate([tot, np.zeros((tot.shape[0], i0))], axis=1)
+    return np.array([bp.iso3382_energy([(pad, 0.0, 1.0)], 0.0, bands=(b,), centers=BANDS)["T30"] for b in BANDS])
+
+
+def combine(sim, bands, avg):
+    if avg == "summed":
+        return summed_T30(sim)
+    f = np.nanmedian if avg == "median" else np.nanmean
+    return np.array([f([sim[l][b][0] for l in sim]) for b in bands])
 
 
 def get_alpha(cfg, groups):
@@ -125,6 +158,8 @@ def main():
     ap.add_argument("--adjust", default="", help="material groups to scale (default: all)")
     ap.add_argument("--source-directivity", default=None, help="directivity CSV / SOFA of the measurement source")
     ap.add_argument("--out", default=None); ap.add_argument("--tol", type=float, default=0.02); ap.add_argument("--iter", type=int, default=10)
+    ap.add_argument("--avg", choices=("mean", "median", "summed"), default="mean",
+                    help="combination of the positions: mean (default), median, or T30 of the summed decay")
     a = ap.parse_args()
 
     cfg = bp.load_config(a.config)
@@ -132,7 +167,8 @@ def main():
     global BANDS
     present = {b for p in pos.values() for b in p["T30"]}
     BANDS = ALL_BANDS[:8] if {8000, 16000} <= present else ALL_BANDS[:6]
-    meas_T = np.array([np.nanmean([p["T30"].get(b, np.nan) for p in pos.values()]) for b in BANDS])
+    fm = np.nanmedian if a.avg == "median" else np.nanmean
+    meas_T = np.array([fm([p["T30"].get(b, np.nan) for p in pos.values()]) for b in BANDS])
     if np.all(np.isnan(meas_T)):
         sys.exit("no T30 values in the measurement file")
     groups = list(cfg["geometry"]["materials"]) if bp.has_geometry(cfg) else ["room"]
@@ -143,13 +179,13 @@ def main():
             sys.exit(f"unknown material group(s): {bad}; available: {list(cfg['geometry']['materials'])}")
     base = get_alpha(cfg, groups)
     k = np.ones(len(BANDS))
-    print(f"Calibrating {', '.join(base)} on {len(pos)} position(s); measured mean T30: " +
+    print(f"Calibrating {', '.join(base)} on {len(pos)} position(s), --avg {a.avg}; measured {'median' if a.avg == 'median' else 'mean'} T30: " +
           ", ".join(f"{b}: {t:.2f}" for b, t in zip(BANDS, meas_T)))
 
     sim0 = simulate(cfg, pos, a.source_directivity)
     history, sim, cur = [], sim0, cfg
     for it in range(a.iter):
-        T = mean_sim(sim, 0, BANDS)
+        T = combine(sim, BANDS, a.avg)
         err = T / meas_T - 1
         history.append((it, k.copy(), T.copy()))
         print(f"  iteration {it}: T30 sim " + ", ".join(f"{t:.2f}" for t in T) + "  | error % " + ", ".join(f"{100 * e:+.1f}" for e in err))
@@ -160,7 +196,7 @@ def main():
         k = np.where(ok, k, k * step)
         cur = set_alpha(cfg, base, k)
         sim = simulate(cur, pos, a.source_directivity)
-    T1 = mean_sim(sim, 0, BANDS)
+    T1 = combine(sim, BANDS, a.avg)
 
     out = a.out or os.path.splitext(a.config)[0] + "_calibrated.json"
     raw = json.load(open(a.config, encoding="utf-8"))
@@ -170,9 +206,10 @@ def main():
         "measurements": os.path.basename(a.measurements),
         "measurements_sha256": hashlib.sha256(open(a.measurements, "rb").read()).hexdigest(),
         "positions": list(pos), "adjusted_groups": list(base), "bands_hz": BANDS,
+        "avg": a.avg,
         "factors": [round(float(x), 4) for x in k],
         "T30_measured_mean_s": [None if np.isnan(x) else round(float(x), 3) for x in meas_T],
-        "T30_sim_before_s": [round(float(x), 3) for x in mean_sim(sim0, 0, BANDS)],
+        "T30_sim_before_s": [round(float(x), 3) for x in combine(sim0, BANDS, a.avg)],
         "T30_sim_after_s": [round(float(x), 3) for x in T1],
         "source_directivity": a.source_directivity,
         "note": "one absorption factor per octave band on the adjusted groups; see calibrate.py",
@@ -191,9 +228,9 @@ def main():
                         "EDT_before": round(sim0[lab][b][1], 3), "EDT_after": round(sim[lab][b][1], 3)})
     with open(stem + "_report.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=list(rep[0])); w.writeheader(); w.writerows(rep)
-    T0 = mean_sim(sim0, 0, BANDS)
+    T0 = combine(sim0, BANDS, a.avg)
     lines = [f"# Calibration report: {os.path.basename(a.config)}", "",
-             f"Measurements: {os.path.basename(a.measurements)} ({len(pos)} position(s)); adjusted: {', '.join(base)}; "
+             f"Measurements: {os.path.basename(a.measurements)} ({len(pos)} position(s)); adjusted: {', '.join(base)}; positions combined by {a.avg}; "
              f"tolerance {100 * a.tol:.0f} % (JND of reverberation 5 %, ISO 3382-1 Annex A)", "",
              "| band (Hz) | T30 measured (s) | sim before (s) | error before | sim after (s) | error after | factor |", "|---|---|---|---|---|---|---|"]
     for i, b in enumerate(BANDS):
