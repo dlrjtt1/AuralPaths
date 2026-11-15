@@ -32,6 +32,24 @@ def aligned(h, t0, n=1500):
     return e / e.sum(1, keepdims=True)
 
 
+def show(M, S, title):
+    """Tables of the window energies and of the backward-integrated decay, measured / simulated [bands, 1 ms bins]."""
+    print(f"{title}. Window energy, dB re total: measured / simulated (difference)")
+    print("band    " + "  ".join(f"{a}-{b} ms".rjust(19) for a, b in zip(WIN[:-1], WIN[1:])))
+    for i, b in enumerate(BANDS):
+        row = []
+        for a, c in zip(WIN[:-1], WIN[1:]):
+            m, s = 10 * np.log10(M[i, a:c].sum()), 10 * np.log10(S[i, a:c].sum())
+            row.append(f"{m:6.1f}/{s:6.1f} ({s - m:+.1f})")
+        print(f"{b:5d}   " + "  ".join(x.rjust(19) for x in row))
+    print("Backward-integrated decay of the mean histogram (dB): measured / simulated (difference)")
+    print("band    " + "  ".join(f"{a} ms".rjust(19) for a in AT))
+    for i, b in enumerate(BANDS):
+        em, es = np.cumsum(M[i][::-1])[::-1], np.cumsum(S[i][::-1])[::-1]
+        row = [f"{10 * np.log10(em[a]):6.1f}/{10 * np.log10(es[a]):6.1f} ({10 * np.log10(es[a] / em[a]):+.1f})" for a in AT]
+        print(f"{b:5d}   " + "  ".join(x.rjust(19) for x in row))
+
+
 def main():
     cfg = bp.load_config(sys.argv[1])
     mix = None if "--mix" not in sys.argv else sys.argv[sys.argv.index("--mix") + 1] == "mix"
@@ -44,20 +62,7 @@ def main():
     t0 = {r: np.linalg.norm(np.subtract(cfg["sources"]["S0"]["pos"], cfg["receivers"][r])) / cfg["c"] for r in recs}
     M = np.mean([aligned(H[f"S0-{r}"], t0[r]) for r in recs], 0)
     S = np.mean([aligned(Hs[r][bi], t0[r]) for r in recs], 0)
-    print(f"{len(recs)} receivers, mean of the unit-energy histograms. Window energy, dB re total: measured / simulated (difference)")
-    print("band    " + "  ".join(f"{a}-{b} ms".rjust(19) for a, b in zip(WIN[:-1], WIN[1:])))
-    for i, b in enumerate(BANDS):
-        row = []
-        for a, c in zip(WIN[:-1], WIN[1:]):
-            m, s = 10 * np.log10(M[i, a:c].sum()), 10 * np.log10(S[i, a:c].sum())
-            row.append(f"{m:6.1f}/{s:6.1f} ({s - m:+.1f})")
-        print(f"{b:5d}   " + "  ".join(x.rjust(19) for x in row))
-    print("\nBackward-integrated decay of the mean histogram (dB): measured / simulated (difference)")
-    print("band    " + "  ".join(f"{a} ms".rjust(19) for a in AT))
-    for i, b in enumerate(BANDS):
-        em, es = np.cumsum(M[i][::-1])[::-1], np.cumsum(S[i][::-1])[::-1]
-        row = [f"{10 * np.log10(em[a]):6.1f}/{10 * np.log10(es[a]):6.1f} ({10 * np.log10(es[a] / em[a]):+.1f})" for a in AT]
-        print(f"{b:5d}   " + "  ".join(x.rjust(19) for x in row))
+    show(M, S, f"{len(recs)} receivers, mean of the unit-energy histograms")
 
 
 if __name__ == "__main__":
