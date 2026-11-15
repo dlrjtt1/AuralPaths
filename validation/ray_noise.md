@@ -96,5 +96,9 @@ Reading:
   500 Hz and 1 kHz are smaller. This is one hall; which of the two is the better estimate of the hall's T30 is not
   decided by it, and choosing by the agreement with the measurement would be tuning on the result.
 - 2 kHz is unchanged by all of this: C80 about +1.2 dB, EDT about -8 %.
-- The default of `calibrate.py` is still the mean; the calibrations of the other hall checks were made with it.
+- Default of `calibrate.py` changed to the median (2026-11-15; reason independent of the agreement above: the same
+  estimator can be applied to the measured values, which the summed decay cannot without the measured decays).
+  The other hall checks (Arvedi, Arni, Opera, and the Detmold results in `detmold_kh.md`) were calibrated with the
+  mean and are NOT redone; their scripts pass `--avg mean` so that the documented numbers stay reproducible. Their
+  calibrated absorption may carry the outlier problem shown above.
 

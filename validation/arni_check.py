@@ -123,7 +123,8 @@ def main():
                 for b, t, e in zip(BANDS, m["T30"], m["EDT"]):
                     w.writerow([f"S-{mic}", *am.SRC, *p, b, round(float(t), 4), round(float(e), 4)])
         subprocess.run([sys.executable, os.path.join(ROOT, "calibrate.py"), os.path.join(a.out, "config.json"),
-                        os.path.join(a.out, "t30_cal.csv"), "--adjust", "shell,curtain", "--out", cal], check=True)
+                        os.path.join(a.out, "t30_cal.csv"), "--adjust", "shell,curtain", "--out", cal,
+                        "--avg", "mean"], check=True)
     cfg_cal = bp.load_config(cal)
     runs = [(55, 0)] + pick(H, setup, a.per_nc)
     res = os.path.join(a.out, "results.csv")

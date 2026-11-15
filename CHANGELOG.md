@@ -8,10 +8,10 @@ files.
   robust. Single-position T30 has outliers (up to 2.8 s against 1.4 s) from the ray-starved late histogram, and the
   mean over positions gave an absorption factor of 0.74 (20000 rays) or 1.00 (80000 rays) at 1 kHz; with the latter
   EDT is 17 - 28 % short.
-- `calibrate.py --avg median | summed` (default still `mean`): median over the positions, or T30 of their summed
+- `calibrate.py --avg median | summed | mean`, default now `median` (was the mean): median over the positions, or T30 of their summed
   decay. Detmold with either: factor 0.71 - 0.78 at 1 kHz at 20000 and 80000 rays, and 80000 rays change the mean
   differences to the measurement by 0.2 dB (C80) and 3 points (EDT) at most (`validation/ray_noise.md`). The options
-  were added after the result with the mean was seen. The other hall checks are still calibrated with the mean.
+  were added after the result with the mean was seen. The earlier hall checks are not redone; their scripts pass `--avg mean`.
 - Ray noise against the ray count (`validation/ray_noise.py`, `validation/ray_noise.md`; Detmold, 20000 - 320000
   rays, two seeds): the noise falls with the square root of the ray count and the hall means do not drift, but at
   20000 rays the hall means of T30 and EDT differ by 5 - 10 % and 4 % between two seeds (the receivers share the

@@ -18,9 +18,10 @@ kept within 0.01 ... 0.95. Groups not listed in --adjust keep their values (e.g.
 This fits one number per band. It cannot tell which surface is wrong; several material sets can give the same T30.
 Use positions for calibration that are not used for validation (proposal section 3.1).
 
---avg: how the simulated T30 of the positions is combined (default mean, as before). The late part of a
+--avg: how the simulated T30 of the positions is combined (default median). The late part of a
 single-position ray histogram holds few rays, so single-position T30 has outliers (validation/ray_noise.md).
-  median  median over the positions, simulated and measured
+  median  median over the positions, simulated and measured (default since 2026-11-15)
+  mean    mean over the positions, simulated and measured (the default before; not robust against the outliers)
   summed  T30 of the summed decay: the energy histograms of the positions, each starting at its direct sound and
           normalised to unit energy, are added and T30 is evaluated once per band; compared with the measured MEAN
           (the measured decays are not available, so the two sides are not the same estimator)
@@ -158,8 +159,8 @@ def main():
     ap.add_argument("--adjust", default="", help="material groups to scale (default: all)")
     ap.add_argument("--source-directivity", default=None, help="directivity CSV / SOFA of the measurement source")
     ap.add_argument("--out", default=None); ap.add_argument("--tol", type=float, default=0.02); ap.add_argument("--iter", type=int, default=10)
-    ap.add_argument("--avg", choices=("mean", "median", "summed"), default="mean",
-                    help="combination of the positions: mean (default), median, or T30 of the summed decay")
+    ap.add_argument("--avg", choices=("mean", "median", "summed"), default="median",
+                    help="combination of the positions: median (default), mean, or T30 of the summed decay")
     a = ap.parse_args()
 
     cfg = bp.load_config(a.config)

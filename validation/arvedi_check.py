@@ -203,7 +203,7 @@ def main():
         if a.detail:          # prediction before calibration, then only the seating is calibrated (item 15)
             compare(bp.load_config(os.path.join(a.out, "config.json")), src, rec, H, "S0", "S0_uncalibrated", a.out)
         subprocess.run([sys.executable, os.path.join(ROOT, "calibrate.py"), os.path.join(a.out, "config.json"), t30,
-                        "--out", cal, "--iter", "6"] + (["--adjust", "aud"] if a.detail else []), check=True, cwd=ROOT)
+                        "--out", cal, "--iter", "6", "--avg", "mean"] + (["--adjust", "aud"] if a.detail else []), check=True, cwd=ROOT)
     cfg = bp.load_config(cal)
     print(f"model volume {bp._geom(cfg).get('volume', float('nan')):.0f} m3 (published 5300 m3)")
     compare(cfg, src, rec, H, "S0", "S0_primary", a.out)
