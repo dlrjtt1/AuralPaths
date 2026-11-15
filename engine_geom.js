@@ -1386,6 +1386,47 @@ const GEOM = (() => {
     return bands.map((fc) => { let s = 0, m = 0; for (let k = 0; k < T.re.length; k++) { const f = k * fs / nfft; if (f >= fc / Math.SQRT2 && f < fc * Math.SQRT2) { s += T.re[k] ** 2 + T.im[k] ** 2; m++; } } return m ? s / m : 1; });
   }
 
-  return { makeSurface, build, buildMesh, meshColumn, loadObj, objGroups, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, diffract2, transition, utd, DF, FIB, fresnel, panels, specFactor, hankel01, SEAT, GM, seatParams, seatTransfer, seatRows, seatSection, seatPath, seatBandEnergy, floorAt };
+  // ---------- one path: image list with the seat dip and diffraction, and its energy histogram (the page's worker and
+  // geomHist; Python: engine_js.py)
+  function withSeatDip(G, src, m, I) {
+    if (!m.seat) return I;
+    return I.map((L, k) => {
+      const q = L.find((x) => x.o === 0 && !x.dif); if (!q) return L;
+      const T = seatPath(G, src, m.recs[k], m.seat, m.fs, m.c); if (!T) return L;
+      q.Tr = Array.from(T.re); q.Ti = Array.from(T.im); q.tb = seatBandEnergy(T, m.fs, m.bands); q.rows = T.rows;
+      return L.filter((x) => !(x.o === 1 && !x.dif && x.seq && G.S[x.seq[0]].mat === "aud"));
+    });
+  }
+  function withDiffraction(G, E, src, m, I) {
+    I = withSeatDip(G, src, m, I);
+    if (!E) return I;
+    return I.map((L, k) => { const r = m.recs[k], t = Math.hypot(src[0] - r[0], src[1] - r[1], src[2] - r[2]) / m.c + m.tWin;
+      const A = diffract(G, E, src, r, m.c, m.mats, m.air, m.bands, t, m.diffRefl | 0);
+      return L.concat(A, (m.diffOrder | 0) >= 2 ? diffract2(G, E, src, r, m.c, m.mats, m.air, m.bands, t, m.diffRefl | 0) : []); });
+  }
+  function smooth10(a) { const n = a.length, o = new Float64Array(n); let s = 0; for (let i = 0; i < n + 5; i++) { if (i < n) s += a[i]; if (i - 10 >= 0) s -= a[i - 10]; const j = i - 5; if (j >= 0 && j < n) o[j] = s / 10; } return o; }
+  // energy histogram [bands][HN bins of HB s] of one path from its image-source list and its ray histogram
+  // raw = { H: [bands][bins], HS, sect, nSb } (GEOM.rays, one receiver); dm: GEOM.dirModel of the source or null.
+  // hist = image energy + the ray energy the images do not explain (resid), both smoothed over 10 bins for the difference
+  function pathHist(list0, raw, dm, HN, HB) {
+    const nb = raw.H.length;
+    const list = list0.map((q) => { if (!dm) return q; const k = dm.amp(q.e || [0, -1, 0]), r = { ...q, g: Array.from(q.g, (v, b) => v * k[b]) };
+      if (q.dif) { r.ga = q.ga.map((v, b) => v * k[b]); r.eb = q.eb.map((v, b) => v * k[b] * k[b]); } return r; });
+    const Hi = Array.from({ length: nb }, () => new Float64Array(HN));
+    for (const q of list) { const bin = Math.floor(q.t / HB); if (bin < HN) for (let b = 0; b < nb; b++) Hi[b][bin] += q.dif ? q.eb[b] : q.g[b] * q.g[b] * (q.tb ? q.tb[b] : 1); }
+    for (let b = 0; b < nb; b++) for (let j = 0; j < HN; j++) if (Hi[b][j] < 0) Hi[b][j] = 0;   // diffraction interference term can be negative
+    const resid = [], hist = [];
+    // directional source: ray energy before raw.nSb bins weighted per launch sector by the pattern (amp^2), later by its mean 1 / Q
+    // (brir_proto.rt_add_source weights every ray at launch; the sectors approximate that without tracing again)
+    const A2 = dm && raw.HS ? raw.sect.map((d) => dm.amp(d).map((a) => a * a)) : null;
+    for (let b = 0; b < nb; b++) {
+      const f = dm ? dm.diffuse[b] : 1, h = raw.H[b].map((v) => v * f);
+      if (A2) { const nS = raw.nSb, NBr = raw.HS.length / (A2.length * nS); for (let j = 0; j < Math.min(nS, h.length); j++) { let v = 0; for (let q = 0; q < A2.length; q++) v += raw.HS[(q * NBr + b) * nS + j] * A2[q][b]; h[j] = v; } }
+      const sr = smooth10(h), si = smooth10(Hi[b]), rr = new Float64Array(HN), hh = new Float64Array(HN);
+      for (let j = 0; j < HN; j++) { rr[j] = Math.max(0, sr[j] - si[j]); hh[j] = Hi[b][j] + rr[j]; } resid.push(rr); hist.push(hh); }
+    return { list, hist, resid };
+  }
+
+  return { makeSurface, build, buildMesh, meshColumn, loadObj, objGroups, inside, profAt, inPoly2, ism, rays, occluded, normProfile, dirModel, edges, diffract, diffract2, transition, utd, DF, FIB, fresnel, panels, specFactor, hankel01, SEAT, GM, seatParams, seatTransfer, seatRows, seatSection, seatPath, seatBandEnergy, floorAt, withSeatDip, withDiffraction, pathHist };
 })();
 if (typeof module !== "undefined") module.exports = GEOM;

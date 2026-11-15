@@ -4,6 +4,15 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- `engine_js.py`: the browser engine from Python (Node). `energy_hists(cfg, src, recs)` returns what
+  `brir_proto.energy_hists` returns, computed as the page computes a path. For this the page's path assembly moved
+  into `engine_geom.js` (`GEOM.withDiffraction`, `GEOM.withSeatDip`, `GEOM.pathHist`; the page calls them, its
+  results are unchanged: fan hall histograms identical before and after). `validation/check_engine_js.py` loads a
+  config into the page (`tests/page_dump.js`) and compares: with the page's own job the histograms agree to 3e-12
+  (drawn hall with diffraction, with 90 degree loudspeakers) and 2e-14 (3-D hall, BRAS CR3 example); the config is
+  read as the page reads it, except that the page ignores "c" of a config (it computes with 343 m/s). New
+  regression check `engine_js`. Not covered yet: measured directivity, seat dip in 3-D halls. The Python tools
+  (`calibrate.py`, `run.py`, the hall checks) are NOT switched to it yet.
 - Page: **Calibrate…** combines the positions by the median (as `calibrate.py`; the mean before). The calibration
   record gets `avg` and its note states that drawn halls need separate calibrations for the page and Python.
 - Timing diagnostic (`validation/timing.py`, `validation/timing_js.py`, `validation/timing.md`): 86 - 87 % of the

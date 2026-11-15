@@ -28,7 +28,9 @@ By LABO 1557 (Dong-Gyun You).
   `calibrate.py` (fit absorption to measured T30), `validate_bras.py` (diffraction check against BRAS),
   `obj_to_hall.py` (3D OBJ hall → drawn hall the page can open), `validate_fratoni.py` (room criteria against
   two measured halls), `validate_bras_cr.py` (room criteria and early reflections position by position against
-  measured RIRs of two real halls, BRAS CR3 / CR4).
+  measured RIRs of two real halls, BRAS CR3 / CR4), `engine_js.py` (the page's engine called from Python through
+  Node: the same energy histograms as the page; the Python tools above still compute with pyroomacoustics, which
+  scatters differently in drawn halls, see `validation/detmold_js.md`).
 
 ## Accuracy and limits — read before using the results
 - **It does not claim to reproduce a real hall.** Room-acoustic simulation tools differ noticeably from

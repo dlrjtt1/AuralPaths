@@ -26,6 +26,8 @@ Checks (name: what it guards):
                energy floor brir_proto.RT_ENERGY_THRES and of the pyroomacoustics version)
   rays_energy  ray-traced energy of both tracers in a scattering shoebox against exact image sources: scattering must
                not create energy (validation/check_rays_energy.py; pyroomacoustics' diffuse rain is switched off)
+  engine_js    engine_js.py (the browser engine called from Python) gives the page's own histograms for the fan hall,
+               and reads the config as the page does (validation/check_engine_js.py; needs playwright, else skipped)
   calibrate    calibrate.py reaches the synthetic example T30 within 2 % in at most 6 iterations
 Literature checks against measured halls (BRAS, Fratoni) need the datasets and are not run here; see validation/.
 """
@@ -165,6 +167,17 @@ def c_rays_energy():
     return json.loads(run([PY, "validation/check_rays_energy.py", "--json"]).strip().splitlines()[-1])
 
 
+def c_engine_js():
+    try:
+        o = json.loads(run([PY, "validation/check_engine_js.py", "examples/fan_hall_config.json", "--json"]).strip().splitlines()[-1])
+    except RuntimeError as e:
+        if "Cannot find module 'playwright'" in str(e) or "Executable doesn't exist" in str(e):
+            return None
+        raise
+    return {"max_rel_hist_diff": o["max_rel_hist_diff"], "param_diffs": float(len(o["param_diffs"])),
+            "max_material_diff": o["max_material_diff"], "paths": float(o["paths"])}
+
+
 def c_calibrate():
     with tempfile.TemporaryDirectory() as d:
         out = run([PY, "calibrate.py", "examples/fan_hall_config.json", "examples/calibration_measurements_example.csv",
@@ -180,7 +193,7 @@ CHECKS = {"page": c_page, "page_load": c_page_load, "specular": c_specular, "dif
           "diffraction_plate": c_diffraction_plate,
           "diffraction_order2": c_diffraction_order2, "seatdip": c_seatdip,
           "rays_split": c_rays_split, "box_js": c_box_js, "box_py": c_box_py, "rays_energy": c_rays_energy,
-          "calibrate": c_calibrate}
+          "engine_js": c_engine_js, "calibrate": c_calibrate}
 SLOW = {"calibrate"}
 
 
