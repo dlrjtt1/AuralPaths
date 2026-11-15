@@ -20,6 +20,10 @@ files.
   as with pyroomacoustics (Arvedi C80 within 0.3 dB of the earlier bias, EDT 3 - 7 points longer; Arni decay times
   3 - 6 points longer, C80 0.1 - 0.3 dB closer); Detmold needs factors of 1.00 - 1.20 instead of 0.71 - 0.94. The
   documented numbers of the hall checks and of `docs/BENCHMARK_*` are still those of the Python engine.
+- Scattering model as a diagnostic (`GEOM.rays` `mix: true / false`, `--mix either|mix`): Arvedi and Arni with the
+  either-or model of the drawn halls (`validation/engine_js_halls.md`). Arvedi: EDT error unchanged (simulated
+  EDT / T30 1.08 with both, measured 0.84 - 0.92). Arni: EDT / T30 0.96 - 0.98 with either-or, 0.88 - 0.94 with the
+  mixed direction, measured 0.91 - 0.96. No model closer in all halls; defaults unchanged.
 - Page: **Calibrate…** combines the positions by the median (as `calibrate.py`; the mean before). The calibration
   record gets `avg` and its note states that drawn halls need separate calibrations for the page and Python.
 - Timing diagnostic (`validation/timing.py`, `validation/timing_js.py`, `validation/timing.md`): 86 - 87 % of the

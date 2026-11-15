@@ -51,6 +51,42 @@ scattering (`detmold_js.md`). EDT at the calibration positions (not fitted): mea
 10.9 %). The binaural comparison of `detmold_kh.md` (136 pairs, KH 120) is not rerun: BRIRs are still rendered by
 the Python engine.
 
+## Either-or scattering in the 3-D halls (`--mix either`, diagnostic; conditions fixed before the run)
+
+The 3-D halls scatter by the mixed direction by default. Same runs with the either-or model of the drawn halls
+(a reflection is specular or Lambert with probability s), each calibrated on T30 by itself.
+
+Arvedi S0, 65 receivers (125 / 250 / 500 / 1k / 2k / 4k Hz):
+
+| | mixed direction (default) | either-or |
+|---|---|---|
+| EDT bias | +24 / +23 / +18 / +19 / +28 / +35 % | +30 / +25 / +21 / +21 / +28 / +30 % |
+| C80 bias | +2.49 / +0.33 / -0.29 / +0.04 / -0.58 / -0.88 dB | +2.35 / +0.53 / -0.03 / +0.35 / +0.04 / -0.10 dB |
+| C80 within 1 JND | 11 / 72 / 45 / 65 / 48 / 45 % | 25 / 68 / 38 / 65 / 42 / 60 % |
+| T20 bias | -2 / +3 / +1 / +1 / +2 / +4 % | +3 / +2 / -2 / -1 / -0 / +5 % |
+| EDT / T30 simulated, 500 / 1k / 2k Hz (measured 0.92 / 0.90 / 0.84) | 1.08 / 1.08 / 1.08 | 1.11 / 1.08 / 1.08 |
+| calibration factor | 1.69 / 1.37 / 1.42 / 1.50 / 1.35 / 1.06 | 1.62 / 1.37 / 1.43 / 1.50 / 1.38 / 1.08 |
+
+Arni, 185 pairs (125 / 250 / 500 / 1k / 2k / 4k Hz):
+
+| | mixed direction (default) | either-or |
+|---|---|---|
+| T30 bias | +14 / +25 / +10 / +4 / +3 / +1 % | +6 / +16 / +4 / -2 / -2 / -6 % |
+| EDT bias | +3 / +22 / +7 / +2 / +1 / -2 % | +4 / +26 / +12 / +4 / +1 / -5 % |
+| EDT / T30 simulated (measured 1.00 / 0.93 / 0.91 / 0.92 / 0.95 / 0.96) | 0.89 / 0.88 / 0.88 / 0.90 / 0.93 / 0.94 | 0.96 / 0.97 / 0.97 / 0.98 / 0.98 / 0.97 |
+| C80 bias | +0.34 / -0.97 / +0.17 / +0.02 / +0.31 / -0.06 dB | +0.18 / -1.29 / -0.24 / -0.18 / +0.22 / +0.21 dB |
+| C80 within 1 dB | 43 / 48 / 58 / 93 / 88 / 93 % | 49 / 36 / 50 / 93 / 91 / 95 % |
+| calibration factor | 3.90 / 1.31 / 2.97 / 3.41 / 4.09 / 6.00 | 2.99 / 0.97 / 1.84 / 2.50 / 3.39 / 5.92 |
+
+- Arvedi: the scattering model does not touch the EDT error. In both the simulated EDT is LONGER than T30 (ratio
+  1.08), the measured one shorter (0.84 - 0.92). C80 at 2 - 4 kHz has less bias with the either-or model (-0.1
+  against -0.9 dB at 4 kHz), the share within 1 JND does not move consistently.
+- Arni: the mixed direction gives the measured relation of early to late decay (0.88 - 0.94, measured 0.91 - 0.96),
+  the either-or model hardly any difference between them (0.96 - 0.98). T30 of the predicted states is off by
+  about the same amount with opposite sign; C80 about the same.
+- With Detmold (`detmold_js.md`, a tie): no model is closer to the measurements in all three halls. The only clear
+  difference is the EDT / T30 ratio in Arni, in favour of the mixed direction. Defaults unchanged.
+
 ## Reading
 
 - In the 3-D halls the two engines give the same T30 with the same materials (Arvedi start values within 1.5 %) and
