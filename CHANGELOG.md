@@ -4,6 +4,11 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- `make_stimuli.py`: `"brir_sofa"` takes the SOFA file the page exports instead of a folder of WAV files, so that
+  the listening-test stimuli are built from exactly the BRIRs the page plays (its provenance record and the file's
+  hash go into the manifest). Checked on the fan hall: the BRIRs read from the SOFA equal the page's arrays, and the
+  stimuli equal those made from the same BRIRs as WAV files. `tests/page_export_sofa.js` saves the page's export
+  headless (with a local copy of h5wasm where the CDN is not reachable).
 - `engine_js.py`: sources with measured directivity (polar CSV, SOFA, inline balloon). The page's table model gets
   the data `brir_proto.dir_model` read; band amplitudes of both engines agree to 1e-12 dB
   (`validation/check_engine_js_dir.py`, regression check `engine_js_dir`). `validation/opera_check.py --engine js`

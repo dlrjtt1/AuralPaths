@@ -3,9 +3,12 @@ Stimulus builder for the listening tests (both stages of the study).
 
     python make_stimuli.py stimuli_config.json
 
-Input: a folder of path-separated BRIRs named {seat}_{path}.wav (2-channel, time zero = emission,
-no headphone EQ). The folder may come from AuralPaths (out/brir/) or from KU100 measurements; the
-procedure below is the same for both, so the two stages differ only in where the BRIRs came from.
+Input: path-separated BRIRs (2-channel, time zero = emission, no headphone EQ), either
+  "brir_dir":  a folder of {seat}_{path}.wav, from run.py (out/brir/) or from KU100 measurements, or
+  "brir_sofa": the SOFA file the page writes with "Export BRIRs (SOFA)" (SingleRoomSRIR: one measurement per
+               seat x source, the order in the file's Comment). The stimuli are then made of exactly the BRIRs
+               the page plays; seats and paths are the page's ids (e.g. seats L, C, R; paths S_amp, B_L, B_R).
+The procedure below is the same for all, so the two stages differ only in where the BRIRs came from.
 
 Per seat and condition (ITDG x level ratio):
   path A signal  = (sum of path_A_inputs) * BRIR_A
@@ -62,6 +65,26 @@ def read_wav(path, fs=None, channels=None):
     return x.T, f
 
 
+def read_sofa_brirs(path):
+    """BRIRs of a SOFA file written by the page: ({(seat id, source id): [2, N]}, fs, provenance or None).
+    The measurement names "<seat> | <source> (<label>)" are in the JSON of the global Comment attribute."""
+    import sofar
+    s = sofar.read_sofa(path, verify=False, verbose=False)
+    ir = np.asarray(s.Data_IR, float)
+    try:
+        c = json.loads(s.GLOBAL_Comment)
+        names = c["measurements"]
+    except (ValueError, KeyError, TypeError):
+        sys.exit(f"{path}: no measurement list in the Comment attribute; expected a SOFA file exported by the AuralPaths page.")
+    if len(names) != ir.shape[0] or ir.shape[1] != 2:
+        sys.exit(f"{path}: {ir.shape[0]} measurements x {ir.shape[1]} receivers, {len(names)} names; expected two ears per name.")
+    out = {}
+    for m, n in enumerate(names):
+        seat, rest = n.split(" | ", 1)
+        out[(seat.strip(), rest.split(" (", 1)[0].strip())] = ir[m]
+    return out, int(round(float(np.atleast_1d(s.Data_SamplingRate)[0]))), c.get("provenance")
+
+
 def onset(x, fs, thr_db):
     """Onset of a 2-channel BRIR: first sample within thr_db of the peak, earlier ear (seconds)."""
     a = np.max(np.abs(x), axis=0)
@@ -94,14 +117,24 @@ def main(cfg_path):
     os.makedirs(out, exist_ok=True)
 
     # BRIRs
-    brir_dir, fs = P(cfg["brir_dir"]), None
-    H = {}
-    for s in seats:
-        for k, name in paths.items():
-            p = os.path.join(brir_dir, f"{s}_{name}.wav")
-            if not os.path.exists(p):
-                sys.exit(f"missing BRIR {p}")
-            H[(s, k)], fs = read_wav(p, fs, 2)
+    fs, H, sofa, sofa_prov = None, {}, None, None
+    if cfg.get("brir_sofa"):
+        sofa = P(cfg["brir_sofa"])
+        B, fs, sofa_prov = read_sofa_brirs(sofa)
+        for s in seats:
+            for k, name in paths.items():
+                if (s, name) not in B:
+                    sys.exit(f"{sofa}: no BRIR for seat {s}, source {name}; the file has "
+                             + ", ".join(sorted({f'{a}|{b}' for a, b in B})))
+                H[(s, k)] = B[(s, name)]
+    else:
+        brir_dir = P(cfg["brir_dir"])
+        for s in seats:
+            for k, name in paths.items():
+                p = os.path.join(brir_dir, f"{s}_{name}.wav")
+                if not os.path.exists(p):
+                    sys.exit(f"missing BRIR {p}")
+                H[(s, k)], fs = read_wav(p, fs, 2)
     # dry signals (mono; a stereo file is summed to mono)
     dry = {}
     for k, p in cfg["dry"].items():
@@ -197,7 +230,8 @@ def main(cfg_path):
         "config": cfg, "config_sha256": sha256(cfg_path),
         "code_sha256": {f: sha256(os.path.join(HERE, f)) for f in ("make_stimuli.py", "brir_proto.py")},
         "fs": fs, "length_samples": length,
-        "brir_files_sha256": {f"{s}_{n}.wav": sha256(os.path.join(brir_dir, f"{s}_{n}.wav")) for s in seats for n in paths.values()},
+        **({"brir_sofa_sha256": sha256(sofa), "brir_sofa_provenance": sofa_prov} if sofa else
+           {"brir_files_sha256": {f"{s}_{n}.wav": sha256(os.path.join(brir_dir, f"{s}_{n}.wav")) for s in seats for n in paths.values()}}),
         "brir_manifest": json.load(open(P(bm), encoding="utf-8")) if bm and os.path.exists(P(bm)) else None,
         "dry_sha256": {k: sha256(P(p)) for k, p in cfg["dry"].items()},
         "headphone_filter": {"file": hp, "sha256": sha256(P(hp)), "name": hpcf[1]} if hpcf else None,

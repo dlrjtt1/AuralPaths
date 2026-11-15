@@ -1,5 +1,5 @@
 {
- "_note": "Example for make_stimuli.py. Paths are relative to this file. Replace dry files with the real recordings (mono, same sample rate as the BRIRs). For stage 2, point brir_dir to the measured KU100 BRIRs named {seat}_{path}.wav.",
+ "_note": "Example for make_stimuli.py. Paths are relative to this file. Replace dry files with the real recordings (mono, same sample rate as the BRIRs). For stage 2, point brir_dir to the measured KU100 BRIRs named {seat}_{path}.wav. Instead of brir_dir: \"brir_sofa\": \"<file>.sofa\" takes the BRIRs the page exports (Export BRIRs (SOFA)); seats and paths are then the page's ids.",
  "brir_dir": "../out/brir",
  "brir_manifest": "../out/manifest.json",
  "paths": {
