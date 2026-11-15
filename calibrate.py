@@ -70,7 +70,7 @@ def read_measurements(path):
     return pos
 
 
-def simulate(cfg, pos, src_dir, engine="js"):
+def simulate(cfg, pos, src_dir, engine="js", mix=None):
     """Simulated T30 and EDT per band for every calibration position (omni receiver, energy histogram)."""
     out = {}
     if engine == "js":
@@ -86,7 +86,8 @@ def simulate(cfg, pos, src_dir, engine="js"):
         first = next(iter(cfg["sources"][s]["pos"] for s in bp.source_names(cfg)))   # seed point of a 3-D room, as before
         c["sources"] = {"CAL_SEED": {"pos": list(first)}, **{f"CAL_S{i}": {"pos": list(s)} for i, s in enumerate(srcs)}}
         c["receivers"] = {f"CAL_R_{lab}": pos[lab]["rec"] for lab in pos}
-        H, centers = engine_js.hists(c, {f"CAL_S{i}": [f"CAL_R_{lab}" for lab in labs] for i, labs in enumerate(srcs.values())})
+        H, centers = engine_js.hists(c, {f"CAL_S{i}": [f"CAL_R_{lab}" for lab in labs] for i, labs in enumerate(srcs.values())},
+                                     mix=None if mix is None else mix == "mix")
         for i, labs in enumerate(srcs.values()):
             for lab in labs:
                 h = H[(f"CAL_S{i}", f"CAL_R_{lab}")]
@@ -191,6 +192,9 @@ def main():
     ap.add_argument("--engine", choices=("js", "python"), default="js",
                     help="js: the page's engine through Node (engine_js.py; default since 2026-11-15); "
                          "python: pyroomacoustics (the engine of the results documented before)")
+    ap.add_argument("--mix", choices=("either", "mix"), default=None,
+                    help="diagnostic, --engine js only: scattering model instead of the hall type's default (drawn: either a "
+                         "specular or a Lambert reflection with probability s; 3-D: mixed direction)")
     ap.add_argument("--avg", choices=("mean", "median", "summed"), default="median",
                     help="combination of the positions: median (default), mean, or T30 of the summed decay")
     a = ap.parse_args()
@@ -215,7 +219,7 @@ def main():
     print(f"Calibrating {', '.join(base)} on {len(pos)} position(s), --avg {a.avg}; measured {'median' if a.avg == 'median' else 'mean'} T30: " +
           ", ".join(f"{b}: {t:.2f}" for b, t in zip(BANDS, meas_T)))
 
-    sim0 = simulate(cfg, pos, a.source_directivity, a.engine)
+    sim0 = simulate(cfg, pos, a.source_directivity, a.engine, a.mix)
     history, sim, cur = [], sim0, cfg
     for it in range(a.iter):
         T = combine(sim, BANDS, a.avg)
@@ -228,7 +232,7 @@ def main():
         step = np.where(np.isnan(err), 1.0, T / meas_T)
         k = np.where(ok, k, k * step)
         cur = set_alpha(cfg, base, k)
-        sim = simulate(cur, pos, a.source_directivity, a.engine)
+        sim = simulate(cur, pos, a.source_directivity, a.engine, a.mix)
     T1 = combine(sim, BANDS, a.avg)
 
     out = a.out or os.path.splitext(a.config)[0] + "_calibrated.json"
@@ -241,6 +245,7 @@ def main():
         "positions": list(pos), "adjusted_groups": list(base), "bands_hz": BANDS,
         "avg": a.avg,
         "engine": "browser engine through Node (engine_js.py)" if a.engine == "js" else "pyroomacoustics (brir_proto)",
+        **({"scattering_model": a.mix} if a.mix else {}),
         "factors": [round(float(x), 4) for x in k],
         "T30_measured_mean_s": [None if np.isnan(x) else round(float(x), 3) for x in meas_T],
         "T30_sim_before_s": [round(float(x), 3) for x in combine(sim0, BANDS, a.avg)],

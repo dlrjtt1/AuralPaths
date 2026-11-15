@@ -49,7 +49,7 @@ const G=GEOM.build(j.drawn),out={};
 for(const [name,S] of Object.entries(j.srcs)){
   const dm=S.dir?GEOM.dirModel(S.dir,j.bands):null;
   const I=GEOM.ism(G,S.pos,S.recs,j.order,0.25,j.c,j.mats,j.air,j.bands,null);
-  const RT=GEOM.rays(G,S.pos,S.recs,{n:j.n,c:j.c,seed:S.seed,nSect:dm?64:0,mix:j.mix},j.mats,j.air);
+  const RT=GEOM.rays(G,S.pos,S.recs,{n:j.n,c:j.c,seed:S.seed,nSect:dm?64:0,mix:j.mix?true:null},j.mats,j.air);
   out[name]=S.recs.map((r,k)=>{
     const list=I[k].map((q)=>{if(!dm)return q;const a=dm.amp(q.e||[0,-1,0]);return {...q,g:Array.from(q.g,(v,b)=>v*a[b])};});
     const Hi=Array.from({length:nb},()=>new Float64Array(HN));

@@ -127,7 +127,7 @@ def config(src, rec, out, posthoc=False, detail=None):
 RESUME = [False]
 
 
-ENGINE = ["js"]
+ENGINE = ["js", None]
 
 
 def compare(cfg, src, rec, H, s, label, out):
@@ -137,7 +137,7 @@ def compare(cfg, src, rec, H, s, label, out):
     if ENGINE[0] == "js":
         import engine_js
         try:
-            Hs, cen = engine_js.energy_hists(cfg, s, list(rec), t_max=2.0, n_rays=RAYS)
+            Hs, cen = engine_js.energy_hists(cfg, s, list(rec), t_max=2.0, n_rays=RAYS, mix=ENGINE[1])
         except NotImplementedError as e:
             print(f"{label}: skipped with --engine js ({e}); run it with --engine python")
             return
@@ -173,6 +173,9 @@ def main():
     ap.add_argument("data")
     ap.add_argument("--out", default=os.path.join(ROOT, "out", "arvedi"))
     ap.add_argument("--skip-cal", action="store_true")
+    ap.add_argument("--mix", choices=("either", "mix"), default=None,
+                    help="diagnostic, --engine js only: scattering model instead of the hall type's default (drawn: either a "
+                         "specular or a Lambert reflection with probability s; 3-D: mixed direction)")
     ap.add_argument("--engine", choices=("js", "python"), default="js",
                     help="js: the page's engine through Node (engine_js.py; default since 2026-11-15); "
                          "python: pyroomacoustics (the engine of the results documented before)")
@@ -189,6 +192,7 @@ def main():
     a = ap.parse_args()
     RESUME[0] = a.resume
     ENGINE[0] = a.engine
+    ENGINE[1] = None if a.mix is None else a.mix == "mix"
     if a.posthoc:
         TURN[:] = (-1.0, -1.0, 1.0)
         if a.out == os.path.join(ROOT, "out", "arvedi"):
@@ -221,7 +225,7 @@ def main():
         if a.detail:          # prediction before calibration, then only the seating is calibrated (item 15)
             compare(bp.load_config(os.path.join(a.out, "config.json")), src, rec, H, "S0", "S0_uncalibrated", a.out)
         subprocess.run([sys.executable, os.path.join(ROOT, "calibrate.py"), os.path.join(a.out, "config.json"), t30,
-                        "--out", cal, "--iter", "6", "--avg", a.avg, "--engine", a.engine] + (["--adjust", "aud"] if a.detail else []), check=True, cwd=ROOT)
+                        "--out", cal, "--iter", "6", "--avg", a.avg, "--engine", a.engine] + (["--mix", a.mix] if a.mix else []) + (["--adjust", "aud"] if a.detail else []), check=True, cwd=ROOT)
     cfg = bp.load_config(cal)
     print(f"model volume {bp._geom(cfg).get('volume', float('nan')):.0f} m3 (published 5300 m3)")
     compare(cfg, src, rec, H, "S0", "S0_primary", a.out)

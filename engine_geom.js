@@ -602,7 +602,7 @@ const GEOM = (() => {
   function rays(G, src, recs, opts, mats, air) {
     // k0 / k1: trace only rays k0 ... k1 - 1 of the n (each ray has its own random stream and the directions are
     // stratified over all n, so the parts of several workers add up to exactly the single-run result)
-    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null, tEarly = null, k0 = 0, k1 = n, log = 0, nSect = 0, tSect = 0.25, mix = false } = opts, NB = air.length;
+    const { n = 20000, c = 343, tMax = 2.5, bin = 0.001, radius = 0.5, seed = 1, tLate = null, tEarly = null, k0 = 0, k1 = n, log = 0, nSect = 0, tSect = 0.25, mix = null } = opts, NB = air.length;
     // nSect > 0 (directional sources): the receiver energy before tSect is also kept per launch sector (nSect Fibonacci
     // directions), so that the page can weight the early ray-traced energy by the radiation pattern afterwards
     // (without tracing again when the aim or the directivity changes); after tSect the pattern's mean, 1 / Q, is used
@@ -691,7 +691,7 @@ const GEOM = (() => {
         for (let b = 0; b < NB; b++) { e[b] *= P[b]; if (e[b] > emax) emax = e[b]; }
         if (emax < e0 * 1e-7) break;
         const sc = mats[s.mat].s; let scat, blend = -1;
-        if (G.mesh || mix) { // mesh halls (and drawn halls with opts.mix, diagnostic): as the pyroomacoustics tracer used by the Python mesh path (libroom room.cpp), the new
+        if (mix == null ? G.mesh : mix) { // mesh halls (opts.mix = true / false overrides the hall type, diagnostic): as the pyroomacoustics tracer used by the Python mesh path (libroom room.cpp), the new
           // direction is the normalised mix s*Lambert + (1-s)*specular with s the mean over bands; no energy split
           let p = 0; if (Array.isArray(sc)) { for (let b = 0; b < NB; b++) p += sc[Math.min(b, sc.length - 1)]; p /= NB; } else p = sc;
           blend = p; scat = p > 0; qc *= 1 - p;

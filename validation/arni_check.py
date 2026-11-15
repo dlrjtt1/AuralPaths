@@ -106,6 +106,9 @@ def main():
     ap.add_argument("data"); ap.add_argument("--out", default=os.path.join(ROOT, "out", "arni"))
     ap.add_argument("--per-nc", type=int, default=4); ap.add_argument("--rays", type=int, default=10000)
     ap.add_argument("--skip-cal", action="store_true"); ap.add_argument("--resume", action="store_true")
+    ap.add_argument("--mix", choices=("either", "mix"), default=None,
+                    help="diagnostic, --engine js only: scattering model instead of the hall type's default (drawn: either a "
+                         "specular or a Lambert reflection with probability s; 3-D: mixed direction)")
     ap.add_argument("--engine", choices=("js", "python"), default="js",
                     help="js: the page's engine through Node (engine_js.py; default since 2026-11-15); "
                          "python: pyroomacoustics (the engine of the results documented before)")
@@ -130,7 +133,7 @@ def main():
                     w.writerow([f"S-{mic}", *am.SRC, *p, b, round(float(t), 4), round(float(e), 4)])
         subprocess.run([sys.executable, os.path.join(ROOT, "calibrate.py"), os.path.join(a.out, "config.json"),
                         os.path.join(a.out, "t30_cal.csv"), "--adjust", "shell,curtain", "--out", cal,
-                        "--avg", a.avg, "--engine", a.engine], check=True)
+                        "--avg", a.avg, "--engine", a.engine] + (["--mix", a.mix] if a.mix else []), check=True)
     cfg_cal = bp.load_config(cal)
     runs = [(55, 0)] + pick(H, setup, a.per_nc)
     res = os.path.join(a.out, "results.csv")
@@ -139,7 +142,8 @@ def main():
         f = os.path.join(a.out, f"sim_{nc}_{cb}.npz")
         if not (a.resume and os.path.exists(f)):
             eh = __import__("engine_js").energy_hists if a.engine == "js" else bp.energy_hists
-            Hs, cen = eh(with_setup(cfg_cal, setup[cb]), "S", list(am.MICS), t_max=2.0, n_rays=a.rays)
+            kw = {"mix": a.mix == "mix"} if a.engine == "js" and a.mix else {}
+            Hs, cen = eh(with_setup(cfg_cal, setup[cb]), "S", list(am.MICS), t_max=2.0, n_rays=a.rays, **kw)
             bi = [int(np.argmin(np.abs(np.asarray(cen) - b))) for b in BANDS]
             np.savez_compressed(f, **{m: np.asarray(Hs[m])[bi] for m in am.MICS})
         S = np.load(f)
