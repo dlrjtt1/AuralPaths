@@ -4,6 +4,8 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page: **Calibrate…** combines the positions by the median (as `calibrate.py`; the mean before). The calibration
+  record gets `avg` and its note states that drawn halls need separate calibrations for the page and Python.
 - Timing diagnostic (`validation/timing.py`, `validation/timing_js.py`, `validation/timing.md`): 86 - 87 % of the
   Python engine's time is pyroomacoustics' ray tracer; the browser tracer on one thread is about 16 (drawn hall) and
   80 (mesh) times faster at the same ray count, with similar noise per ray. On the page's default hall the time is

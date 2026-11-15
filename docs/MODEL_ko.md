@@ -335,8 +335,10 @@ doi:10.1121/1.2987429의 2채널 경우).
 모든 재료 그룹 또는 슈박스의 균일 흡음률, 최대 6회 반복). 선택 열 `role`에 `check`를 적은 위치는 맞춤에서 빠지고, 보정 전후
 T30 오차를 맞춤 위치와 나란히 보여 준다. 재료가 바뀌고, 기록은 config에 `_calibration`(calibrate.py와 같은 형식에 `engine`
 추가)으로 저장되며 *How far to trust these values*에 표시된다. **Undo calibration**으로 이전 재료로 되돌린다. 보정은 음원당
-광선을 30 000개 이상 쓴다(광선 10 000개에서는 CR3의 T30 대역 평균이 seed에 따라 최대 6% 달라졌다). Python으로 돌릴 config는
-`calibrate.py`로 다시 보정하는 편이 낫다. 실측 데이터로 된 예제: `examples/bras_cr3/`(BRAS CR3, LS1 × 5위치로 맞춤, LS2 × 5위치로
+광선을 30 000개 이상 쓴다(광선 10 000개에서는 CR3의 T30 대역 평균이 seed에 따라 최대 6% 달라졌다). 위치들은 중앙값으로 합친다(`calibrate.py`와 같음;
+2026-11-15 이전에는 평균). Python으로 돌릴 config는 `calibrate.py`로 다시 보정해야 한다: 그린 홀에서는 두 엔진의 산란 방식이 달라
+같은 T30에 필요한 흡음이 다르다(Detmold 1 kHz: 페이지 계수 0.97, Python 0.72; `validation/detmold_js.md`). 3D(OBJ) 홀에서는 약 2%
+이내로 일치한다. 실측 데이터로 된 예제: `examples/bras_cr3/`(BRAS CR3, LS1 × 5위치로 맞춤, LS2 × 5위치로
 확인, 약 8분): 맞춤 위치 2% 이내, 확인 위치 −1 … +7%(125 Hz–4 kHz T30, 보정 전 +5 … +14%).
 
 `python calibrate.py my_hall/config.json measurements.csv --source-directivity directivity/dodeca_NTi_DS3.csv`

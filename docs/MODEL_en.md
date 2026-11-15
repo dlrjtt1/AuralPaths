@@ -371,8 +371,10 @@ iterations). An optional column `role` with the value `check` keeps a position o
 and after is shown next to the fit positions. Materials are replaced, the record is saved in the config as
 `_calibration` (as calibrate.py writes it, plus `engine`) and shown in *How far to trust these values*; **Undo
 calibration** restores the previous materials. The calibration traces at least 30 000 rays per source (at 10 000
-rays the T30 band means of CR3 moved by up to 6 % between seeds). A config for Python runs is better calibrated
-again with `calibrate.py`. Demo with measured data: `examples/bras_cr3/` (BRAS CR3, LS1 × 5 positions fit, LS2 × 5
+rays the T30 band means of CR3 moved by up to 6 % between seeds). The positions are combined by the median (as
+`calibrate.py`; the mean before 2026-11-15). A config for Python runs must be calibrated again with `calibrate.py`:
+in drawn halls the two engines scatter differently and need different absorption for the same T30 (Detmold: factor
+0.97 in the page, 0.72 in Python at 1 kHz; `validation/detmold_js.md`); in 3-D (OBJ) halls they agree within about 2 %. Demo with measured data: `examples/bras_cr3/` (BRAS CR3, LS1 × 5 positions fit, LS2 × 5
 check; about 8 min): fit within 2 %, check −1 … +7 % (T30 at 125 Hz – 4 kHz, before: +5 … +14 %).
 
 `python calibrate.py my_hall/config.json measurements.csv --source-directivity directivity/dodeca_NTi_DS3.csv`

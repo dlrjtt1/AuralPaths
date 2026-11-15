@@ -346,8 +346,10 @@ JASA 124(5), doi:10.1121/1.2987429 の 2 チャンネルの場合)。
 位置はフィットから外れ、校正前後の T30 誤差をフィット位置と並べて示す。材料が置き換わり、記録は config に `_calibration`
 (calibrate.py と同じ形式に `engine` を追加)として保存され、*How far to trust these values* に表示される。**Undo calibration**
 で元の材料に戻す。校正では音源あたり 30 000 本以上の音線を
-使う(10 000 本では CR3 の T30 帯域平均が seed により最大 6% 変わった)。Python で計算する config は `calibrate.py` で校正し直す方が
-よい。実測データによる例: `examples/bras_cr3/`(BRAS CR3、LS1 × 5 位置でフィット、LS2 × 5 位置で確認、約 8 分): フィット位置 2% 以内、
+使う(10 000 本では CR3 の T30 帯域平均が seed により最大 6% 変わった)。位置は中央値でまとめる(`calibrate.py` と同じ;
+2026-11-15 以前は平均)。Python で計算する config は `calibrate.py` で校正し直す必要がある: 描いたホールでは二つのエンジンの散乱の扱いが
+異なり、同じ T30 に必要な吸音が異なる(Detmold 1 kHz: ページの係数 0.97、Python 0.72; `validation/detmold_js.md`)。3D(OBJ)ホールでは
+約 2% 以内で一致する。実測データによる例: `examples/bras_cr3/`(BRAS CR3、LS1 × 5 位置でフィット、LS2 × 5 位置で確認、約 8 分): フィット位置 2% 以内、
 確認位置 −1 … +7%(125 Hz–4 kHz の T30、校正前 +5 … +14%)。
 
 `python calibrate.py my_hall/config.json measurements.csv --source-directivity directivity/dodeca_NTi_DS3.csv`
