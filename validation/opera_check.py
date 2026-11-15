@@ -99,8 +99,12 @@ def config(layout, sofa, rays, ism, seats=False):
                          "ism_order": ism, "rays": rays, "diffraction": False}}
 
 
+ENGINE = ["js"]
+
+
 def run(cfg, src, recs, rays):
-    H, cen = bp.energy_hists(cfg, src, recs, t_max=3.0, n_rays=rays)
+    eh = __import__("engine_js").energy_hists if ENGINE[0] == "js" else bp.energy_hists
+    H, cen = eh(cfg, src, recs, t_max=3.0, n_rays=rays)
     bi = [int(np.argmin(np.abs(np.asarray(cen) - b))) for b in BANDS]
     return {r: np.asarray(H[r])[bi] for r in recs}
 
@@ -140,11 +144,15 @@ def main():
     ap.add_argument("--seat-dip", action="store_true", help="engine seat-dip model on the direct sound (seatdip.py), row spacing 0.945 m")
     ap.add_argument("--scatter", type=float, help="scattering coefficient of all hard surfaces (wall, ceiling, front, "
                     "soffit), all bands; sensitivity test")
+    ap.add_argument("--engine", choices=("js", "python"), default="js",
+                    help="js: the page's engine through Node (engine_js.py; default since 2026-11-15); "
+                         "python: pyroomacoustics (the engine of the results documented before)")
     ap.add_argument("--avg", choices=("mean", "median"), default="median",
                     help="combination of the calibration seats; the runs documented before 2026-11-15 used mean")
     ap.add_argument("--start", help="config_cal.json of an earlier run: its calibrated absorption is the start value")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
+    ENGINE[0] = a.engine
     log = lambda s: print(s, flush=True)
     H = load(a.data)
     bal = balloon_8331a(a.sofa, os.path.join(os.path.dirname(a.out.rstrip("/")), "opera", "genelec_8331A_balloon.json"))

@@ -4,6 +4,10 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- `engine_js.py`: sources with measured directivity (polar CSV, SOFA, inline balloon). The page's table model gets
+  the data `brir_proto.dir_model` read; band amplitudes of both engines agree to 1e-12 dB
+  (`validation/check_engine_js_dir.py`, regression check `engine_js_dir`). `validation/opera_check.py --engine js`
+  (default).
 - BRAS CR3 / CR4, decay in time windows (`validation/bras_decay_shape.py`, `validation/bras_decay_shape.md`): with
   the measured halls' own 3-D models the energy of every window of the first 80 ms is within about 1.3 dB at
   500 Hz - 4 kHz. The Arvedi deficit at 20 - 80 ms is a property of that model, not of the engine.

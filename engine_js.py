@@ -11,8 +11,9 @@ validation/check_engine_js.py compares the result with the page itself.
 Why: the page is the reference engine of the project; pyroomacoustics (brir_proto.energy_hists) scatters differently
 in drawn halls and is 16 - 80 times slower (validation/timing.md, validation/detmold_js.md).
 
-Not covered yet (NotImplementedError): sources with measured directivity ("directivity": CSV / SOFA / balloon),
-the seat dip in 3-D (OBJ) halls. Needs `node` on the PATH.
+Sources: omnidirectional, the generic coverage pattern, or measured directivity ("directivity": polar CSV, SOFA or
+inline balloon; validation/check_engine_js_dir.py). Not covered yet (NotImplementedError): the seat dip in 3-D (OBJ)
+halls. Needs `node` on the PATH.
 """
 import json
 import os
@@ -77,10 +78,20 @@ def page_params(cfg, n_rays=None, t_max=2.5, mix=None):
             "fs": int(cfg["fs"]), "HN": int(round(t_max / HB)), "HB": HB, "nSect": RAY_SECT, "mix": mix}
 
 
-def source_dir(cfg, src):
+def source_dir(cfg, src, bands):
+    """The page's directivity spec of a source (GEOM.dirModel): generic coverage pattern, or measured data as the
+    table the page builds from the same file (polars on a 1 degree grid, or a full-sphere balloon on a 5 degree grid;
+    read and resampled by brir_proto.dir_model, so both engines hold the same numbers)."""
     s = cfg["sources"][src]
     if s.get("directivity"):
-        raise NotImplementedError(f"engine_js: measured directivity of source {src} is not supported yet")
+        dm = bp.dir_model(cfg, src, np.asarray(bands, float))
+        aim = s.get("aim") or {}
+        if dm["kind"] == "balloon":
+            table = {"balloon": np.asarray(dm["balloon"]["db"], float).tolist()}
+        else:
+            table = {"h": np.asarray(dm["tab"]["h"], float).tolist(), "v": np.asarray(dm["tab"]["v"], float).tolist()}
+        table["diffuse"] = np.asarray(dm["diffuse"], float).tolist()
+        return {"az": float(aim.get("az", 0.0)), "el": float(aim.get("el", 0.0)), "table": table}
     if s.get("coverage") and 0 < float(s["coverage"]) < 360:
         aim = s.get("aim") or {}
         return {"az": float(aim.get("az", 0.0)), "el": float(aim.get("el", 0.0)), "cov": float(s["coverage"])}
@@ -108,7 +119,7 @@ def hists(cfg, paths, n_rays=None, seed=None, t_max=2.5, return_resid=False, mix
     job["srcs"] = {s: {"pos": [float(x) for x in cfg["sources"][s]["pos"]],
                        "recs": [[float(x) for x in cfg["receivers"][r]] for r in recs],
                        "seed": int(seed) if seed is not None else zlib.crc32(f"{s}|*".encode()) % 2 ** 31,
-                       "dir": source_dir(cfg, s)} for s, recs in paths.items()}
+                       "dir": source_dir(cfg, s, job["bands"])} for s, recs in paths.items()}
     O = run_job(job)
     H = {(s, r): np.array(O[s][k]["hist"]) for s, recs in paths.items() for k, r in enumerate(recs)}
     cen = np.array(job["bands"])

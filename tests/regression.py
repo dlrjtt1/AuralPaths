@@ -28,6 +28,8 @@ Checks (name: what it guards):
                not create energy (validation/check_rays_energy.py; pyroomacoustics' diffuse rain is switched off)
   engine_js    engine_js.py (the browser engine called from Python) gives the page's own histograms for the fan hall,
                and reads the config as the page does (validation/check_engine_js.py; needs playwright, else skipped)
+  engine_js_dir  measured directivity (polar CSV, SOFA balloon) gives the same band amplitudes in the browser engine
+               as in Python when passed through engine_js.py (validation/check_engine_js_dir.py)
   calibrate    calibrate.py reaches the synthetic example T30 within 2 % in at most 6 iterations
 Literature checks against measured halls (BRAS, Fratoni) need the datasets and are not run here; see validation/.
 """
@@ -178,6 +180,11 @@ def c_engine_js():
             "max_material_diff": o["max_material_diff"], "paths": float(o["paths"])}
 
 
+def c_engine_js_dir():
+    o = json.loads(run([PY, "validation/check_engine_js_dir.py", "--json"]).strip().splitlines()[-1])
+    return {"max_amp_diff_db": o["max_amp_diff_db"], "max_diffuse_diff_db": o["max_diffuse_diff_db"], "files": float(o["files"])}
+
+
 def c_calibrate():
     with tempfile.TemporaryDirectory() as d:
         out = run([PY, "calibrate.py", "examples/fan_hall_config.json", "examples/calibration_measurements_example.csv",
@@ -193,7 +200,7 @@ CHECKS = {"page": c_page, "page_load": c_page_load, "specular": c_specular, "dif
           "diffraction_plate": c_diffraction_plate,
           "diffraction_order2": c_diffraction_order2, "seatdip": c_seatdip,
           "rays_split": c_rays_split, "box_js": c_box_js, "box_py": c_box_py, "rays_energy": c_rays_energy,
-          "engine_js": c_engine_js, "calibrate": c_calibrate}
+          "engine_js": c_engine_js, "engine_js_dir": c_engine_js_dir, "calibrate": c_calibrate}
 SLOW = {"calibrate"}
 
 

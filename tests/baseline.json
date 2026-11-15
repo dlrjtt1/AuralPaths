@@ -81,6 +81,18 @@
    "value": 12
   }
  },
+ "engine_js_dir": {
+  "files": {
+   "tol": 0,
+   "value": 2
+  },
+  "max_amp_diff_db": {
+   "max": 1e-09
+  },
+  "max_diffuse_diff_db": {
+   "max": 1e-09
+  }
+ },
  "page": {
   "up_to_date": {
    "min": 1
