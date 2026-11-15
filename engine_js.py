@@ -35,7 +35,7 @@ const G=j.geom.mesh?GEOM.buildMesh(Object.assign({},j.geom.mesh,{obj:GEOM.loadOb
 for(const [name,S] of Object.entries(j.srcs)){
   const m=Object.assign({},j,{recs:S.recs}),dm=S.dir?GEOM.dirModel(S.dir,j.bands):null;
   const I=GEOM.withDiffraction(G,E,S.pos,m,GEOM.ism(G,S.pos,S.recs,j.order,j.tWin,j.c,j.mats,j.air,j.bands,j.spec));
-  const RT=GEOM.rays(G,S.pos,S.recs,Object.assign({n:j.rays,c:j.c,seed:S.seed,nSect:dm?j.nSect:0},j.mix==null?{}:{mix:j.mix}),j.mats,j.air);
+  const RT=GEOM.rays(G,S.pos,S.recs,Object.assign({n:j.rays,c:j.c,seed:S.seed,tMax:j.HN*j.HB,nSect:dm?j.nSect:0},j.mix==null?{}:{mix:j.mix}),j.mats,j.air);
   out[name]=S.recs.map((r,k)=>{const h=GEOM.pathHist(I[k],{H:RT.H[k],HS:RT.HS?RT.HS[k]:null,sect:RT.sect,nSb:RT.nSb},dm,j.HN,j.HB);
     return {hist:h.hist.map((a)=>Array.from(a)),resid:j.resid?h.resid.map((a)=>Array.from(a)):null};});
   out[name].escaped=RT.escaped;

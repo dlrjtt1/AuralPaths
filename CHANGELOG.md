@@ -8,6 +8,9 @@ files.
   the data `brir_proto.dir_model` read; band amplitudes of both engines agree to 1e-12 dB
   (`validation/check_engine_js_dir.py`, regression check `engine_js_dir`). `validation/opera_check.py --engine js`
   (default).
+  Arvedi (4292-L, Genelec 8020A) and OperaRIR (8331A) rerun: same findings as with pyroomacoustics
+  (`validation/engine_js_halls.md`). Fix: the bridge passes `t_max` to the ray tracer (histograms longer than
+  2.5 s ended early).
 - BRAS CR3 / CR4, decay in time windows (`validation/bras_decay_shape.py`, `validation/bras_decay_shape.md`): with
   the measured halls' own 3-D models the energy of every window of the first 80 ms is within about 1.3 dB at
   500 Hz - 4 kHz. The Arvedi deficit at 20 - 80 ms is a property of that model, not of the engine.

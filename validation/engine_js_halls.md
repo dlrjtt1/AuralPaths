@@ -22,8 +22,7 @@ T30 with the start materials: 2.83 / 2.09 / 2.10 / 2.26 / 2.01 / 1.47 s (125 Hz 
 | share within 1 JND, C80 | 11 / 72 / 45 / 65 / 48 / 45 % | 18 / 66 / 51 / 72 / 46 / 51 % |
 
 Same picture: T20 and C80 as before, EDT too long, by 3 - 7 points more than with pyroomacoustics. Not run with the
-page's engine: the seat-dip run and the runs with measured directivity (4292-L, Genelec 8020A), which the bridge
-does not cover yet. (The script also ran S1 - S4 with the generic 90 degree pattern of the config; these are not the
+page's engine: the seat-dip run (seat dip in 3-D halls is not covered by the bridge); measured directivity: below. (The script also ran S1 - S4 with the generic 90 degree pattern of the config; these are not the
 documented loudspeaker runs and are not reported.)
 
 ## Arni variable-acoustics room (3-D mesh), 37 states x 5 microphones, 10000 rays (as `arni_check.md`)
@@ -50,6 +49,37 @@ Factors 1.20 / 1.11 / 1.06 / 1.00 / 1.00 / 1.00 after one iteration (Python, med
 scattering (`detmold_js.md`). EDT at the calibration positions (not fitted): mean absolute error 11.3 % (Python
 10.9 %). The binaural comparison of `detmold_kh.md` (136 pairs, KH 120) is not rerun: BRIRs are still rendered by
 the Python engine.
+
+## Sources with measured directivity (added the same day, after `engine_js.py` got the table model)
+
+Arvedi (as `arvedi_check.md`: 4292-L polars for S0, Genelec 8020A manufacturer polars for S1 - S4), 65 receivers,
+bias at 500 Hz / 1 kHz / 2 kHz / 4 kHz:
+
+| run | page's engine: EDT | page's engine: C80 | Python: EDT | Python: C80 |
+|---|---|---|---|---|
+| S0, 4292-L polars | +18 / +21 / +24 / +34 % | -0.29 / -0.15 / -0.24 / -0.64 dB | +15 / +16 / +17 / +27 % | -0.49 / -0.16 / -0.60 / -0.95 dB |
+| S1 Genelec | +18 / +20 / +93 / +246 % | -0.51 / -0.59 / -2.25 / -3.03 dB | +20 / +20 / +79 / +196 % | -0.65 / -0.51 / -2.07 / -2.83 dB |
+| S2 | +23 / +35 / +119 / +169 % | -0.55 / -0.58 / -2.10 / -2.55 dB | +19 / +28 / +98 / +124 % | -0.71 / -0.54 / -1.86 / -2.14 dB |
+| S3 | +23 / +31 / +103 / +117 % | -0.40 / -0.35 / -1.59 / -1.63 dB | +25 / +33 / +97 / +98 % | -0.56 / -0.33 / -1.40 / -1.38 dB |
+| S4 | +21 / +27 / +92 / +146 % | -0.16 / -0.12 / -1.49 / -1.93 dB | +24 / +26 / +86 / +134 % | -0.29 / -0.02 / -1.20 / -1.74 dB |
+
+OperaRIR (as `opera_check.md`: Genelec 8331A balloon, 97 stalls seats, two sources, 5000 rays; seating and stage
+house calibrated on T30, median), all 194 pairs, 125 / 250 / 500 / 1k / 2k / 4k Hz:
+
+| | page's engine | Python (`out/opera`) |
+|---|---|---|
+| T30 bias | +8 / +1 / +3 / +2 / +2 / -0 % | +3 / -0 / +1 / +2 / -1 / -6 % |
+| EDT bias | -7 / -18 / -19 / -26 / -28 / -18 % | -8 / -15 / -12 / -20 / -23 / -12 % |
+| EDT / T30 simulated (measured 1.02 / 0.98 / 0.87 / 0.88 / 0.92 / 0.90) | 0.89 / 0.84 / 0.73 / 0.68 / 0.69 / 0.77 | 0.90 / 0.86 / 0.80 / 0.75 / 0.95 / 1.03 |
+| C80 bias | +1.86 / +2.39 / +1.66 / +1.67 / +2.48 / +2.25 dB | +1.74 / +2.13 / +1.36 / +1.39 / +3.16 / +2.98 dB |
+| C80 within 1 dB | 18 / 24 / 24 / 25 / 21 / 16 % | 18 / 19 / 21 / 21 / 13 / 13 % |
+
+Same findings with both engines: loudspeakers at 2 - 4 kHz in Arvedi (C80 1.5 - 3 dB low, EDT 2 - 3.5 times long)
+and the OperaRIR clarity (C80 1.7 - 2.5 dB high, EDT 18 - 28 % short) remain open, a little worse or better by
+0.2 - 0.7 dB depending on the band. A directional source is handled differently by the two (the page weights the
+early ray energy per launch sector, Python every ray), which is one seed's noise plus that approximation here.
+Fix made on the way: the bridge now passes the histogram length to the ray tracer (with `t_max` above 2.5 s the
+histogram ended early and gave no criteria; none of the runs above this section used more than 2.5 s).
 
 ## Either-or scattering in the 3-D halls (`--mix either`, diagnostic; conditions fixed before the run)
 
