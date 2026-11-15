@@ -42,3 +42,28 @@ Reading:
   model must not be used with the other.
 - EDT at 500 Hz is 7 - 10 % long in all three, i.e. not a matter of the scattering model.
 - No reason from this hall to change the page's default (either-or in drawn halls).
+
+## Decay in time windows (`validation/detmold_decay_shape.py`, 2026-11-15)
+
+As for Arvedi (`arvedi_placement.md`, section 2): mean over the 24 positions of the unit-energy histograms from the
+direct sound on, loudspeaker as in the hall check, 80000 rays, the calibrated materials above. Energy per window,
+simulated minus measured (dB), page default (either-or):
+
+| band | 0 - 5 ms | 5 - 20 ms | 20 - 50 ms | 50 - 80 ms | 80 - 120 ms | 120 - 200 ms | 200 - 300 ms | 300 - 500 ms |
+|---|---|---|---|---|---|---|---|---|
+| 250 Hz | +4.2 | -3.2 | -0.1 | +0.2 | +0.3 | +0.3 | +0.3 | +0.2 |
+| 500 Hz | +0.0 | +0.5 | -0.5 | +0.1 | -0.1 | -0.3 | +0.5 | +0.7 |
+| 1 kHz | -0.3 | +0.3 | -0.2 | +0.7 | +0.2 | -0.6 | +0.1 | +0.0 |
+| 2 kHz | +1.3 | -0.9 | -0.9 | +0.4 | -0.7 | -1.1 | -0.1 | +0.0 |
+| 4 kHz | +1.1 | -1.2 | -0.5 | +0.7 | -0.5 | -1.4 | -0.2 | -0.0 |
+
+Mixed direction: within 1.2 dB in every window at 500 Hz - 4 kHz as well. Backward-integrated decay of the mean
+histogram, either-or: within 0.2 dB at 500 Hz - 1 kHz and 0.8 dB at 2 - 4 kHz from 20 to 500 ms.
+
+- In this hall the mean energy of every window of the first 80 ms is right within about 1 dB at 500 Hz - 4 kHz;
+  Arvedi has -4 ... -5 dB at 20 - 50 ms. The drawn (2.5-D) model holds the reflections that matter here: a hall
+  with plain side walls, one floor rake and a ceiling, which the plan and the section describe.
+- 125 - 250 Hz: the measured direct sound is spread over the first 20 ms (octave filter of the measured RIR, and
+  at 250 Hz possibly the seat dip); not a statement about the room model.
+- Means over 24 positions: the pattern at a single seat is not tested by this (EDT per position: 38 - 50 % within
+  1 JND, table above).

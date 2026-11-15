@@ -4,6 +4,9 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Detmold, decay in time windows (`validation/detmold_decay_shape.py`, `validation/detmold_js.md`): in the drawn
+  hall the mean energy of every window of the first 80 ms is within about 1 dB of the measurement at 500 Hz -
+  4 kHz (Arvedi: -4 ... -5 dB at 20 - 50 ms), with both scattering models.
 - Arvedi, early decay (`validation/arvedi_placement.py`, `validation/arvedi_decay_shape.py`,
   `validation/arvedi_placement.md`): moving the absorption between the seating / stage and the walls / ceiling by
   a factor of 4 at constant T30 changes the EDT bias by 5 points only (EDT / T30 1.07 -> 1.02, measured 0.90). The
