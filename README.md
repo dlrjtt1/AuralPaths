@@ -1,6 +1,6 @@
 # AuralPaths
 
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24053630.svg)](https://doi.org/10.5281/zenodo.24053630)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24243050.svg)](https://doi.org/10.5281/zenodo.24243050)
 
 *A research and teaching tool for the precedence effect in sound reinforcement: vary hall, loudspeaker and seat
 positions, delay and level, then compute, listen to and export binaural room responses.*
@@ -83,8 +83,8 @@ data (BRAS, the 2019 round robin, Detmold): `docs/BENCHMARK_en.md` (`_ko`, `_ja`
 - `python tests/regression.py` runs the checks that need no external data (page build, Python vs browser agreement of
   image sources, diffraction and ray tracing, reverberation baselines, calibration); they run on GitHub for every push
   to main. Checks against measured halls need the datasets: see `validation/` and `docs/MODEL_en.md`.
-- To cite AuralPaths, use `CITATION.cff` (GitHub: "Cite this repository") with the version you used; version 0.7.0
-  is archived on Zenodo, https://doi.org/10.5281/zenodo.24053630 (the DOI of later versions is on the Zenodo record). Changes:
+- To cite AuralPaths, use `CITATION.cff` (GitHub: "Cite this repository") with the version you used; version 0.8.1
+  is archived on Zenodo, https://doi.org/10.5281/zenodo.24243050 (0.7.0: https://doi.org/10.5281/zenodo.24053630). Changes:
   `CHANGELOG.md`; how to report problems or contribute: `CONTRIBUTING.md`.
 
 ## Licence

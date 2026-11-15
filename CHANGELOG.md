@@ -4,6 +4,7 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Zenodo DOI of 0.8.1 (https://doi.org/10.5281/zenodo.24243050) in `CITATION.cff`, README and `docs/VALIDITY_*`.
 
 ## 0.8.1 (2026-11-15)
 - Docs: the statement on directional loudspeakers at 2 - 4 kHz now gives the evidence per hall (BRAS CR3 / CR4
