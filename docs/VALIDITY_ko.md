@@ -1,4 +1,4 @@
-# AuralPaths가 무엇에 대해 검증되었는가 (버전 0.7.0)
+# AuralPaths가 무엇에 대해 검증되었는가 (버전 0.8.0)
 
 `docs/MODEL_ko.md`의 검증을 짧게 요약한 문서다. AuralPaths의 BRIR을 어떤 용도에 써도 되는지, 예를 들어 지연된 확성(PA) 경로가
 있는 선행음 효과 청취 실험의 자극으로 써도 되는지 판단하려는 사람을 위해 썼다. 아래 수치는 모두 `docs/MODEL_ko.md`(영문
@@ -56,3 +56,28 @@ CC BY-SA 4.0)와 Fratoni 데이터셋(Mendeley Data, [doi:10.17632/y7xnv6xg5s.1]
 - 공간감(IACC_E3, IACC_L)은 두 실측 홀 모두에서 낮게 나온다. 이에 의존하는 결과는 그 점을 밝히거나 실측 BRIR을 써야 한다.
 - 계산 BRIR은 홀의 모델이고, 그것으로 하는 청취 실험은 실험실 실험이다. 그런 실험의 결과만으로 실제 홀의 실제 확성에서 무슨
   일이 일어나는지를 보여 주지는 못한다.
+
+## 5. 버전 0.8.0에서 추가 (2026-11-15)
+
+1 – 4절은 2026-11-13까지의 검증이며 Python 엔진(pyroomacoustics 광선추적)으로 계산했다. 그 뒤에 바뀐 것과 새로 확인한 것은
+다음과 같고, 수치는 [BENCHMARK_ko.md](BENCHMARK_ko.md) 4a절에 있다.
+
+| 항목 | 결과 | 위치 |
+|---|---|---|
+| Python 도구가 페이지 엔진으로 계산 | `engine_js.py`가 페이지와 같은 에너지 히스토그램을 준다(페이지 대비 최대 상대 차이 3·10⁻¹²; 그린 홀, 90° 스피커, 3D 홀). 실측 지향성은 두 엔진에서 같은 대역 진폭을 준다(10⁻¹² dB) | `validation/check_engine_js.py`, `check_engine_js_dir.py` |
+| **그린 홀(2.5D)**에서 페이지 대 Python | 같은 모델이 아니다: 산란 방식이 달라 같은 T30에 필요한 흡음이 다르다(Detmold 1 kHz: 같은 재료로 T30 1.50 s 대 1.34 – 1.39 s). 계산할 엔진으로 보정할 것. 3D 홀에서는 약 2 % 이내로 일치 | `validation/detmold_js.md` |
+| 페이지 엔진으로 홀 검증 | Arvedi, Arni, OperaRIR, Detmold 모두 Python 엔진과 같은 결론 | `validation/engine_js_halls.md` |
+| 처음 80 ms의 시간 구간별 에너지 | BRAS CR3 / CR4와 Detmold에서 500 Hz – 4 kHz 약 1.3 dB 이내(위치 평균); Arvedi는 20 – 50 ms에서 −4 … −5 dB | `validation/bras_decay_shape.md`, `arvedi_placement.md` |
+| Arvedi의 긴 EDT의 원인 | 그 모델(공개 도면으로 작성)의 초기 반사 패턴. 원인이 아닌 것: 흡음 배치, 산란계수와 산란 방식, 엔진, 조준, 용적, 이미지 음원 차수 | `validation/arvedi_placement.md` |
+| 광선 잡음 | 수음점 하나의 EDT: 광선 20000개에서 시드 간 8 %, 80000개 3 %, 320000개 2 %; 홀 평균은 1 % 미만 | `validation/timing.md` |
+| 페이지의 BRIR로 자극 생성 | `make_stimuli.py`가 페이지가 내보낸 SOFA를 읽는다; BRIR이 페이지의 배열과 같다 | `CHANGELOG.md` |
+| 페이지의 레벨비 | dry 파일을 올리면 `make_stimuli.py`와 같은 정의(귀 신호의 에너지); PA 게인이 두 곳에서 같다(부채꼴 홀: −3.30 dB, 비확성 음원 포함 −0.59 dB) | `docs/MODEL_ko.md`, *조건* |
+
+사용에 대해 4절에 더하여:
+
+- EDT는 모델이 처음 80 ms에 반사하는 면을 담고 있는지에 달려 있다. 흡음을 맞추는 것(T30과 EDT를 함께 맞추는 것 포함)으로는
+  빠진 반사를 고칠 수 없다. 홀의 실측 RIR이 몇 개 있으면 시간 구간별 에너지를 비교할 것(`validation/arvedi_decay_shape.py` 참조).
+- 지향성 스피커의 2 – 4 kHz는 두 엔진 모두 지원 범위 밖이다(Arvedi C80 1.5 – 3 dB 낮음; OperaRIR C80 1.7 – 2.5 dB 높음).
+  PA 조건의 분석은 500 Hz – 1 kHz에서 가장 근거가 있다.
+- 읽으려는 양에 맞는 광선 수를 쓸 것: 좌석 하나의 값은 홀 평균보다 약 16배의 광선이 필요하다.
+- 아직 검증하지 않은 것: 지연된 PA 조건과 실측의 대조; 시뮬레이션 BRIR과 실측 BRIR의 청취 비교.

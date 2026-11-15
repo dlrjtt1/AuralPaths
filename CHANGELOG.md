@@ -4,6 +4,11 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- `docs/BENCHMARK_*` (section 4a) and `docs/VALIDITY_*` (section 5), en / ko / ja: the reruns with the page's
+  engine next to the Python-engine values, and the findings of 2026-11-15 (scattering in drawn halls, energy of the
+  first 80 ms by time window, the cause of the long EDT in Arvedi, ray noise, median calibration).
+- `validation/detmold_page.py`, `tests/page_brirs.js`: the Detmold binaural comparison with BRIRs computed by the page
+  itself (results follow).
 - Page: the noise pairs of the directional late field and of the early scattered-energy windows (four per path;
   two thirds of the main-thread time of a drawn hall, `validation/timing.md`) are computed in a pool of workers
   (up to 6) before the paths are rendered. Same code and seeds: the BRIRs of the fan hall are identical to before

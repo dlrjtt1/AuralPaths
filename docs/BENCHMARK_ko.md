@@ -1,6 +1,6 @@
 # AuralPaths는 얼마나 정확한가? (공개 실측 데이터 벤치마크)
 
-마지막 실행: 2026-11-13. English: [BENCHMARK_en.md](BENCHMARK_en.md), 日本語: [BENCHMARK_ja.md](BENCHMARK_ja.md).
+마지막 실행: 2026-11-13(Python 엔진, 1 – 4절); 2026-11-15(페이지 엔진, 4a절). English: [BENCHMARK_en.md](BENCHMARK_en.md), 日本語: [BENCHMARK_ja.md](BENCHMARK_ja.md).
 
 AuralPaths의 결과를 실측 임펄스 응답이 공개된 실과 홀에 대어 본 기록이다. 모든 수치는 공개 데이터와 이 저장소의 스크립트에서
 나왔고, 데이터가 있으면 누구나 다시 계산할 수 있다(6절). 실측 데이터 자체는 재배포하지 않는다.
@@ -177,6 +177,38 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
 
 기준값: EDT 5 %와 C80 1 dB는 ISO 3382-1:2009 Annex A; IACC 0.075는 Detmold 데이터에 딸린 학위논문에서 가정한 값(1차 출처는
 확인하지 않음).
+
+## 4a. 페이지 엔진으로 다시 계산 (2026-11-15)
+
+1 – 4절은 Python 엔진으로 계산했고, 그 광선추적은 pyroomacoustics다. 2026-11-15부터 Python 도구가 페이지의 엔진으로 계산할 수
+있고(`engine_js.py`; `calibrate.py`와 홀 검증의 기본값), 아래 검증을 그 엔진으로 다시 돌렸다. 중요한 이유: **그린 홀(2.5D)**
+에서는 두 엔진의 산란 방식이 다르고(페이지: 반사마다 확률 s로 확산 반사, 아니면 정반사; pyroomacoustics: 모든 반사의 방향을
+두 방향의 혼합으로 정함) 같은 잔향에 필요한 흡음이 다르다(Detmold, 1 kHz: 계수 0.97 대 0.72). 3D(OBJ) 홀에서는 둘 다 방향
+혼합을 쓰고 약 2 % 이내로 일치한다. 한 엔진으로 보정한 재료를 다른 엔진의 그린 홀에 쓰면 안 된다.
+
+| 검증 | 페이지 엔진 | Python 엔진 (1 – 4절) | 상세 |
+|---|---|---|---|
+| Arvedi, 무지향 음원, 500 Hz / 1 / 2 / 4 kHz | C80 −0.29 / +0.04 / −0.58 / −0.88 dB; EDT +18 / +19 / +28 / +35 % | C80 −0.57 / −0.05 / −0.59 / −0.85 dB; EDT +15 / +14 / +21 / +30 % | [engine_js_halls.md](../validation/engine_js_halls.md) |
+| Arvedi, Genelec 스피커 S1 – S4, 2 / 4 kHz | C80 −1.5 … −2.3 / −1.6 … −3.0 dB | C80 −1.2 … −2.1 / −1.4 … −2.8 dB | 같음 |
+| Arni, 37개 상태, 500 Hz / 1 / 2 / 4 kHz | T30 +10 / +4 / +3 / +1 %; EDT +7 / +2 / +1 / −2 %; C80 +0.17 / +0.02 / +0.31 / −0.06 dB | T30 +7 / −0 / −1 / −5 %; EDT +4 / −2 / −3 / −6 %; C80 +0.32 / +0.25 / +0.58 / +0.29 dB | 같음 |
+| OperaRIR, 194쌍, 500 Hz / 1 / 2 / 4 kHz | C80 +1.66 / +1.67 / +2.48 / +2.25 dB; EDT −19 / −26 / −28 / −18 % | C80 +1.36 / +1.39 / +3.16 / +2.98 dB; EDT −12 / −20 / −23 / −12 % | 같음 |
+| Detmold, 무지향 마이크 위치 24곳, 500 Hz / 1 / 2 kHz (엔진마다 따로 보정) | EDT +9.8 / +2.1 / +8.1 %; C80 −0.3 / −0.0 / +0.7 dB | EDT +7.4 / −1.8 / +1.4 %; C80 −0.6 / −0.3 / +0.7 dB | [detmold_js.md](../validation/detmold_js.md) |
+<!--DETMOLD_PAGE_ROW-->
+
+1, 4, 5절의 결론은 두 엔진에서 같다. 2026-11-15에 새로 확인한 것:
+
+- **처음 80 ms의 시간 구간별 에너지**(위치 평균, 시뮬레이션 − 실측, 500 Hz – 4 kHz): BRAS CR3, CR4(데이터베이스의 3D 모델)와
+  Detmold(그린 홀)에서 모든 구간이 약 1.3 dB 이내. Arvedi는 20 ms 이전 +1 … +2 dB, 20 – 50 ms −4 … −5 dB이고 80 ms 이후의
+  감쇠는 0.3 dB 이내로 일치한다([arvedi_placement.md](../validation/arvedi_placement.md),
+  [bras_decay_shape.md](../validation/bras_decay_shape.md)). 따라서 Arvedi의 긴 EDT는 그 모델의 초기 반사 패턴 오차다. 흡음
+  배치(4배 변화에 EDT 치우침 5 %p), 산란 방식, 엔진은 원인이 아니다.
+- **어느 산란 방식이 실측에 가까운지**는 정해지지 않았다: Detmold는 우열 없음; Arni는 방향 혼합이 실측 EDT / T30에 가까움
+  (0.88 – 0.94, 실측 0.91 – 0.96; 확률 방식 0.96 – 0.98); Arvedi는 EDT 오차가 두 방식에서 같다. 기본값은 바꾸지 않았다.
+- **광선 잡음**([timing.md](../validation/timing.md), [ray_noise.md](../validation/ray_noise.md)): 수음점 하나의 EDT는 광선
+  20000개에서 시드에 따라 8 %, 80000개에서 3 %, 320000개에서 2 % 다르고(페이지 엔진, Detmold) 홀 평균은 1 % 미만이다.
+  페이지 엔진은 이를 음원당 4 / 13 / 57초에 계산한다.
+- **보정**: 위치들을 중앙값으로 합친다(이전에는 평균). 위치마다 광선추적을 따로 하면 평균은 견고하지 않다(Detmold: 같은
+  자료에서 광선 수에 따라 1 kHz 계수 0.74 또는 1.00).
 
 ## 5. 알려진 약점
 

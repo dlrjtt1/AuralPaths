@@ -1,9 +1,9 @@
-# What AuralPaths has been checked for (version 0.7.0)
+# What AuralPaths has been checked for (version 0.8.0)
 
 A short summary of the checks in `docs/MODEL_en.md`, written for someone deciding whether AuralPaths BRIRs can be
 used for a given purpose, for example stimuli for a listening test on the precedence effect with delayed loudspeaker
 (PA) paths. Every number below comes from a section of `docs/MODEL_en.md` (named in brackets), where the method,
-the data and the commands are given. AuralPaths 0.7.0 is archived as https://doi.org/10.5281/zenodo.24053630. A table of uses with a verdict for each (usable, conditional, not supported) and the comparison with the 2019 round-robin programs: [BENCHMARK_en.md](BENCHMARK_en.md), section 1.
+the data and the commands are given. AuralPaths 0.7.0 is archived as https://doi.org/10.5281/zenodo.24053630 (0.8.0: see section 5 for what was added). A table of uses with a verdict for each (usable, conditional, not supported) and the comparison with the 2019 round-robin programs: [BENCHMARK_en.md](BENCHMARK_en.md), section 1.
 
 Measured data used: BRAS CR3 / CR4 (Aspöck et al. 2020, [doi:10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3),
 CC BY-SA 4.0) and the Fratoni dataset (Mendeley Data, [doi:10.17632/y7xnv6xg5s.1](https://doi.org/10.17632/y7xnv6xg5s.1),
@@ -60,3 +60,29 @@ criteria averaged over receivers. That is a small sample; the results describe t
   should say so or use measured BRIRs.
 - A simulated BRIR is a model of a hall, and a listening test with it is a laboratory test. Findings from such
   tests do not by themselves show what happens with real sound reinforcement in a real hall.
+
+## 5. Added for version 0.8.0 (2026-11-15)
+
+Sections 1 - 4 describe the checks up to 2026-11-13, computed with the Python engine (pyroomacoustics ray tracing).
+What changed and what was found since, with the numbers in [BENCHMARK_en.md](BENCHMARK_en.md), section 4a:
+
+| What | Result | Where |
+|---|---|---|
+| Python tools computing with the page's engine | `engine_js.py` gives the page's own energy histograms (largest relative difference 3·10⁻¹² against the page; drawn hall, 90° loudspeakers, 3-D hall); measured directivity gives the same band amplitudes in both engines (10⁻¹² dB) | `validation/check_engine_js.py`, `check_engine_js_dir.py` |
+| Page vs Python in a **drawn (2.5-D) hall** | NOT the same model: the two scatter differently and need different absorption for the same T30 (Detmold 1 kHz: T30 1.50 s against 1.34 - 1.39 s with the same materials). Calibrate with the engine that computes. In 3-D halls they agree within about 2 % | `validation/detmold_js.md` |
+| Hall checks with the page's engine | Arvedi, Arni, OperaRIR and Detmold give the same picture as with the Python engine | `validation/engine_js_halls.md` |
+| Energy of the first 80 ms by time window | within about 1.3 dB at 500 Hz - 4 kHz in BRAS CR3 / CR4 and Detmold (means over positions); Arvedi -4 ... -5 dB at 20 - 50 ms | `validation/bras_decay_shape.md`, `arvedi_placement.md` |
+| Cause of the long EDT in Arvedi | the early reflection pattern of that model (drawn from published plans); ruled out: absorption placement, scattering coefficient and model, engine, aim, volume, image-source order | `validation/arvedi_placement.md` |
+| Ray noise | EDT of one receiver: 8 % between seeds at 20000 rays, 3 % at 80000, 2 % at 320000; hall means below 1 % | `validation/timing.md` |
+| Stimuli from the page's BRIRs | `make_stimuli.py` reads the SOFA file the page exports; the BRIRs equal the page's arrays | `CHANGELOG.md` |
+| Level ratio in the page | with dry files loaded it is defined as in `make_stimuli.py` (energy of the ear signals); the PA gain is then the same in both (fan hall: -3.30 dB, -0.59 dB with an unamplified source) | `docs/MODEL_en.md`, *Conditions* |
+
+For use, in addition to section 4:
+
+- EDT depends on whether the model holds the surfaces that reflect in the first 80 ms. Fitting the absorption
+  (also on T30 and EDT together) does not repair a missing reflection. With a few measured RIRs of the hall, compare
+  the energy in time windows (`validation/arvedi_decay_shape.py` shows how).
+- Directional loudspeakers at 2 - 4 kHz remain unsupported with both engines (Arvedi C80 1.5 - 3 dB low; OperaRIR
+  C80 1.7 - 2.5 dB high). Analyses of a PA condition are best supported at 500 Hz - 1 kHz.
+- Use enough rays for the quantity read: single seats need about 16 times the rays of hall means.
+- Still not checked: a delayed PA condition against a measurement; simulated against measured BRIRs by listening.

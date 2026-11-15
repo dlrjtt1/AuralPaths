@@ -1,6 +1,6 @@
 # How accurate is AuralPaths? (benchmark against public measurements)
 
-Last run: 2026-11-13. 한국어: [BENCHMARK_ko.md](BENCHMARK_ko.md), 日本語: [BENCHMARK_ja.md](BENCHMARK_ja.md).
+Last run: 2026-11-13 (Python engine, sections 1 - 4); 2026-11-15 (page's engine, section 4a). 한국어: [BENCHMARK_ko.md](BENCHMARK_ko.md), 日本語: [BENCHMARK_ja.md](BENCHMARK_ja.md).
 
 This page compares AuralPaths with rooms and halls whose measured impulse responses are public. Every number comes from
 public data and the scripts in this repository and can be recomputed by anyone who has the data (section 6). The
@@ -190,6 +190,43 @@ off by default because they cost time (up to tens of seconds per source-receiver
 
 Reference values: EDT 5 % and C80 1 dB from ISO 3382-1:2009 Annex A; IACC 0.075 as assumed in the thesis that
 accompanies the Detmold data (no primary source checked).
+
+## 4a. With the page's engine (2026-11-15)
+
+Sections 1 - 4 were computed with the Python engine, whose ray tracing is pyroomacoustics. Since 2026-11-15 the
+Python tools can compute with the page's own engine (`engine_js.py`; `calibrate.py` and the hall checks do so by
+default), and the checks below were rerun with it. Why it matters: in a **drawn (2.5-D) hall** the two engines scatter
+differently (the page: a reflection is specular or diffuse with probability s; pyroomacoustics: every reflection in
+a direction mixed from both) and need different absorption for the same reverberation (Detmold, 1 kHz: factor 0.97
+against 0.72). In 3-D (OBJ) halls both mix and agree within about 2 %. Materials calibrated with one engine must
+not be used in a drawn hall of the other.
+
+| check | page's engine | Python engine (sections 1 - 4) | details |
+|---|---|---|---|
+| Arvedi, omnidirectional source, 500 Hz / 1 / 2 / 4 kHz | C80 -0.29 / +0.04 / -0.58 / -0.88 dB; EDT +18 / +19 / +28 / +35 % | C80 -0.57 / -0.05 / -0.59 / -0.85 dB; EDT +15 / +14 / +21 / +30 % | [engine_js_halls.md](../validation/engine_js_halls.md) |
+| Arvedi, Genelec loudspeakers S1 - S4, 2 / 4 kHz | C80 -1.5 ... -2.3 / -1.6 ... -3.0 dB | C80 -1.2 ... -2.1 / -1.4 ... -2.8 dB | same |
+| Arni, 37 states, 500 Hz / 1 / 2 / 4 kHz | T30 +10 / +4 / +3 / +1 %; EDT +7 / +2 / +1 / -2 %; C80 +0.17 / +0.02 / +0.31 / -0.06 dB | T30 +7 / -0 / -1 / -5 %; EDT +4 / -2 / -3 / -6 %; C80 +0.32 / +0.25 / +0.58 / +0.29 dB | same |
+| OperaRIR, 194 pairs, 500 Hz / 1 / 2 / 4 kHz | C80 +1.66 / +1.67 / +2.48 / +2.25 dB; EDT -19 / -26 / -28 / -18 % | C80 +1.36 / +1.39 / +3.16 / +2.98 dB; EDT -12 / -20 / -23 / -12 % | same |
+| Detmold, 24 omnidirectional-microphone positions, 500 Hz / 1 / 2 kHz (each engine calibrated by itself) | EDT +9.8 / +2.1 / +8.1 %; C80 -0.3 / -0.0 / +0.7 dB | EDT +7.4 / -1.8 / +1.4 %; C80 -0.6 / -0.3 / +0.7 dB | [detmold_js.md](../validation/detmold_js.md) |
+<!--DETMOLD_PAGE_ROW-->
+
+The findings of sections 1, 4 and 5 hold with both engines. New on 2026-11-15:
+
+- **Energy of the first 80 ms by time window** (mean over the positions, simulated minus measured, 500 Hz - 4 kHz):
+  within about 1.3 dB in every window in BRAS CR3, CR4 (3-D models of the database) and Detmold (drawn hall);
+  in Arvedi +1 ... +2 dB before 20 ms and -4 ... -5 dB at 20 - 50 ms, while the decay from 80 ms on agrees within
+  0.3 dB ([arvedi_placement.md](../validation/arvedi_placement.md), [bras_decay_shape.md](../validation/bras_decay_shape.md)).
+  The long EDT of Arvedi is therefore an error of that model's early reflection pattern; absorption placement
+  (a factor of 4 changes the EDT bias by 5 points), the scattering model and the engine are ruled out.
+- **Which scattering model is closer** is not decided: a tie in Detmold; in Arni the mixed direction gives the
+  measured EDT / T30 (0.88 - 0.94, measured 0.91 - 0.96; either-or 0.96 - 0.98); in Arvedi the EDT error is the
+  same with both. Defaults unchanged.
+- **Ray noise** ([timing.md](../validation/timing.md), [ray_noise.md](../validation/ray_noise.md)): the EDT of a
+  single receiver differs by 8 % between two seeds at 20000 rays, 3 % at 80000, 2 % at 320000 (page's engine,
+  Detmold); hall means by less than 1 %. The page's engine needs 4 / 13 / 57 s per source for these.
+- **Calibration**: the positions are combined by the median (the mean before). With one ray-tracing run per
+  position the mean is not robust (Detmold: factor 0.74 or 1.00 at 1 kHz from the same data, depending on the ray
+  count).
 
 ## 5. Known weak spots
 
