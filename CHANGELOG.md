@@ -4,6 +4,7 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Docs: `docs/MODEL_*` no longer say that RS6 / RS7 are outside the model (stale sentence from 2026-11-03).
 - Zenodo DOI of 0.8.1 (https://doi.org/10.5281/zenodo.24243050) in `CITATION.cff`, README and `docs/VALIDITY_*`.
 
 ## 0.8.1 (2026-11-15)

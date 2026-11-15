@@ -419,7 +419,7 @@ floor by images (direct and floor-reflected paths when not blocked, four diffrac
 1 m (the stated 80 dB SPL at 2 m, 1 kHz), flat in frequency. Measured and predicted IRs get the same window, from the
 first arrival − 0.5 ms to the first arrival via the side edges − 0.3 ms; bands below 2 / window are marked. Run
 on BRAS RS5 v3 (2026-11-03); results above under *Edge diffraction*.
-RS6 (finite body) and RS7 (seat dip, 15 blocks) need multiple diffraction, which this model does not have.
+RS6 (finite body) and RS7 (seat dip, 15 blocks) were later checked with `validation/bras_rs.py`: RS6 with second-order diffraction (`diffraction_order` 2), RS7 with the optional seat-dip model (see *Edge diffraction* and *Seat dip*).
 
 ## 3D OBJ halls and conversion to a drawn hall (`obj_to_hall.py`)
 

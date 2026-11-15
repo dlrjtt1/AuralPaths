@@ -378,7 +378,7 @@ python validate_bras.py "RS5 diffraction (infinite wedge)/RIRs/RS5_RIRs.sofa" --
 강체 바닥(가려지지 않은 직접·바닥 반사 경로, 회절 경로 4개), 1 m에서 0.4 Pa인 점음원(명시된 2 m에서 80 dB SPL,
 1 kHz), 주파수 특성은 평탄. 실측과 예측 IR에 같은 창을 적용한다: 첫 도달 − 0.5 ms부터 측면 모서리 경유 첫 도달
 − 0.3 ms까지. 2 / 창 길이 미만의 대역은 표시된다. BRAS RS5 v3로 실행(2026-11-03). 결과는 위 *모서리 회절* 항목에 있다.
-RS6(유한 물체)와 RS7(좌석 dip, 블록 15개)은 다중 회절이 필요하며 이 모델에는 없다.
+RS6(유한 물체)와 RS7(좌석 dip, 블록 15개)은 나중에 `validation/bras_rs.py`로 확인했다: RS6은 2차 회절(`diffraction_order` 2), RS7은 선택 사항인 좌석 dip 모델로(*모서리 회절*과 *좌석 dip* 절 참조).
 
 ## 3D OBJ 홀과 그린 홀로의 변환 (`obj_to_hall.py`)
 
