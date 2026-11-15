@@ -127,11 +127,22 @@ def config(src, rec, out, posthoc=False, detail=None):
 RESUME = [False]
 
 
+ENGINE = ["js"]
+
+
 def compare(cfg, src, rec, H, s, label, out):
     if RESUME[0] and os.path.exists(os.path.join(out, f"compare_{label}.csv")):
         print(f"{label}: compare_{label}.csv exists, skipped (--resume)")
         return
-    Hs, cen = bp.energy_hists(cfg, s, list(rec), t_max=2.0, n_rays=RAYS)
+    if ENGINE[0] == "js":
+        import engine_js
+        try:
+            Hs, cen = engine_js.energy_hists(cfg, s, list(rec), t_max=2.0, n_rays=RAYS)
+        except NotImplementedError as e:
+            print(f"{label}: skipped with --engine js ({e}); run it with --engine python")
+            return
+    else:
+        Hs, cen = bp.energy_hists(cfg, s, list(rec), t_max=2.0, n_rays=RAYS)
     bi = [int(np.argmin(np.abs(np.asarray(cen) - b))) for b in BANDS]
     rows, D = [], {k: [] for k in JND}
     for r in rec:
@@ -162,6 +173,9 @@ def main():
     ap.add_argument("data")
     ap.add_argument("--out", default=os.path.join(ROOT, "out", "arvedi"))
     ap.add_argument("--skip-cal", action="store_true")
+    ap.add_argument("--engine", choices=("js", "python"), default="js",
+                    help="js: the page's engine through Node (engine_js.py; default since 2026-11-15); "
+                         "python: pyroomacoustics (the engine of the results documented before)")
     ap.add_argument("--avg", choices=("mean", "median", "summed"), default="median",
                     help="combination of the positions in the calibration (calibrate.py --avg); the runs documented "
                          "before 2026-11-15 used mean")
@@ -174,6 +188,7 @@ def main():
                     "seating set to this value in all bands (before calibration); the seat-dip run is skipped")
     a = ap.parse_args()
     RESUME[0] = a.resume
+    ENGINE[0] = a.engine
     if a.posthoc:
         TURN[:] = (-1.0, -1.0, 1.0)
         if a.out == os.path.join(ROOT, "out", "arvedi"):
@@ -206,7 +221,7 @@ def main():
         if a.detail:          # prediction before calibration, then only the seating is calibrated (item 15)
             compare(bp.load_config(os.path.join(a.out, "config.json")), src, rec, H, "S0", "S0_uncalibrated", a.out)
         subprocess.run([sys.executable, os.path.join(ROOT, "calibrate.py"), os.path.join(a.out, "config.json"), t30,
-                        "--out", cal, "--iter", "6", "--avg", a.avg] + (["--adjust", "aud"] if a.detail else []), check=True, cwd=ROOT)
+                        "--out", cal, "--iter", "6", "--avg", a.avg, "--engine", a.engine] + (["--adjust", "aud"] if a.detail else []), check=True, cwd=ROOT)
     cfg = bp.load_config(cal)
     print(f"model volume {bp._geom(cfg).get('volume', float('nan')):.0f} m3 (published 5300 m3)")
     compare(cfg, src, rec, H, "S0", "S0_primary", a.out)

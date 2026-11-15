@@ -12,7 +12,11 @@ files.
   (drawn hall with diffraction, with 90 degree loudspeakers) and 2e-14 (3-D hall, BRAS CR3 example); the config is
   read as the page reads it, except that the page ignores "c" of a config (it computes with 343 m/s). New
   regression check `engine_js`. Not covered yet: measured directivity, seat dip in 3-D halls. The Python tools
-  (`calibrate.py`, `run.py`, the hall checks) are NOT switched to it yet.
+  (`run.py`, `make_stimuli.py`, the binaural and loudspeaker checks) are not switched to it yet.
+- `calibrate.py`, `validation/arvedi_check.py` and `validation/arni_check.py` compute with the page's engine by
+  default (`--engine js`; `--engine python` is pyroomacoustics, the engine of the results documented so far). Runs
+  the bridge does not cover (measured directivity, seat dip in 3-D halls) are skipped with a message under `js`.
+  Results of the reruns: to be added.
 - Page: **Calibrate…** combines the positions by the median (as `calibrate.py`; the mean before). The calibration
   record gets `avg` and its note states that drawn halls need separate calibrations for the page and Python.
 - Timing diagnostic (`validation/timing.py`, `validation/timing_js.py`, `validation/timing.md`): 86 - 87 % of the

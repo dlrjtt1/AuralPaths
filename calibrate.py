@@ -2,7 +2,7 @@
 Material calibration from measured reverberation times.
 
     python calibrate.py <config.json> <measurements.csv> [--adjust aud,wall,ceil] [--source-directivity file.csv]
-                        [--out calibrated_config.json] [--tol 0.02] [--iter 10] [--avg mean|median|summed]
+                        [--out calibrated_config.json] [--tol 0.02] [--iter 10] [--avg mean|median|summed] [--engine js|python]
 
 measurements.csv (one row per position pair and octave band; EDT optional, used for checking only):
     label,src_x,src_y,src_z,rec_x,rec_y,rec_z,band_hz,T30_s,EDT_s
@@ -17,6 +17,11 @@ kept within 0.01 ... 0.95. Groups not listed in --adjust keep their values (e.g.
 
 This fits one number per band. It cannot tell which surface is wrong; several material sets can give the same T30.
 Use positions for calibration that are not used for validation (proposal section 3.1).
+
+--engine: js (default) computes with the page's engine through Node (engine_js.py), so that the calibrated materials
+are those the page needs; python uses pyroomacoustics as before 2026-11-15. In a DRAWN hall the two scatter
+differently and need different absorption for the same T30 (validation/detmold_js.md): calibrate with the engine
+that will compute. run.py and make_stimuli.py still compute with pyroomacoustics (use --engine python for them).
 
 --avg: how the simulated T30 of the positions is combined (default median). The late part of a
 single-position ray histogram holds few rays, so single-position T30 has outliers (validation/ray_noise.md).
@@ -65,9 +70,33 @@ def read_measurements(path):
     return pos
 
 
-def simulate(cfg, pos, src_dir):
+def simulate(cfg, pos, src_dir, engine="js"):
     """Simulated T30 and EDT per band for every calibration position (omni receiver, energy histogram)."""
     out = {}
+    if engine == "js":
+        # the page's engine (engine_js.py): one Node process, one ray-tracing run per source position for all its
+        # receivers, drawn and 3-D halls alike; the same ray seed in every iteration
+        if src_dir:
+            sys.exit("--source-directivity is not supported by --engine js yet; use --engine python")
+        import engine_js
+        c = copy.deepcopy(cfg)
+        srcs = {}
+        for lab, p in pos.items():
+            srcs.setdefault(tuple(p["src"]), []).append(lab)
+        first = next(iter(cfg["sources"][s]["pos"] for s in bp.source_names(cfg)))   # seed point of a 3-D room, as before
+        c["sources"] = {"CAL_SEED": {"pos": list(first)}, **{f"CAL_S{i}": {"pos": list(s)} for i, s in enumerate(srcs)}}
+        c["receivers"] = {f"CAL_R_{lab}": pos[lab]["rec"] for lab in pos}
+        H, centers = engine_js.hists(c, {f"CAL_S{i}": [f"CAL_R_{lab}" for lab in labs] for i, labs in enumerate(srcs.values())})
+        for i, labs in enumerate(srcs.values()):
+            for lab in labs:
+                h = H[(f"CAL_S{i}", f"CAL_R_{lab}")]
+                t0 = np.linalg.norm(np.subtract(pos[lab]["src"], pos[lab]["rec"])) / c["c"]
+                out[lab] = {}
+                for b in BANDS:
+                    m = bp.iso3382_energy([(h, 0.0, 1.0)], t0, bands=(b,), centers=centers)
+                    out[lab][b] = (m["T30"], m["EDT"])
+                out[lab]["_e"] = _aligned(h, t0, centers)
+        return out
     if bp.is_mesh(cfg):
         # OBJ mesh halls: one ray-tracing run per source position shared by all its receivers (energy_hists); a run
         # per position pair would take minutes to hours each on a mesh of thousands of faces
@@ -159,6 +188,9 @@ def main():
     ap.add_argument("--adjust", default="", help="material groups to scale (default: all)")
     ap.add_argument("--source-directivity", default=None, help="directivity CSV / SOFA of the measurement source")
     ap.add_argument("--out", default=None); ap.add_argument("--tol", type=float, default=0.02); ap.add_argument("--iter", type=int, default=10)
+    ap.add_argument("--engine", choices=("js", "python"), default="js",
+                    help="js: the page's engine through Node (engine_js.py; default since 2026-11-15); "
+                         "python: pyroomacoustics (the engine of the results documented before)")
     ap.add_argument("--avg", choices=("mean", "median", "summed"), default="median",
                     help="combination of the positions: median (default), mean, or T30 of the summed decay")
     a = ap.parse_args()
@@ -183,7 +215,7 @@ def main():
     print(f"Calibrating {', '.join(base)} on {len(pos)} position(s), --avg {a.avg}; measured {'median' if a.avg == 'median' else 'mean'} T30: " +
           ", ".join(f"{b}: {t:.2f}" for b, t in zip(BANDS, meas_T)))
 
-    sim0 = simulate(cfg, pos, a.source_directivity)
+    sim0 = simulate(cfg, pos, a.source_directivity, a.engine)
     history, sim, cur = [], sim0, cfg
     for it in range(a.iter):
         T = combine(sim, BANDS, a.avg)
@@ -196,7 +228,7 @@ def main():
         step = np.where(np.isnan(err), 1.0, T / meas_T)
         k = np.where(ok, k, k * step)
         cur = set_alpha(cfg, base, k)
-        sim = simulate(cur, pos, a.source_directivity)
+        sim = simulate(cur, pos, a.source_directivity, a.engine)
     T1 = combine(sim, BANDS, a.avg)
 
     out = a.out or os.path.splitext(a.config)[0] + "_calibrated.json"
@@ -208,6 +240,7 @@ def main():
         "measurements_sha256": hashlib.sha256(open(a.measurements, "rb").read()).hexdigest(),
         "positions": list(pos), "adjusted_groups": list(base), "bands_hz": BANDS,
         "avg": a.avg,
+        "engine": "browser engine through Node (engine_js.py)" if a.engine == "js" else "pyroomacoustics (brir_proto)",
         "factors": [round(float(x), 4) for x in k],
         "T30_measured_mean_s": [None if np.isnan(x) else round(float(x), 3) for x in meas_T],
         "T30_sim_before_s": [round(float(x), 3) for x in combine(sim0, BANDS, a.avg)],
@@ -231,7 +264,7 @@ def main():
         w = csv.DictWriter(f, fieldnames=list(rep[0])); w.writeheader(); w.writerows(rep)
     T0 = combine(sim0, BANDS, a.avg)
     lines = [f"# Calibration report: {os.path.basename(a.config)}", "",
-             f"Measurements: {os.path.basename(a.measurements)} ({len(pos)} position(s)); adjusted: {', '.join(base)}; positions combined by {a.avg}; "
+             f"Measurements: {os.path.basename(a.measurements)} ({len(pos)} position(s)); adjusted: {', '.join(base)}; positions combined by {a.avg}; engine {a.engine}; "
              f"tolerance {100 * a.tol:.0f} % (JND of reverberation 5 %, ISO 3382-1 Annex A)", "",
              "| band (Hz) | T30 measured (s) | sim before (s) | error before | sim after (s) | error after | factor |", "|---|---|---|---|---|---|---|"]
     for i, b in enumerate(BANDS):
