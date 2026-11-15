@@ -98,7 +98,13 @@ Reading:
 - 2 kHz is unchanged by all of this: C80 about +1.2 dB, EDT about -8 %.
 - Default of `calibrate.py` changed to the median (2026-11-15; reason independent of the agreement above: the same
   estimator can be applied to the measured values, which the summed decay cannot without the measured decays).
-  The other hall checks (Arvedi, Arni, Opera, and the Detmold results in `detmold_kh.md`) were calibrated with the
-  mean and are NOT redone; their scripts pass `--avg mean` so that the documented numbers stay reproducible. Their
-  calibrated absorption may carry the outlier problem shown above.
+  The hall-check scripts (`arvedi_check.py`, `arni_check.py`, `opera_check.py`) take `--avg` with the same default.
+- The documented results of the other hall checks (Arvedi, Arni, Opera, and Detmold in `detmold_kh.md`) were
+  calibrated with the mean and are NOT redone (`--avg mean` reproduces them). From their calibration reports, the
+  simulated T30 of the calibration positions has no such outliers where one trace per source is shared by all
+  receivers: Arvedi (65 positions, 1 kHz) maximum 1.62 s against a median of 1.49 s, Arni (5 positions) 1.27 against
+  1.25 s; with the mean-calibrated absorption the median simulated T30 is within -1.8 ... +1.1 % (Arvedi) and
+  -1.3 ... +2.1 % (Arni) of the measured median, i.e. about the calibration tolerance, so the median would change
+  little there. Detmold, where every position is traced by itself: maximum 2.42 s against 1.47 s, -5.2 ... -1.7 %.
+  Opera: per-position values were not stored, not checked.
 

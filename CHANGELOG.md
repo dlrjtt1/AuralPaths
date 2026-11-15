@@ -11,7 +11,8 @@ files.
 - `calibrate.py --avg median | summed | mean`, default now `median` (was the mean): median over the positions, or T30 of their summed
   decay. Detmold with either: factor 0.71 - 0.78 at 1 kHz at 20000 and 80000 rays, and 80000 rays change the mean
   differences to the measurement by 0.2 dB (C80) and 3 points (EDT) at most (`validation/ray_noise.md`). The options
-  were added after the result with the mean was seen. The earlier hall checks are not redone; their scripts pass `--avg mean`.
+  were added after the result with the mean was seen. The hall-check scripts take `--avg` with the same default; their documented results (mean) are not redone,
+  `--avg mean` reproduces them. Arvedi and Arni show no such outliers (shared trace per source).
 - Ray noise against the ray count (`validation/ray_noise.py`, `validation/ray_noise.md`; Detmold, 20000 - 320000
   rays, two seeds): the noise falls with the square root of the ray count and the hall means do not drift, but at
   20000 rays the hall means of T30 and EDT differ by 5 - 10 % and 4 % between two seeds (the receivers share the
