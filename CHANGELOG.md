@@ -4,6 +4,13 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Timing diagnostic (`validation/timing.py`, `validation/timing_js.py`, `validation/timing.md`): 86 - 87 % of the
+  Python engine's time is pyroomacoustics' ray tracer; the browser tracer on one thread is about 16 (drawn hall) and
+  80 (mesh) times faster at the same ray count, with similar noise per ray. On the page's default hall the time is
+  in the late-noise rendering on the main thread.
+- Found with it (`validation/check_drawn_pyjs.py`): in a drawn hall the two engines do not agree. Detmold, same
+  materials: browser T30 1.94 s, Python 1.51 s at 1 kHz (Sabine 2.03 s, Eyring 1.87 s). The browser scatters a ray
+  with probability s, pyroomacoustics mixes the direction; in mesh halls both mix and agree. Not resolved.
 - Detmold calibrated and compared at 20000 and 80000 rays (`validation/ray_noise.md`): the T30 calibration is not
   robust. Single-position T30 has outliers (up to 2.8 s against 1.4 s) from the ray-starved late histogram, and the
   mean over positions gave an absorption factor of 0.74 (20000 rays) or 1.00 (80000 rays) at 1 kHz; with the latter
