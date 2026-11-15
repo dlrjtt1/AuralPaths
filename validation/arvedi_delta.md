@@ -1,5 +1,7 @@
 # Arvedi: change of the room criteria between two sources, measured vs simulated (2026-11-12, post hoc)
 
+> **Excluded from further checks (2026-11-15).** The error of this hall is in the model (early reflection pattern, `arvedi_placement.md`), and the loudspeaker data and aim were stand-ins. Kept as a record; not used as evidence for or against the engine.
+
 Question: when the source changes, does the simulation get the size of the change of EDT, C80, D50 and Ts right, even
 where the absolute values are off? Delta = metric(S_k) - metric(S0) at the same receiver (S0: dodecahedron at the stage
 centre; S1 - S4: Genelec 8020C loudspeakers at the quartet positions, aimed at the audience; EDT as ratio in %), for

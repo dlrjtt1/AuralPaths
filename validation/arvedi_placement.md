@@ -1,5 +1,7 @@
 # Arvedi: absorption placement and the shape of the early decay (2026-11-15, diagnostic)
 
+> **Excluded from further checks (2026-11-15).** The error of this hall is in the model (early reflection pattern, `arvedi_placement.md`), and the loudspeaker data and aim were stand-ins. Kept as a record; not used as evidence for or against the engine.
+
 Question: why is the simulated EDT of the omnidirectional source 15 - 30 % long although T20, T30 and C80 agree
 (`arvedi_check.md`, `engine_js_halls.md`)? Already excluded: aim, volume, image-source order, scattering
 coefficient, scattering model, engine. The page's engine through `engine_js.py`, 20000 rays, S0, 65 receivers.

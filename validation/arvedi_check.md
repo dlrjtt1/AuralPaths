@@ -1,5 +1,7 @@
 # Arvedi Auditorium, Cremona: check on a hall not used in development (2026-11-11 / 12)
 
+> **Excluded from further checks (2026-11-15).** The error of this hall is in the model (early reflection pattern, `arvedi_placement.md`), and the loudspeaker data and aim were stand-ins. Kept as a record; not used as evidence for or against the engine.
+
 Data: "The Sound of the Violin's Home" (Politecnico di Milano), https://doi.org/10.5281/zenodo.20098848 (CC BY 4.0):
 65 receivers (8-capsule array), 5 stage sources. Protocol, deviations and the reasons for them:
 [arvedi_protocol.md](arvedi_protocol.md). Model: [arvedi_model.py](arvedi_model.py) (from the published drawings),

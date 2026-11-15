@@ -75,7 +75,7 @@ house calibrated on T30, median), all 194 pairs, 125 / 250 / 500 / 1k / 2k / 4k 
 | C80 within 1 dB | 18 / 24 / 24 / 25 / 21 / 16 % | 18 / 19 / 21 / 21 / 13 / 13 % |
 
 Same findings with both engines: loudspeakers at 2 - 4 kHz in Arvedi (C80 1.5 - 3 dB low, EDT 2 - 3.5 times long)
-and the OperaRIR clarity (C80 1.7 - 2.5 dB high, EDT 18 - 28 % short) remain open, a little worse or better by
+and the OperaRIR clarity (C80 1.7 - 2.5 dB high, EDT 18 - 28 % short) remain open (Arvedi: excluded from further checks since, see `arvedi_check.md`; with the measured K8 directivity in BRAS CR3 / CR4 C80 at 4 kHz is within 0.4 dB, `bras_brir_CR*_FABIAN_K8data_cal16.md`), a little worse or better by
 0.2 - 0.7 dB depending on the band. A directional source is handled differently by the two (the page weights the
 early ray energy per launch sector, Python every ray), which is one seed's noise plus that approximation here.
 Fix made on the way: the bridge now passes the histogram length to the ray tracer (with `t_max` above 2.5 s the

@@ -4,6 +4,8 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Docs: the statement on directional loudspeakers at 2 - 4 kHz now gives the evidence per hall (BRAS CR3 / CR4
+  agree at 4 kHz, OperaRIR open); Arvedi is marked as excluded from further checks (model error).
 
 ## 0.8.0 (2026-11-15)
 - Detmold binaural comparison with BRIRs computed by the page itself (`validation/detmold_page.py`,

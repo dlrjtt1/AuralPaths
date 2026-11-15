@@ -82,7 +82,11 @@ For use, in addition to section 4:
 - EDT depends on whether the model holds the surfaces that reflect in the first 80 ms. Fitting the absorption
   (also on T30 and EDT together) does not repair a missing reflection. With a few measured RIRs of the hall, compare
   the energy in time windows (`validation/arvedi_decay_shape.py` shows how).
-- Directional loudspeakers at 2 - 4 kHz remain unsupported with both engines (Arvedi C80 1.5 - 3 dB low; OperaRIR
-  C80 1.7 - 2.5 dB high). Analyses of a PA condition are best supported at 500 Hz - 1 kHz.
+- Directional loudspeakers at 2 - 4 kHz: mixed evidence, with both engines. With measured directivity and the 3-D
+  models of the data set, C80 is -2.2 / +0.4 dB (BRAS CR3) and -1.1 / 0.0 dB (CR4) at 2 / 4 kHz (five sources, one
+  listening position each); in OperaRIR C80 is 1.7 - 2.5 dB high, the error grows towards the rear seats, and the
+  scattering of the hall surfaces (no source; start values) explains about half of it, the rest is open. Arvedi
+  (C80 1.5 - 3 dB low) is no longer used as evidence for loudspeakers: its model does not have the measured early
+  reflections (above), and the loudspeaker data and aim were stand-ins. Analyses of a PA condition are best supported at 500 Hz - 1 kHz.
 - Use enough rays for the quantity read: single seats need about 16 times the rays of hall means.
 - Still not checked: a delayed PA condition against a measurement; simulated against measured BRIRs by listening.
