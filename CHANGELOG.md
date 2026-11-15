@@ -4,6 +4,11 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+
+## 0.8.0 (2026-11-15)
+- Detmold binaural comparison with BRIRs computed by the page itself (`validation/detmold_page.py`,
+  `validation/detmold_js.md`): IACC_E3 +0.02 (60 % of 136 pairs within 0.075), IACC_L3 +0.01 (92 %), EDT -2.0 /
+  -1.4 / -4.6 % and C80 -0.1 / +0.5 / +0.9 dB at 500 Hz / 1 / 2 kHz.
 - `docs/BENCHMARK_*` (section 4a) and `docs/VALIDITY_*` (section 5), en / ko / ja: the reruns with the page's
   engine next to the Python-engine values, and the findings of 2026-11-15 (scattering in drawn halls, energy of the
   first 80 ms by time window, the cause of the long EDT in Arvedi, ray noise, median calibration).

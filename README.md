@@ -84,7 +84,7 @@ data (BRAS, the 2019 round robin, Detmold): `docs/BENCHMARK_en.md` (`_ko`, `_ja`
   image sources, diffraction and ray tracing, reverberation baselines, calibration); they run on GitHub for every push
   to main. Checks against measured halls need the datasets: see `validation/` and `docs/MODEL_en.md`.
 - To cite AuralPaths, use `CITATION.cff` (GitHub: "Cite this repository") with the version you used; version 0.7.0
-  is archived on Zenodo, https://doi.org/10.5281/zenodo.24053630. Changes:
+  is archived on Zenodo, https://doi.org/10.5281/zenodo.24053630 (0.8.0 is not archived yet). Changes:
   `CHANGELOG.md`; how to report problems or contribute: `CONTRIBUTING.md`.
 
 ## Licence

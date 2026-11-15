@@ -67,3 +67,25 @@ histogram, either-or: within 0.2 dB at 500 Hz - 1 kHz and 0.8 dB at 2 - 4 kHz fr
   at 250 Hz possibly the seat dip); not a statement about the room model.
 - Means over 24 positions: the pattern at a single seat is not tested by this (EDT per position: 38 - 50 % within
   1 JND, table above).
+
+## Binaural comparison with the BRIRs of the page (`validation/detmold_page.py`, 2026-11-15)
+
+The 136 pairs of `detmold_kh.md` (S2, S3, S6, S7 x 34 seats, KU100), with BRIRs computed by the page itself in
+headless Chromium (24 runs of three seats and two PA sources): drawn hall, the materials calibrated for the page's
+engine above (`out/detmold_jscal`), loudspeakers as the page's PA sources (generic 90 degree pattern), embedded KU100
+HRIRs, 50000 rays, image sources to order 3, page defaults. Compared with `detmold_kh.py compare` and the measured
+metrics of the earlier run. Conditions fixed before the run; one run.
+
+| metric | measured (mean) | page (mean) | mean difference | median abs. difference | within the reference value |
+|---|---|---|---|---|---|
+| IACC_E3 (0 - 80 ms, 500 Hz - 2 kHz) | 0.45 | 0.46 | +0.018 | 0.062 | 60 % (0.075) |
+| IACC_L3 (80 ms - end, 500 Hz - 2 kHz) | 0.12 | 0.13 | +0.013 | 0.028 | 92 % (0.075) |
+| IACC_E broadband | 0.43 | 0.50 | +0.070 | 0.079 | 49 % (0.075) |
+| IACC_L broadband | 0.16 | 0.27 | +0.113 | 0.116 | 14 % (0.075) |
+| EDT 500 Hz / 1 kHz / 2 kHz | 1.46 / 1.41 / 1.16 s | 1.42 / 1.38 / 1.10 s | -2.0 / -1.4 / -4.6 % | 9.2 / 7.8 / 10.2 % | 28 / 29 / 24 % (5 %) |
+| C80 500 Hz / 1 kHz / 2 kHz | 0.9 / 1.8 / 4.0 dB | 0.9 / 2.3 / 4.9 dB | -0.06 / +0.53 / +0.90 dB | 1.37 / 0.79 / 1.01 dB | 33 / 60 / 49 % (1 dB) |
+
+Python engine, current defaults (`detmold_kh.md`, `docs/BENCHMARK_en.md`): IACC_E3 0.04 low (54 % within), EDT
+-3 / -7 / -15 %, C80 +0.4 ... +1.6 dB. The page is at least as close in every band mean; the scatter over the pairs
+(median absolute differences of 8 - 10 % in EDT and about 1 dB in C80) is the same. The broadband IACC values are
+high for the reason given in `detmold_kh.md` (flat simulated source against the KH 120 response).

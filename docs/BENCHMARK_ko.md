@@ -193,7 +193,7 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
 | Arni, 37개 상태, 500 Hz / 1 / 2 / 4 kHz | T30 +10 / +4 / +3 / +1 %; EDT +7 / +2 / +1 / −2 %; C80 +0.17 / +0.02 / +0.31 / −0.06 dB | T30 +7 / −0 / −1 / −5 %; EDT +4 / −2 / −3 / −6 %; C80 +0.32 / +0.25 / +0.58 / +0.29 dB | 같음 |
 | OperaRIR, 194쌍, 500 Hz / 1 / 2 / 4 kHz | C80 +1.66 / +1.67 / +2.48 / +2.25 dB; EDT −19 / −26 / −28 / −18 % | C80 +1.36 / +1.39 / +3.16 / +2.98 dB; EDT −12 / −20 / −23 / −12 % | 같음 |
 | Detmold, 무지향 마이크 위치 24곳, 500 Hz / 1 / 2 kHz (엔진마다 따로 보정) | EDT +9.8 / +2.1 / +8.1 %; C80 −0.3 / −0.0 / +0.7 dB | EDT +7.4 / −1.8 / +1.4 %; C80 −0.6 / −0.3 / +0.7 dB | [detmold_js.md](../validation/detmold_js.md) |
-<!--DETMOLD_PAGE_ROW-->
+| Detmold, 바이노럴, 136쌍(KU100), 500 Hz / 1 / 2 kHz; BRIR을 페이지가 직접 계산 | IACC_E3 +0.02(0.075 이내 60 %); IACC_L3 +0.01(92 %); EDT −2.0 / −1.4 / −4.6 %(5 % 이내 24 – 29 %); C80 −0.1 / +0.5 / +0.9 dB(1 dB 이내 33 – 60 %) | IACC_E3 −0.04(54 %); IACC_L3 0.075 이내 93 %; EDT −3 / −7 / −15 %; C80 +0.4 … +1.6 dB | [detmold_js.md](../validation/detmold_js.md) |
 
 1, 4, 5절의 결론은 두 엔진에서 같다. 2026-11-15에 새로 확인한 것:
 

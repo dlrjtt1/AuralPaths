@@ -208,7 +208,7 @@ not be used in a drawn hall of the other.
 | Arni, 37 states, 500 Hz / 1 / 2 / 4 kHz | T30 +10 / +4 / +3 / +1 %; EDT +7 / +2 / +1 / -2 %; C80 +0.17 / +0.02 / +0.31 / -0.06 dB | T30 +7 / -0 / -1 / -5 %; EDT +4 / -2 / -3 / -6 %; C80 +0.32 / +0.25 / +0.58 / +0.29 dB | same |
 | OperaRIR, 194 pairs, 500 Hz / 1 / 2 / 4 kHz | C80 +1.66 / +1.67 / +2.48 / +2.25 dB; EDT -19 / -26 / -28 / -18 % | C80 +1.36 / +1.39 / +3.16 / +2.98 dB; EDT -12 / -20 / -23 / -12 % | same |
 | Detmold, 24 omnidirectional-microphone positions, 500 Hz / 1 / 2 kHz (each engine calibrated by itself) | EDT +9.8 / +2.1 / +8.1 %; C80 -0.3 / -0.0 / +0.7 dB | EDT +7.4 / -1.8 / +1.4 %; C80 -0.6 / -0.3 / +0.7 dB | [detmold_js.md](../validation/detmold_js.md) |
-<!--DETMOLD_PAGE_ROW-->
+| Detmold, binaural, 136 pairs (KU100), 500 Hz / 1 / 2 kHz; BRIRs computed by the page itself | IACC_E3 +0.02 (60 % within 0.075); IACC_L3 +0.01 (92 %); EDT -2.0 / -1.4 / -4.6 % (24 - 29 % within 5 %); C80 -0.1 / +0.5 / +0.9 dB (33 - 60 % within 1 dB) | IACC_E3 -0.04 (54 %); IACC_L3 within 0.075 at 93 %; EDT -3 / -7 / -15 %; C80 +0.4 ... +1.6 dB | [detmold_js.md](../validation/detmold_js.md) |
 
 The findings of sections 1, 4 and 5 hold with both engines. New on 2026-11-15:
 
