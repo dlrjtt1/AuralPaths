@@ -4,6 +4,8 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page footer: the known weak spot now gives the seat-dip error with and without the optional model and states that
+  delayed-loudspeaker conditions have not been compared with measurements; footer notes in the banner's font size (12 px).
 - Docs: `docs/MODEL_*` no longer say that RS6 / RS7 are outside the model (stale sentence from 2026-11-03).
 - Zenodo DOI of 0.8.1 (https://doi.org/10.5281/zenodo.24243050) in `CITATION.cff`, README and `docs/VALIDITY_*`.
 
