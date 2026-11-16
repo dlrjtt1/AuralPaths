@@ -71,7 +71,7 @@ const GEOM = (() => {
   function inPoly2(poly, x, y) {
     let c = false;
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-      const [xi, yi] = poly[i], [xj, yj] = poly[j];
+      const pi = poly[i], pj = poly[j], xi = pi[0], yi = pi[1], xj = pj[0], yj = pj[1];
       if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
     }
     return c;
@@ -90,11 +90,15 @@ const GEOM = (() => {
     for (const [a, b] of p2) { xmin = Math.min(xmin, a); xmax = Math.max(xmax, a); ymin = Math.min(ymin, b); ymax = Math.max(ymax, b); }
     return { verts, n, d, u, v, p2, area, mat, kind, bb: [xmin, xmax, ymin, ymax] };
   }
-  function inSurface(s, p) {
-    const a = p[s.u], b = p[s.v], bb = s.bb, tol = 1e-7;
+  function inSurface(s, p) { return inSurfXYZ(s, p[0], p[1], p[2]); }
+  function inSurfXYZ(s, x, y, z) { // as inSurface, without an array per call (ray tracing)
+    const a = s.u === 0 ? x : s.u === 1 ? y : z, b = s.v === 0 ? x : s.v === 1 ? y : z, bb = s.bb, tol = 1e-7;
     if (a < bb[0] - tol || a > bb[1] + tol || b < bb[2] - tol || b > bb[3] + tol) return false;
     return inPoly2(s.p2, a, b);
   }
+  // planes of all surfaces as one flat array [nx, ny, nz, d] per surface (ray tracing; same numbers as s.n, s.d)
+  function planes(G) { if (G._pl && G._pl.length === 4 * G.S.length) return G._pl; const a = new Float64Array(4 * G.S.length);
+    G.S.forEach((s, i) => { a[4 * i] = s.n[0]; a[4 * i + 1] = s.n[1]; a[4 * i + 2] = s.n[2]; a[4 * i + 3] = s.d; }); return (G._pl = a); }
 
   // Build all surfaces. g = { plan:[[x,y]..], floor:[[y,z]..], ceil:[[y,z]..], stageY }
   function build(g) {
@@ -624,7 +628,7 @@ const GEOM = (() => {
     const Vs = 4 / 3 * Math.PI * radius ** 3, r2 = radius * radius, Lmax = c * tMax, e0 = 4 * Math.PI / n;
     const Rpow = {}; for (const m in mats) Rpow[m] = mats[m].R.map((r) => r * r);
     let escaped = 0, hits = 0, leaked = 0;
-    const tHit = new Float64Array(G.S.length);
+    const tHit = new Float64Array(G.S.length), PL = planes(G), nS = G.S.length;
     for (let k = k0; k < Math.min(k1, n); k++) {
       // each ray has its own random stream (seed, ray index), so that a change of absorption, which ends some rays
       // earlier, leaves the paths of all other rays unchanged (common random numbers: smooth calibration and
@@ -641,13 +645,19 @@ const GEOM = (() => {
         let best = Infinity, bi = -1;
         const test = (i) => {
           if (i === last) return;
-          const s = G.S[i], den = s.n[0] * dx + s.n[1] * dy + s.n[2] * dz;
+          const q = 4 * i, den = PL[q] * dx + PL[q + 1] * dy + PL[q + 2] * dz;
           if (den >= -1e-12) return; // moving away from the inside face
-          const t = (s.d - (s.n[0] * ox + s.n[1] * oy + s.n[2] * oz)) / den;
-          if (t > 1e-9 && t < best && inSurface(s, [ox + t * dx, oy + t * dy, oz + t * dz])) { best = t; bi = i; return t; }
+          const t = (PL[q + 3] - (PL[q] * ox + PL[q + 1] * oy + PL[q + 2] * oz)) / den;
+          if (t > 1e-9 && t < best && inSurfXYZ(G.S[i], ox + t * dx, oy + t * dy, oz + t * dz)) { best = t; bi = i; return t; }
         };
         if (G.bvh) bvhWalk(G.bvh, [ox, oy, oz], [dx, dy, dz], Infinity, test);
-        else for (let i = 0; i < G.S.length; i++) test(i);
+        else for (let i = 0; i < nS; i++) { // same test inline (drawn halls: every surface, in order)
+          if (i === last) continue;
+          const q = 4 * i, den = PL[q] * dx + PL[q + 1] * dy + PL[q + 2] * dz;
+          if (den >= -1e-12) continue;
+          const t = (PL[q + 3] - (PL[q] * ox + PL[q + 1] * oy + PL[q + 2] * oz)) / den;
+          if (t > 1e-9 && t < best && inSurfXYZ(G.S[i], ox + t * dx, oy + t * dy, oz + t * dz)) { best = t; bi = i; }
+        }
         if (bi < 0) { escaped++; break; }
         // mesh halls: a ray that got through a crack into a solid (or out of the hall) is ended here, before it
         // deposits energy. Behind a face it would bounce between the back-facing twins with little loss and, passing
@@ -703,9 +713,10 @@ const GEOM = (() => {
         if (scat && blend < 0) qc = 0;
         if (scat) { // Lambert reflection around the inward normal
           const u1 = rnd(), u2 = rnd(), sq = Math.sqrt(u1), phi = 2 * Math.PI * u2, n0 = s.n;
-          const t1 = Math.abs(n0[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
-          let ax = [n0[1] * t1[2] - n0[2] * t1[1], n0[2] * t1[0] - n0[0] * t1[2], n0[0] * t1[1] - n0[1] * t1[0]]; const al = Math.hypot(...ax); ax = ax.map((v) => v / al);
-          const ay = [n0[1] * ax[2] - n0[2] * ax[1], n0[2] * ax[0] - n0[0] * ax[2], n0[0] * ax[1] - n0[1] * ax[0]];
+          if (!s._ax) { const t1 = Math.abs(n0[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+            let ax = [n0[1] * t1[2] - n0[2] * t1[1], n0[2] * t1[0] - n0[0] * t1[2], n0[0] * t1[1] - n0[1] * t1[0]]; const al = Math.hypot(...ax); ax = ax.map((v) => v / al);
+            s._ax = ax; s._ay = [n0[1] * ax[2] - n0[2] * ax[1], n0[2] * ax[0] - n0[0] * ax[2], n0[0] * ax[1] - n0[1] * ax[0]]; }
+          const ax = s._ax, ay = s._ay;
           const a1 = sq * Math.cos(phi), a2 = sq * Math.sin(phi), a3 = Math.sqrt(Math.max(0, 1 - u1));
           const lx = a1 * ax[0] + a2 * ay[0] + a3 * n0[0], ly = a1 * ax[1] + a2 * ay[1] + a3 * n0[1], lz = a1 * ax[2] + a2 * ay[2] + a3 * n0[2];
           if (blend >= 0) {

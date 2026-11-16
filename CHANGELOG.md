@@ -4,6 +4,10 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page and `engine_js.py`: faster computation. The ray tracer reads the surface planes from a flat array and allocates
+  nothing per surface test (bit-identical results, about 1.5x faster); the three early-window noise pairs are generated
+  only as long as they are used (late field bit-identical, early part a new noise realization within seed-to-seed
+  variation). Fan hall example on 2 cores: 63 -> 27 s. See `validation/timing.md`.
 - Page footer: the known weak spot now gives the seat-dip error with and without the optional model and states that
   delayed-loudspeaker conditions have not been compared with measurements; footer notes in the banner's font size (12 px).
 - Docs: `docs/MODEL_*` no longer say that RS6 / RS7 are outside the model (stale sentence from 2026-11-03).

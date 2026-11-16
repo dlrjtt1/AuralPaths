@@ -554,8 +554,10 @@ function lateDirFactory(P) {
     gr[0] = 1; gi[0] = 0;
     return { E, gr, gi };
   }
-  function lateDir(W, seedStr) {
-    const { E, gr, gi } = lateField(W);
+  // nLen (optional): length of the noise pair, shorter than NL for the early windows, which are used only up to the end
+  // of the early part (the band filter and the unit-power normalisation then run over that length)
+  function lateDir(W, seedStr, nLen) {
+    const { E, gr, gi } = lateField(W), nl = nLen ? Math.min(NL, nLen) : NL, np = nLen ? 1 << Math.ceil(Math.log2(nl)) : NP;
     // magnitude and unwrapped phase on the table grid, interpolated linearly in f onto the noise spectrum
     const mag = new Float64Array(LD.nf), th = new Float64Array(LD.nf);
     for (let k = 0; k < LD.nf; k++) { mag[k] = Math.min(1, Math.hypot(gr[k], gi[k])); let p = Math.atan2(gi[k], gr[k]); if (k) { while (p - th[k - 1] > Math.PI) p -= 2 * Math.PI; while (p - th[k - 1] < -Math.PI) p += 2 * Math.PI; } th[k] = p; }
@@ -564,13 +566,13 @@ function lateDirFactory(P) {
     const gs = () => { let u = 0; while (u === 0) u = rn(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rn()); };
     const bank = [[], []], df0 = LD.f[1] - LD.f[0];
     for (const [lo, hi] of edges) {   // an independent pair per band, like brir_proto.late_binaural (overlapping band skirts stay uncorrelated)
-    const re = new Float64Array(NP), im = new Float64Array(NP);
-    for (let i = 0; i < NP; i++) { re[i] = gs(); im[i] = gs(); }
+    const re = new Float64Array(np), im = new Float64Array(np);
+    for (let i = 0; i < np; i++) { re[i] = gs(); im[i] = gs(); }
     fftAny(re, im, false);
-    const zr = new Float64Array(NP), zi = new Float64Array(NP);
-    for (let k = 0; k < NP; k++) {
-      const m = (NP - k) % NP, kk = Math.min(k, NP - k), f = kk * fs / NP, x = Math.min(LD.nf - 1.000001, f / df0), j = Math.floor(x), t = x - j;
-      const a = Math.acos(mag[j] + t * (mag[j + 1] - mag[j])) / 2, c = Math.cos(a), s = Math.sin(a), ph = (th[j] + t * (th[j + 1] - th[j])) * (k > NP / 2 ? -1 : 1);
+    const zr = new Float64Array(np), zi = new Float64Array(np);
+    for (let k = 0; k < np; k++) {
+      const m = (np - k) % np, kk = Math.min(k, np - k), f = kk * fs / np, x = Math.min(LD.nf - 1.000001, f / df0), j = Math.floor(x), t = x - j;
+      const a = Math.acos(mag[j] + t * (mag[j + 1] - mag[j])) / 2, c = Math.cos(a), s = Math.sin(a), ph = (th[j] + t * (th[j + 1] - th[j])) * (k > np / 2 ? -1 : 1);
       const n1r = (re[k] + re[m]) / 2, n1i = (im[k] - im[m]) / 2, n2r = (im[k] + im[m]) / 2, n2i = -(re[k] - re[m]) / 2;
       const lr = c * n1r + s * n2r, li = c * n1i + s * n2i, br = c * n1r - s * n2r, bi = c * n1i - s * n2i;
       const cp = Math.cos(ph), sp = Math.sin(ph), rr = br * cp + bi * sp, ri = bi * cp - br * sp;
@@ -578,8 +580,8 @@ function lateDirFactory(P) {
     }
     fftAny(zr, zi, true);
     for (let e = 0; e < 2; e++) {
-      const x = new Float32Array(NL); for (let i = 0; i < NL; i++) x[i] = (e ? zi[i] : zr[i]) / NP;
-      bandFilter(x, lo, hi); let p = 0; for (let i = 0; i < NL; i++) p += x[i] * x[i]; const g = 1 / Math.sqrt(p / NL + 1e-30); for (let i = 0; i < NL; i++) x[i] *= g;
+      const x = new Float32Array(nl); for (let i = 0; i < nl; i++) x[i] = (e ? zi[i] : zr[i]) / np;
+      bandFilter(x, lo, hi); let p = 0; for (let i = 0; i < nl; i++) p += x[i] * x[i]; const g = 1 / Math.sqrt(p / nl + 1e-30); for (let i = 0; i < nl; i++) x[i] *= g;
       bank[e].push(x);
     }
     }
@@ -822,7 +824,7 @@ const ENG = (() => {
     const envL = bandEnv(hist), envR = resid ? bandEnv(resid) : null, iD = Math.max(0, Math.floor(tDir * fs)), i1 = Math.floor((tDir + 0.02) * fs), i2 = Math.floor((tDir + 0.05) * fs);
     for (let i = 0; i < NL; i++) {
       const w = Math.min(1, Math.max(0, (i / fs - t0) / cf)), wl = Math.sin(0.5 * Math.PI * w) ** 2, we = 1 - wl;
-      const rk = early && i >= iD ? early[i < i1 ? 0 : i < i2 ? 1 : 2] : null, rb = rk ? rk.bank : bank, rE = rk ? rk.E : dfE, rOn = envR && i >= iD;
+      let rk = early && i >= iD ? early[i < i1 ? 0 : i < i2 ? 1 : 2] : null; if (rk && i >= rk.bank[0][0].length) rk = null; const rb = rk ? rk.bank : bank, rE = rk ? rk.E : dfE, rOn = envR && i >= iD && we > 0;
       for (let e = 0; e < 2; e++) { let l = 0; for (let b = 0; b < edges.length; b++) l += bank[e][b][i] * envL[b][i] * wl * Math.sqrt(dfE[e][b]) + (rOn ? rb[e][b][i] * envR[b][i] * we * Math.sqrt(rE[e][b]) : 0); out[e][i] = earlySig[e][i] * (discrete ? 1 : we) + l; }
     }
     return out;
@@ -832,7 +834,7 @@ const ENG = (() => {
   const LD = D.lateDir ? (() => { const f32 = (b) => { const r = atob(b), u = new Uint8Array(r.length); for (let i = 0; i < r.length; i++) u[i] = r.charCodeAt(i); return new Float32Array(u.buffer); };
     const T = D.lateDir; return { nbin: T.nbin, nf: T.nf, f: T.f, om: T.om, be: T.be, xr: f32(T.xr), xi: f32(T.xi), pl: f32(T.pl), pr: f32(T.pr) }; })() : null;
   const ldParams = LD ? { fs, NL, NP, edges, bankIdx, lb, nb: D.praBands.length, LD } : null, LDF = ldParams ? lateDirFactory(ldParams) : null;
-  const lateField = (W) => LDF.lateField(W), lateDir = (W, seedStr) => LDF.lateDir(W, seedStr);
+  const lateField = (W) => LDF.lateField(W), lateDir = (W, seedStr, nLen) => LDF.lateDir(W, seedStr, nLen);
   function arrivalsFromList(list) {
     return list.map((q) => { const rms = Math.sqrt(q.g.reduce((s, v, b) => s + v * v * (q.tb ? q.tb[b] : 1), 0) / q.g.length);
       return { t: q.t, o: q.o, dif: q.dif, az: Math.atan2(q.h[1], q.h[0]) * 180 / Math.PI, el: Math.asin(Math.max(-1, Math.min(1, q.h[2]))) * 180 / Math.PI, lev: 20 * Math.log10(rms + 1e-12) }; });
@@ -1156,11 +1158,14 @@ function earlyW(raw) {   // the three windows' direction weights, or null where 
   }
   return out;
 }
-function earlyDirs(raw, key) { const out = earlyW(raw).map((Wk, k) => (Wk ? ENG.lateDir(Wk, key + "|early" + k) : null)); return out.every((x) => x) ? out : null; }
+// samples of the early-window noise: up to the end of the early part after the first arrival (compose) plus 0.2 s for
+// the band filters' edges; the first arrival is at the direct-sound time or later (blocked direct path)
+function earlyLen(raw) { const t0 = dist(raw.pos, raw.seat) / D.c; let t = Infinity; for (const q of raw.list || []) t = Math.min(t, q.t); t = Number.isFinite(t) ? Math.max(t, t0) : t0; return Math.ceil((t + (D.earlyMs + D.xfadeMs) / 1000 + 0.2) * D.fs); }
+function earlyDirs(raw, key) { const n = earlyLen(raw), out = earlyW(raw).map((Wk, k) => (Wk ? ENG.lateDir(Wk, key + "|early" + k, n) : null)); return out.every((x) => x) ? out : null; }
 // The noise pairs of the late field and of the early windows (ENG.lateDir: four per path, the slowest part of a
 // rendering) are computed in a pool of workers before the paths are rendered; same code and seeds, so the BRIRs are
 // those of the main-thread computation, which stays as the fallback (renderGeom computes what is missing).
-const LDW_SRC = DSPLIB.toString() + "\n" + lateDirFactory.toString() + "\nlet F = null; self.onmessage = (e) => { const m = e.data; if (m.init) { F = lateDirFactory(m.init); return; } const r = F.lateDir(m.W, m.seed); self.postMessage({ id: m.id, E: r.E, bank: r.bank }, r.bank.flat().map((a) => a.buffer)); };";
+const LDW_SRC = DSPLIB.toString() + "\n" + lateDirFactory.toString() + "\nlet F = null; self.onmessage = (e) => { const m = e.data; if (m.init) { F = lateDirFactory(m.init); return; } const r = F.lateDir(m.W, m.seed, m.n); self.postMessage({ id: m.id, E: r.E, bank: r.bank }, r.bank.flat().map((a) => a.buffer)); };";
 let ldPool = null, ldOK = true, ldSeq = 0; const ldWait = new Map();
 function ldWorkers() {
   if (!ldPool) {
@@ -1171,11 +1176,11 @@ function ldWorkers() {
   }
   return ldPool;
 }
-function lateDirAsync(W, seed) { return new Promise((ok) => { const id = ++ldSeq, P = ldWorkers(); ldWait.set(id, (r) => ok(r ? { E: r.E, bank: r.bank } : null)); P[id % P.length].postMessage({ id, W, seed }); }); }
+function lateDirAsync(W, seed, n) { return new Promise((ok) => { const id = ++ldSeq, P = ldWorkers(); ldWait.set(id, (r) => ok(r ? { E: r.E, bank: r.bank } : null)); P[id % P.length].postMessage({ id, W, seed, n }); }); }
 function prepLate(key) {
   const raw = GC[key], jobs = [];
   if (raw.W && !raw.late) jobs.push(lateDirAsync(raw.W, key).then((r) => { if (r) raw.late = r; }));
-  if (raw.WE && !raw.early) jobs.push(Promise.all(earlyW(raw).map((Wk, k) => (Wk ? lateDirAsync(Wk, key + "|early" + k) : null))).then((out) => { if (out.every((x) => x)) raw.early = out; }));
+  if (raw.WE && !raw.early) jobs.push(Promise.all(earlyW(raw).map((Wk, k) => (Wk ? lateDirAsync(Wk, key + "|early" + k, earlyLen(raw)) : null))).then((out) => { if (out.every((x) => x)) raw.early = out; }));
   return Promise.all(jobs);
 }
 function renderGeom(o, s) {

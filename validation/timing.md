@@ -80,3 +80,32 @@ numbers of `lateDir` 22 % (`gs`, `rn`), `runBiquad` 3 %: about 3 s per path for 
 directional late field and the early windows. These are now computed in a pool of workers; the main thread is 97 %
 idle, the BRIRs are identical, the total time on 2 cores is the same (57 - 66 s, one worker). With more cores the
 pool has up to 6 workers; not measured.
+
+## Faster page computation (2026-11-17)
+
+Two changes, measured on the fan hall example (`examples/fan_hall_config.json`, 4 sources x 3 seats, 50000 rays,
+headless Chromium, 2 cores, so one ray-tracing worker and one late-noise worker):
+
+| step | before | after |
+|---|---|---|
+| loading the config (all 12 paths) | 55 - 63 s | 27 s |
+| moving one PA (3 paths) | 13.5 s | 6.7 s |
+| moving one seat (4 paths) | 39 s | 14 s |
+| changing ITDG / level ratio (no new paths) | 0.06 - 0.15 s | unchanged |
+| first load of the page (default shoebox) | 5 s | unchanged |
+
+1. Ray tracer (`engine_geom.js`, `GEOM.rays`): the planes of the surfaces are read from one flat array, the
+   point-in-surface test takes coordinates instead of a new array per test, and the Lambert frame of a surface is
+   computed once. Same arithmetic in the same order: the histograms and direction records are bit-identical
+   (Node benchmark of the page's worker message, 4 sources x 50000 rays: 15.1 s -> 10.2 s; all arrays identical;
+   page BRIRs identical). Python's `engine_js.py` uses the same file and gets the same speed-up.
+2. Early-window noise (`viewer_template.html`, `lateDir` with a length): the three noise pairs of the early
+   scattered energy (0 - 20, 20 - 50 ms, rest of the early part) are used only up to the end of the early part, but
+   were generated over the full length of the late field (76800 samples). They are now generated up to the first
+   arrival + early part + cross-fade + 0.2 s (band-filter edges), about 16384 samples in this hall. The late field is
+   unchanged (bit-identical after the early part). Inside the early part this is a new noise realization: against
+   the old page, energy in the windows 0 - 20 / 20 - 50 / 50 - 110 ms RMS 0.18 / 0.19 / 0.25 dB over the 12 paths,
+   IACC_E3 (500 Hz - 2 kHz) mean difference 0.000, RMS 0.048; the old page with other noise seeds gives 0.23 / 0.13 /
+   0.22 dB and RMS 0.050, so the change is within seed-to-seed variation.
+
+With more cores both pools grow (up to 8 ray-tracing and 6 noise workers); not measured here.
