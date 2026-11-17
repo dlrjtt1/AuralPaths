@@ -4,6 +4,9 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page, fix: moving a source or a seat while the whole hall was being computed left the page at "Rendering n
+  paths…" for ever (the change replaced the computation, the other paths were never computed, and showing the results
+  failed). The missing paths are now computed with the changed ones, and the status is always cleared.
 - Page, Mark stage front: the plan labels the stage and the audience side; a stage point on the line is refused and a
   second event of the same click is ignored.
 - Ray tracing in 3D models: nearest-surface search with a surface-area-heuristic tree, flat arrays and near-first

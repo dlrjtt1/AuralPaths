@@ -1021,8 +1021,17 @@ function buildOne(o, s) {
   const key = s.id + "|" + o.id, dm = dmOf(o), e = ENG.early(o.pos, s.pos, ENG.NL, dm), h = ENG.fullHist(o.pos, s.pos, dm);
   HIST[key] = h; BR[key] = ENG.compose(e.sig, e.tDir, pathIndex(o), h); ARR[key] = ENG.arrivals(o.pos, s.pos, dm);
 }
-function rebuildPath(o) { if (isDrawn()) return geomRebuild([o], SEATS()); for (const s of SEATS()) buildOne(o, s); }
-function rebuildSeat(s) { if (isDrawn()) return geomRebuild(sourcesAll(), [s]); for (const o of sourcesAll()) buildOne(o, s); }
+// A change made while another computation was running replaces it (its workers are stopped), so paths of that
+// computation can be missing: they are computed together with the changed ones.
+const hasBR = (o, s) => !!BR[s.id + "|" + o.id];
+function rebuildPath(o) {
+  if (isDrawn()) { const more = sourcesAll().filter((q) => q !== o && !SEATS().every((s) => hasBR(q, s))); return geomRebuild([o, ...more], SEATS()); }
+  for (const q of sourcesAll()) for (const s of SEATS()) if (q === o || !hasBR(q, s)) buildOne(q, s);
+}
+function rebuildSeat(s) {
+  if (isDrawn()) { const all = SEATS().every((t) => t === s || sourcesAll().every((o) => hasBR(o, t))); return geomRebuild(sourcesAll(), all ? [s] : SEATS()); }
+  for (const t of SEATS()) for (const o of sourcesAll()) if (t === s || !hasBR(o, t)) buildOne(o, t);
+}
 function rebuildAll() {
   ENG.setHall(HALL); buildGeom(); for (const k in BR) delete BR[k]; ARR = {};
   if (isDrawn()) return geomRebuild(sourcesAll(), SEATS());
@@ -3193,7 +3202,9 @@ function work(fn) {
   setTimeout(async () => {
     try { await fn(); } catch (e) { console.error(e); $("rtNote").textContent = "The computation failed: " + (e.message || e); }
     if (seq !== workSeq) return;   // a newer change took over
-    buildSeatSeg(); buildTable(); fillHall(); refresh(); $("busy").hidden = true; restartPlayer();
+    try { buildSeatSeg(); buildTable(); fillHall(); refresh(); restartPlayer(); }
+    catch (e) { console.error(e); $("rtNote").textContent = "Showing the results failed: " + (e.message || e) + ". Change any setting to compute again."; }
+    $("busy").hidden = true;   // never left on, whatever happened
   }, 20);
 }
 function titleBlock() {
