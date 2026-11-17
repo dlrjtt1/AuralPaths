@@ -1878,11 +1878,24 @@ function frontClick(x, y) {
   $("posNote").textContent = `Stage front set (opening ${F.w.toFixed(1)} m). ${n} item${n === 1 ? "" : "s"} placed from it; locked items stay. It is saved with the config; drag items to fine-tune.`;
   drawMap(); drawSection(); syncTable(); work(rebuildAll);
 }
+// stop the hall computation in progress (its result would be for the old room): workers terminated, result discarded
+function cancelHall() { for (const w of pool) w.terminate(); pool = []; jobId++; }
+// 3D model settings. Turning the plan also turns the listeners (they face +y of the page, as the HRIR directions),
+// so the hall is computed again; this waits until the plan has not been turned for 1.5 s (one computation for
+// several turns), and the computation in progress is stopped at once.
+let meshT = 0;
 const meshSetting = (k, conv) => (e) => { if (!HALL.mesh) return; const m = HALL.mesh;
+  cancelHall(); clearTimeout(meshT);
+  const rot0 = m.rot;
   for (const o of OBJ) o.pos = meshToModel(m, o.pos);
   m[k] = conv(e.target.value); const st = meshState({ axes: m.axes, rotate_deg: m.rot }, m.text); m.shift = st.shift; m.dims = st.dims; HALL.dims = m.dims.slice();
   for (const o of OBJ) { o.pos = meshToPage(m, o.pos); delete o.h; }
-  buildGeom(); shapeUI(); if (GM) { initHeights(OBJ); clampAll(); work(rebuildAll); } };
+  const dRot = m.rot - rot0;   // aiming of directional loudspeakers turns with the plan (az: degrees in the page frame)
+  if (dRot) for (const o of OBJ) if (o.dir && (o.dir.az || o.dir.el)) { let a = o.dir.az + dRot; a = ((a + 180) % 360 + 360) % 360 - 180; o.dir.az = Math.round(a * 10) / 10; }
+  buildGeom(); shapeUI();
+  if (GM) { initHeights(OBJ); clampAll(); drawMap(); drawSection(); syncTable();
+    if (k === "rot") { $("busy").textContent = "Plan turned: computing in 1.5 s"; $("busy").hidden = false; meshT = setTimeout(() => work(rebuildAll), 1500); }
+    else work(rebuildAll); } };
 $("selAxes").onchange = meshSetting("axes", String); $("selRot").onchange = meshSetting("rot", Number); $("selVox").onchange = meshSetting("voxel", Number);
 function shapeUI() {
   const d = isDrawn(), mm = isMesh();

@@ -4,6 +4,9 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page, 3D models: turning the plan stops the hall computation in progress and computes once the plan has not been
+  turned for 1.5 s (several turns, one computation); the aim of directional loudspeakers now turns with the plan
+  (before, a loudspeaker pointed elsewhere in the hall after a turn).
 - Page, 3D models: **Mark stage front…** (three clicks: both ends of the stage opening, then the stage) places the
   sources and seats from that line as in the built-in layout; saved as `geometry.mesh.stage_front`.
 - Page, 3D models: opening a different OBJ while one is loaded no longer keeps the items in the old model's frame;
