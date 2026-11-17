@@ -355,7 +355,8 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
     <section class="panel">
       <div class="ph"><h2>Layout</h2><p class="expl">Positions in metres. Locked items cannot be dragged or edited.</p></div>
       <div class="row"><button class="btn" id="bAuto" aria-pressed="true" title="On: every move is computed at once. Off: move several items, then press Compute changes">Compute on every change</button>
-        <button class="btn" id="bApply" disabled>Compute changes</button><span class="note" id="applyNote"></span></div>
+        <button class="btn" id="bApply" disabled>Compute changes</button>
+        <button class="btn" id="bSymPA" title="Puts PA R at the mirror image of PA L about the line through seat C in the direction the listeners face (same height; the aim is mirrored too)">Mirror PA R from PA L</button><span class="note" id="applyNote"></span></div>
       <div class="tablewrap"><table class="layout" id="layoutTable"></table></div><input type="file" id="fDir" accept=".csv,.txt,.sofa,text/csv" hidden>
       <p class="cap">Source aiming · directivity, azimuth and elevation</p>
       <div class="tablewrap"><table class="layout" id="paTable"></table></div>
@@ -2708,6 +2709,22 @@ function exportWav() {
 const needApply = (f) => () => { if (pendN()) { $("posNote").textContent = "Some moves are not computed yet: press Compute changes (Layout) first, so that the export matches the positions."; return; } f(); };
 $("bSofa").onclick = needApply(exportSofa); $("bWav").onclick = needApply(exportWav);
 $("bAuto").onclick = () => setAuto(!S.auto, true); $("bApply").onclick = applyPending;
+// PA R at the mirror image of PA L about the centre line: through seat C (else the selected seat), in the direction
+// the listeners face (facePage). Then both PAs are at the same distance from that seat. A locked PA R: PA L is moved.
+$("bSymPA").onclick = () => {
+  let a = PAL(), b = PAR(); const c = byId("C") || seatObj(S.seat); if (!a || !b || !c) return;
+  if (isLocked(b)) { if (isLocked(a)) { $("posNote").textContent = "Both PAs are locked."; return; } [a, b] = [b, a]; }
+  const f = facePage(), dx = a.pos[0] - c.pos[0], dy = a.pos[1] - c.pos[1], al = dx * f[0] + dy * f[1];
+  const x = c.pos[0] + 2 * al * f[0] - dx, y = c.pos[1] + 2 * al * f[1] - dy;
+  if (!(x > 0.2 && x < HALL.dims[0] - 0.2 && y > 0.2 && y < HALL.dims[1] - 0.2 && inOutline(x, y))) { $("posNote").textContent = `The mirror image of ${labelOf(a)} about the line through seat ${c.id} (${x.toFixed(2)}, ${y.toFixed(2)} m) is outside the room. Nothing moved.`; return; }
+  const r2 = (v) => Math.round(v * 100) / 100;
+  b.pos[0] = r2(x); b.pos[1] = r2(y); b.h = a.h; syncZ(b);
+  if (a.dir && b.dir && (a.dir.az || a.dir.el)) { const t = a.dir.az * Math.PI / 180, ux = Math.sin(t), uy = -Math.cos(t), ua = ux * f[0] + uy * f[1], vx = 2 * ua * f[0] - ux, vy = 2 * ua * f[1] - uy;
+    b.dir.az = Math.round(Math.atan2(vx, -vy) * 180 / Math.PI * 10) / 10; b.dir.el = a.dir.el; }
+  const d = (o) => Math.hypot(o.pos[0] - c.pos[0], o.pos[1] - c.pos[1]);
+  $("posNote").textContent = `${labelOf(b)} mirrored from ${labelOf(a)} about the line through seat ${c.id}: ${d(a).toFixed(2)} m and ${d(b).toFixed(2)} m from the seat (plan).`;
+  stop(); buildPaTable(); moved(b);
+};
 async function saveConfig() {
   const cfg = currentConfig(), txt = JSON.stringify(cfg, null, 1);
   const hallStem = ((cfg.name || "").split(",")[0].trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "") || "config");

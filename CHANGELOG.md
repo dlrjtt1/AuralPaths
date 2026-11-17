@@ -4,6 +4,8 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page, Layout: **Mirror PA R from PA L** puts PA R at the mirror image of PA L about the line through seat C in the
+  direction the listeners face (same height above the floor, aim mirrored), so both are at the same distance from C.
 - Page, Layout: **Compute on every change** (toggle) and **Compute changes**. With the toggle off (the default for 3D
   models) moved sources and seats are collected and computed together; exports are refused while moves are pending.
 - Page, fix: after dragging an item on the plan the page did not wait for the computation before showing results.
