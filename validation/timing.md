@@ -131,3 +131,24 @@ as JSON). Image sources of 4 sources: DUS 181 s -> 70 s, fan hall 1.7 s -> 0.8 s
 205 s -> 128 s on 2 cores (the image sources of the sources are spread over the workers, up to 4 in 3D halls, so a
 larger machine runs them in parallel; not measured here). The model has no coplanar duplicate triangles (14063
 distinct planes of 14082), so grouping by plane would not help.
+
+## 3D (OBJ) halls: ray tracing (2026-11-17)
+
+With 50000 rays as the default of 3D models (`ray_noise.md`), the ray tracer became the larger part. Its search for
+the nearest surface used a tree split at the median, visited in a fixed order through a callback. Now: a second tree
+split by the surface-area heuristic (16 bins), flat arrays, the nearer child first, in a small function of its own
+(`bvhNearest`); ties of equal distance are decided by the visit order of the old search (`rank`), so the surface found
+is the same. `occluded` uses the same tree (any hit). All arrays of the rays and the image-source arrivals are
+identical to before (CR3 two sources, DUS one source, 10000 rays, compared byte by byte).
+
+| | before | after |
+|---|---|---|
+| CR3 (4626 triangles), rays of 2 sources x 10000, Node | 24.8 s | 5.6 s |
+| DUS (14082 triangles), rays of 1 source x 10000, Node | 9.3 s | 3.1 s |
+| DUS, 1 source x 10000 rays in the page's worker (headless Chromium) | 12.5 s | 5.7 s |
+| DUS, hall computation of the page, 4 sources x 50000 rays, 2 cores | about 320 s (estimate from the parts) | 155 s |
+
+In Chromium's worker the search inlined in the large `rays` function ran several times slower than in Node or on the
+main thread (16.6 s against 2.6 s for the same code), which is why it is a separate small function; the rest of
+`rays` is still about twice as slow in the worker as in Node. The pool of ray-tracing workers of 3D halls is now up
+to 8 (before 4); not measured on a machine with more than 2 cores.

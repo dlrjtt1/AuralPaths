@@ -355,7 +355,41 @@ const GEOM = (() => {
       return me;
     }
     if (n) make(0, n);
-    return { nodes, idx };
+    // rank[i] = position of surface i in the order bvhWalk visits the leaves when nothing is pruned (right child
+    // first); the ray tracer breaks ties of equal distance by it, so that it finds the surface bvhWalk would find
+    const rank = new Int32Array(n);
+    if (n) { let r = 0; const st = [0]; while (st.length) { const nd = nodes[st.pop()]; if (nd.c) { for (let q = nd.s; q < nd.s + nd.c; q++) rank[idx[q]] = r++; } else st.push(nd.l, nd.r); } }
+    // second tree for the ray tracer and occluded(): flat arrays, split by the surface-area heuristic (16 bins)
+    const fidx = Int32Array.from({ length: n }, (_, i) => i), fb = [], fl = [], fr = [], fs = [], fc = [], fa = [];
+    const area = (b) => { const x = b[3] - b[0], y = b[4] - b[1], z = b[5] - b[2]; return x * y + y * z + z * x; };
+    let depth2 = 0;
+    function make2(start, end, dep = 1) {
+      if (dep > depth2) depth2 = dep;
+      const b = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity], cb = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity];
+      for (let k = start; k < end; k++) { const i = fidx[k]; for (let a = 0; a < 3; a++) { b[a] = Math.min(b[a], lo[3 * i + a]); b[3 + a] = Math.max(b[3 + a], hi[3 * i + a]); cb[a] = Math.min(cb[a], ctr[3 * i + a]); cb[3 + a] = Math.max(cb[3 + a], ctr[3 * i + a]); } }
+      const me = fl.length; fb.push(b); fl.push(-1); fr.push(-1); fs.push(start); fc.push(end - start); fa.push(0);
+      const cnt = end - start; if (cnt <= 2) return me;
+      const NBIN = 16; let bestC = cnt * area(b), bestA = -1, bestK = -1;   // cost of a leaf: cnt * area
+      for (let a = 0; a < 3; a++) { const w = cb[3 + a] - cb[a]; if (!(w > 1e-9)) continue;
+        const bc = new Int32Array(NBIN), bb = Array.from({ length: NBIN }, () => [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity]);
+        for (let k = start; k < end; k++) { const i = fidx[k], q = Math.min(NBIN - 1, Math.floor((ctr[3 * i + a] - cb[a]) / w * NBIN)); bc[q]++; const B = bb[q]; for (let d = 0; d < 3; d++) { B[d] = Math.min(B[d], lo[3 * i + d]); B[3 + d] = Math.max(B[3 + d], hi[3 * i + d]); } }
+        const la = new Float64Array(NBIN), ln = new Int32Array(NBIN); let acc = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity], c = 0;
+        for (let q = 0; q < NBIN - 1; q++) { c += bc[q]; for (let d = 0; d < 3; d++) { acc[d] = Math.min(acc[d], bb[q][d]); acc[3 + d] = Math.max(acc[3 + d], bb[q][3 + d]); } la[q] = c ? area(acc) : 0; ln[q] = c; }
+        acc = [Infinity, Infinity, Infinity, -Infinity, -Infinity, -Infinity]; c = 0;
+        for (let q = NBIN - 1; q > 0; q--) { c += bc[q]; for (let d = 0; d < 3; d++) { acc[d] = Math.min(acc[d], bb[q][d]); acc[3 + d] = Math.max(acc[3 + d], bb[q][3 + d]); }
+          if (!c || !ln[q - 1]) continue; const cost = 0.5 * area(b) + ln[q - 1] * la[q - 1] + c * area(acc); if (cost < bestC) { bestC = cost; bestA = a; bestK = q; } } }
+      if (bestA < 0) { if (cnt <= 8) return me;   // no useful split: halve by the widest centroid axis
+        let ax = 0; for (let a = 1; a < 3; a++) if (cb[3 + a] - cb[a] > cb[3 + ax] - cb[ax]) ax = a;
+        const sub = Array.from(fidx.subarray(start, end)).sort((p, q) => ctr[3 * p + ax] - ctr[3 * q + ax] || p - q); fidx.set(sub, start);
+        const mid = (start + end) >> 1; fa[me] = ax; fc[me] = 0; fl[me] = make2(start, mid, dep + 1); fr[me] = make2(mid, end, dep + 1); return me; }
+      const w = cb[3 + bestA] - cb[bestA]; let m = start;   // partition: bins < bestK to the left
+      for (let k = start; k < end; k++) { const i = fidx[k]; if (Math.min(NBIN - 1, Math.floor((ctr[3 * i + bestA] - cb[bestA]) / w * NBIN)) < bestK) { fidx[k] = fidx[m]; fidx[m++] = i; } }
+      fa[me] = bestA; fc[me] = 0; fl[me] = make2(start, m, dep + 1); fr[me] = make2(m, end, dep + 1); return me;
+    }
+    if (n) make2(0, n);
+    const N = fl.length, FB = new Float64Array(6 * N), FL = Int32Array.from(fl), FR = Int32Array.from(fr), FS = Int32Array.from(fs), FC = Int32Array.from(fc), FA = Int8Array.from(fa);
+    fb.forEach((b, k) => FB.set(b, 6 * k));
+    return { nodes, idx, fidx, FB, FL, FR, FS, FC, FA, rank, stack: new Int32Array(2 * depth2 + 8), stack2: new Int32Array(2 * depth2 + 8) };
   }
   // visit the surfaces whose boxes the ray o + t d (0 <= t <= tmax) passes; fn(i) returns a new tmax (or undefined)
   function bvhWalk(bvh, o, d, tmax, fn) {
@@ -369,20 +403,46 @@ const GEOM = (() => {
     }
   }
 
+  // nearest surface hit by the ray o + t d (t > 1e-9) from the inside, skipping surface `last`: index (or -1), distance
+  // in B.hitT. Near child first; the result is the one of bvhWalk with the ray tracer's test: smallest t, ties by the
+  // visit order of bvhWalk (B.rank). A small function of its own, so that every JavaScript engine compiles it well.
+  function bvhNearest(B, S, PL, ox, oy, oz, dx, dy, dz, last) {
+    const FB = B.FB, st = B.stack, rk = B.rank, FC = B.FC, FS = B.FS, FL = B.FL, FR = B.FR, FA = B.FA, fidx = B.fidx, ix = 1 / dx, iy = 1 / dy, iz = 1 / dz;
+    let sp = 0, best = Infinity, bi = -1; st[sp++] = 0;
+    while (sp) {
+      const k = st[--sp], q6 = 6 * k; let t0 = 0, t1 = best;
+      let ta = (FB[q6] - ox) * ix, tb = (FB[q6 + 3] - ox) * ix; if (ta > tb) { const x = ta; ta = tb; tb = x; } if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t0 > t1) continue;
+      ta = (FB[q6 + 1] - oy) * iy; tb = (FB[q6 + 4] - oy) * iy; if (ta > tb) { const x = ta; ta = tb; tb = x; } if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t0 > t1) continue;
+      ta = (FB[q6 + 2] - oz) * iz; tb = (FB[q6 + 5] - oz) * iz; if (ta > tb) { const x = ta; ta = tb; tb = x; } if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t0 > t1) continue;
+      const cnt = FC[k];
+      if (cnt) { const s0 = FS[k];
+        for (let j = s0; j < s0 + cnt; j++) { const i = fidx[j]; if (i === last) continue;
+          const q = 4 * i, den = PL[q] * dx + PL[q + 1] * dy + PL[q + 2] * dz; if (den >= -1e-12) continue;   // moving away from the inside face
+          const t = (PL[q + 3] - (PL[q] * ox + PL[q + 1] * oy + PL[q + 2] * oz)) / den;
+          if (t > 1e-9 && (t < best || (t === best && rk[i] < rk[bi])) && inSurfXYZ(S[i], ox + t * dx, oy + t * dy, oz + t * dz)) { best = t; bi = i; } } }
+      else { const ax = FA[k], dn = ax === 0 ? dx : ax === 1 ? dy : dz; if (dn > 0) { st[sp++] = FR[k]; st[sp++] = FL[k]; } else { st[sp++] = FL[k]; st[sp++] = FR[k]; } }
+    }
+    B.hitT = best; return bi;
+  }
   // segment a->b intersects a surface (excluding the ones in skip) strictly between the ends?
   function occluded(G, a, b, skipA, skipB, skipC, skipD) {
     const dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
-    if (G.bvh) {
-      let hit = false;
-      bvhWalk(G.bvh, a, [dx, dy, dz], 1, (i) => {
-        if (i === skipA || i === skipB || i === skipC || i === skipD) return;
-        const s = G.S[i], den = s.n[0] * dx + s.n[1] * dy + s.n[2] * dz;
-        if (Math.abs(den) < EPS) return;
-        const t = (s.d - (s.n[0] * a[0] + s.n[1] * a[1] + s.n[2] * a[2])) / den;
-        if (t <= 1e-6 || t >= 1 - 1e-6) return;
-        if (inSurface(s, [a[0] + t * dx, a[1] + t * dy, a[2] + t * dz])) { hit = true; return -1; }
-      });
-      return hit;
+    if (G.bvh) { // any hit: flat tree, same tests as before
+      const B = G.bvh, FB = B.FB, st = B.stack2, PL = planes(G), ox = a[0], oy = a[1], oz = a[2], ix = 1 / dx, iy = 1 / dy, iz = 1 / dz; let sp = 0; st[sp++] = 0;
+      while (sp) {
+        const k = st[--sp], q6 = 6 * k; let t0 = 0, t1 = 1;
+        let ta = (FB[q6] - ox) * ix, tb = (FB[q6 + 3] - ox) * ix; if (ta > tb) { const x = ta; ta = tb; tb = x; } if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t0 > t1) continue;
+        ta = (FB[q6 + 1] - oy) * iy; tb = (FB[q6 + 4] - oy) * iy; if (ta > tb) { const x = ta; ta = tb; tb = x; } if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t0 > t1) continue;
+        ta = (FB[q6 + 2] - oz) * iz; tb = (FB[q6 + 5] - oz) * iz; if (ta > tb) { const x = ta; ta = tb; tb = x; } if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t0 > t1) continue;
+        const cnt = B.FC[k];
+        if (cnt) { const s0 = B.FS[k];
+          for (let j = s0; j < s0 + cnt; j++) { const i = B.fidx[j]; if (i === skipA || i === skipB || i === skipC || i === skipD) continue;
+            const q = 4 * i, den = PL[q] * dx + PL[q + 1] * dy + PL[q + 2] * dz; if (Math.abs(den) < EPS) continue;
+            const t = (PL[q + 3] - (PL[q] * ox + PL[q + 1] * oy + PL[q + 2] * oz)) / den; if (t <= 1e-6 || t >= 1 - 1e-6) continue;
+            if (inSurfXYZ(G.S[i], ox + t * dx, oy + t * dy, oz + t * dz)) return true; } }
+        else { st[sp++] = B.FL[k]; st[sp++] = B.FR[k]; }
+      }
+      return false;
     }
     for (let i = 0; i < G.S.length; i++) {
       if (i === skipA || i === skipB || i === skipC || i === skipD) continue;
@@ -650,14 +710,7 @@ const GEOM = (() => {
       for (let bounce = 0; bounce < 400; bounce++) {
         // nearest surface
         let best = Infinity, bi = -1;
-        const test = (i) => {
-          if (i === last) return;
-          const q = 4 * i, den = PL[q] * dx + PL[q + 1] * dy + PL[q + 2] * dz;
-          if (den >= -1e-12) return; // moving away from the inside face
-          const t = (PL[q + 3] - (PL[q] * ox + PL[q + 1] * oy + PL[q + 2] * oz)) / den;
-          if (t > 1e-9 && t < best && inSurfXYZ(G.S[i], ox + t * dx, oy + t * dy, oz + t * dz)) { best = t; bi = i; return t; }
-        };
-        if (G.bvh) bvhWalk(G.bvh, [ox, oy, oz], [dx, dy, dz], Infinity, test);
+        if (G.bvh) { bi = bvhNearest(G.bvh, G.S, PL, ox, oy, oz, dx, dy, dz, last); if (bi >= 0) best = G.bvh.hitT; }
         else for (let i = 0; i < nS; i++) { // same test inline (drawn halls: every surface, in order)
           if (i === last) continue;
           const q = 4 * i, den = PL[q] * dx + PL[q + 1] * dy + PL[q + 2] * dz;
