@@ -4,6 +4,9 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page, Layout: **Compute on every change** (toggle) and **Compute changes**. With the toggle off (the default for 3D
+  models) moved sources and seats are collected and computed together; exports are refused while moves are pending.
+- Page, fix: after dragging an item on the plan the page did not wait for the computation before showing results.
 - Page, fix: moving a source or a seat while the whole hall was being computed left the page at "Rendering n
   paths…" for ever (the change replaced the computation, the other paths were never computed, and showing the results
   failed). The missing paths are now computed with the changed ones, and the status is always cleared.
