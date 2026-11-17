@@ -3258,11 +3258,14 @@ function loadObjFile(f) {
     let m; try { m = meshState({ axes: $("selAxes").value, rotate_deg: +$("selRot").value, voxel_m: +$("selVox").value }, String(r.result), f.name); } catch (e) { $("meshNote").textContent = `${f.name}: ${e.message || e}. Nothing changed.`; return; }
     stop();
     const old = HALL.mesh; if (!isMesh()) { HALL.geomStash = HALL.geom || HALL.geomStash; HALL.boxStash = { dims: HALL.dims.slice(), stage: HALL.stage, order: HALL.order, diff: HALL.diff }; }
-    if (old) for (const o of OBJ) o.pos = meshToModel(old, o.pos);              // keep positions in the model frame across a reload
-    const place = !old;     // a fresh model: put the items into the room afterwards
+    const same = !!old && old.text === m.text;   // the same model again (other settings): keep positions in the model frame
+    if (same) for (const o of OBJ) o.pos = meshToModel(old, o.pos);
+    const place = !same;    // a new model (also replacing another one): put the items into the room afterwards
     HALL.geom = null; HALL.mesh = m; HALL.dims = m.dims.slice(); HALL.stage = 0; HALL.order = 2; HALL.diff = false;
     if (HALL.rays > 10000) HALL.rays = 10000;    // ray tracing in a mesh is slower; raise in the menu for final results
-    if (!place) for (const o of OBJ) o.pos = meshToPage(m, o.pos); else placeInMesh(m, HALL.boxStash.dims);
+    if (!place) for (const o of OBJ) o.pos = meshToPage(m, o.pos);
+    else if (old) { const [W0, D0] = old.dims; for (const o of OBJ) o.pos = [o.pos[0] / W0 * m.dims[0], o.pos[1] / D0 * m.dims[1], o.pos[2]]; }   // another model: same place relative to the room
+    else placeInMesh(m, HALL.boxStash.dims);
     for (const o of OBJ) delete o.h;
     buildGeom(); shapeUI();
     if (!GM) { meshNote(); return; }

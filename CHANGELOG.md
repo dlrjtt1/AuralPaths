@@ -4,6 +4,8 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page, 3D models: opening a different OBJ while one is loaded no longer keeps the items in the old model's frame;
+  they keep their place relative to the room (the same model reloaded with other settings still keeps the frame).
 - Image sources: rejection tests on squared distances and packed planes, no allocation in the back-trace (identical
   arrivals); 3D model DUS: 181 -> 70 s for 4 sources, page load 205 -> 128 s on 2 cores.
 - Page start-up: the late-noise templates of the shoebox hall are made only when used and, at start-up, in workers
