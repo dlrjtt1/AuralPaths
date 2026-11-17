@@ -535,6 +535,54 @@ function DSPLIB(fs) {
   }
   return { biquad, runBiquad, bandFilter, fftAny };
 }
+// late noise bank of the shoebox hall: template k = one coherent noise pair per band, drawn from one generator stream
+// (seed 12345) in the order k = 0, 1, ... P = { fs, NL, NP, edges, cos, sin } (cos / sin: the coherence angle per bin).
+// pair(start): the template that starts at generator state `start`; skip(start): the state after one template
+// (the same calls of the generator without the arithmetic), so that template k can be made alone and is identical to
+// the k-th template of the whole stream.
+function bankFactory(P) {
+  const { fs, NL, NP, edges } = P, COS_A = P.cos, SIN_A = P.sin, { bandFilter, fftAny } = DSPLIB(fs);
+  let seed = 12345; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  const gauss = () => { let u = 0, v = 0; while (u === 0) u = rnd(); v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
+  // left / right noise with the diffuse-field interaural coherence of the HRIR set (same method as
+  // brir_proto.coherent_pair): L = cos(a) n1 + sin(a) n2, R = cos(a) n1 - sin(a) n2, a = acos(Gamma(f)) / 2
+  function coherentPair() {
+    const re = new Float64Array(NP), im = new Float64Array(NP);
+    for (let i = 0; i < NP; i++) { re[i] = gauss(); im[i] = gauss(); }     // z = n1 + i n2
+    fftAny(re, im, false);
+    const zr = new Float64Array(NP), zi = new Float64Array(NP);             // spectrum of L + i R
+    for (let k = 0; k < NP; k++) {
+      const m = (NP - k) % NP, kk = Math.min(k, NP - k);
+      const n1r = (re[k] + re[m]) / 2, n1i = (im[k] - im[m]) / 2, n2r = (im[k] + im[m]) / 2, n2i = -(re[k] - re[m]) / 2;
+      const c = COS_A[kk], s = SIN_A[kk];
+      const lr = c * n1r + s * n2r, li = c * n1i + s * n2i, rr = c * n1r - s * n2r, ri = c * n1i - s * n2i;
+      zr[k] = lr - ri; zi[k] = li + rr;
+    }
+    fftAny(zr, zi, true);
+    const L = new Float32Array(NL), R = new Float32Array(NL);
+    for (let i = 0; i < NL; i++) { L[i] = zr[i] / NP; R[i] = zi[i] / NP; }
+    return [L, R];
+  }
+  function pair(start) {
+    seed = start; const ears = [[], []];
+    for (const [lo, hi] of edges) {
+      const pr = coherentPair();
+      for (let e = 0; e < 2; e++) {
+        const x = pr[e]; bandFilter(x, lo, hi);
+        let p = 0; for (let i = 0; i < NL; i++) p += x[i] * x[i]; const g = 1 / Math.sqrt(p / NL + 1e-30);
+        for (let i = 0; i < NL; i++) x[i] *= g;
+        ears[e].push(x);
+      }
+    }
+    return ears;
+  }
+  function skip(start) {
+    let st = start; const nGauss = 2 * NP * edges.length;
+    for (let i = 0; i < nGauss; i++) { do st = (st * 1664525 + 1013904223) >>> 0; while (st === 0); st = (st * 1664525 + 1013904223) >>> 0; }
+    return st;
+  }
+  return { pair, skip };
+}
 // directional late field (and the early scattered-energy windows): noise pairs per band with the ear energies and the
 // interaural coherence of the arrival directions W. P = { fs, NL, NP, edges, bankIdx, lb, nb, LD } (ENG.ldParams).
 function lateDirFactory(P) {
@@ -732,12 +780,9 @@ const ENG = (() => {
     return { sig: renderList(list, nLen), tDir, count: list.length };
   }
 
-  // ---- late noise bank: K templates x 2 ears x bands, unit power, built once; the two ears are coherent like a diffuse field
-  const K = 8, BANK = [], edges = D.bankEdges;
-  let seed = 12345; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
-  const gauss = () => { let u = 0, v = 0; while (u === 0) u = rnd(); v = rnd(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
-  // left / right noise with the diffuse-field interaural coherence of the HRIR set (same method as
-  // brir_proto.coherent_pair): L = cos(a) n1 + sin(a) n2, R = cos(a) n1 - sin(a) n2, a = acos(Gamma(f)) / 2
+  // ---- late noise bank: K templates x 2 ears x bands, unit power; the two ears are coherent like a diffuse field.
+  // Made when first needed (template k = the k-th of one generator stream, bankFactory), or ahead in workers (prepBank)
+  const K = 8, BANK = [], edges = D.bankEdges, BSTART = [12345];
   const NP = 1 << Math.ceil(Math.log2(NL));
   const COS_A = new Float64Array(NP / 2 + 1), SIN_A = new Float64Array(NP / 2 + 1);
   function setCoh() {
@@ -749,38 +794,24 @@ const ENG = (() => {
     }
   }
   setCoh();
-  function coherentPair() {
-    const re = new Float64Array(NP), im = new Float64Array(NP);
-    for (let i = 0; i < NP; i++) { re[i] = gauss(); im[i] = gauss(); }     // z = n1 + i n2
-    fftAny(re, im, false);
-    const zr = new Float64Array(NP), zi = new Float64Array(NP);             // spectrum of L + i R
-    for (let k = 0; k < NP; k++) {
-      const m = (NP - k) % NP, kk = Math.min(k, NP - k);
-      const n1r = (re[k] + re[m]) / 2, n1i = (im[k] - im[m]) / 2, n2r = (im[k] + im[m]) / 2, n2i = -(re[k] - re[m]) / 2;
-      const c = COS_A[kk], s = SIN_A[kk];
-      const lr = c * n1r + s * n2r, li = c * n1i + s * n2i, rr = c * n1r - s * n2r, ri = c * n1i - s * n2i;
-      zr[k] = lr - ri; zi[k] = li + rr;
-    }
-    fftAny(zr, zi, true);
-    const L = new Float32Array(NL), R = new Float32Array(NL);
-    for (let i = 0; i < NL; i++) { L[i] = zr[i] / NP; R[i] = zi[i] / NP; }
-    return [L, R];
-  }
-  function buildBank() {
-    BANK.length = 0; seed = 12345;
-    for (let k = 0; k < K; k++) {
-      const ears = [[], []];
-      for (const [lo, hi] of edges) {
-        const pair = coherentPair();
-        for (let e = 0; e < 2; e++) {
-          const x = pair[e]; bandFilter(x, lo, hi);
-          let p = 0; for (let i = 0; i < NL; i++) p += x[i] * x[i]; const g = 1 / Math.sqrt(p / NL + 1e-30);
-          for (let i = 0; i < NL; i++) x[i] *= g;
-          ears[e].push(x);
-        }
-      }
-      BANK.push(ears);
-    }
+  let BF = null, bankGen = 0;
+  const bankParams = () => ({ fs, NL, NP, edges, cos: COS_A, sin: SIN_A });
+  const bankF = () => BF || (BF = bankFactory(bankParams()));
+  function bankStart(k) { while (BSTART.length <= k) BSTART.push(bankF().skip(BSTART[BSTART.length - 1])); return BSTART[k]; }
+  function bankAt(k) { if (!BANK[k]) BANK[k] = bankF().pair(bankStart(k)); return BANK[k]; }
+  function buildBank() { BANK.length = 0; BF = null; bankGen++; }   // coherence changed (HRIR set): templates are made again
+  // templates ks ahead of use, in parallel workers (same code and generator states, so the same numbers)
+  let bankPool = null;
+  function prepBank(ks) {
+    const todo = [...new Set(ks)].filter((k) => !BANK[k]); if (!todo.length || typeof Worker === "undefined") return Promise.resolve();
+    try {
+      if (!bankPool) { const src = DSPLIB.toString() + "\n" + bankFactory.toString() + "\nself.onmessage = (e) => { const m = e.data, ears = bankFactory(m.P).pair(m.start); self.postMessage({ k: m.k, ears }, ears.flat().map((a) => a.buffer)); };";
+        const url = URL.createObjectURL(new Blob([src], { type: "text/javascript" })); bankPool = Array.from({ length: Math.max(1, Math.min((navigator.hardwareConcurrency || 2) - 1, 4)) }, () => new Worker(url)); }
+      const gen = bankGen, P = bankParams();
+      return Promise.all(todo.map((k, i) => new Promise((ok) => { const w = bankPool[i % bankPool.length], start = bankStart(k);
+        const on = (e) => { if (e.data.k !== k) return; w.removeEventListener("message", on); if (gen === bankGen && !BANK[k]) BANK[k] = e.data.ears; ok(); };
+        w.addEventListener("message", on); w.addEventListener("error", () => ok(), { once: true }); w.postMessage({ k, start, P }); })));
+    } catch (e) { return Promise.resolve(); }   // without workers the templates are made on first use
   }
   // octave-band energy histogram (1 ms bins) of the full image-source lattice, order <= omniOrder
   const HB = 0.001, HN = 2500;   // same 2.5 s window as brir_proto.energy_hist
@@ -820,7 +851,7 @@ const ENG = (() => {
   // directions of the scattered energy for the windows tDir ... +20 ms, ... +50 ms, rest; else the residual shares the
   // late noise. The residual starts at the direct sound (its 10 ms smoothing would otherwise put noise before it).
   function compose(earlySig, tDir, k, hist, resid, late, discrete, early) {
-    const t0 = tDir + D.earlyMs / 1000, cf = D.xfadeMs / 1000, out = [new Float32Array(NL), new Float32Array(NL)], bank = late ? late.bank : BANK[k % K], dfE = late ? late.E : D.df;
+    const t0 = tDir + D.earlyMs / 1000, cf = D.xfadeMs / 1000, out = [new Float32Array(NL), new Float32Array(NL)], bank = late ? late.bank : bankAt(k % K), dfE = late ? late.E : D.df;
     const envL = bandEnv(hist), envR = resid ? bandEnv(resid) : null, iD = Math.max(0, Math.floor(tDir * fs)), i1 = Math.floor((tDir + 0.02) * fs), i2 = Math.floor((tDir + 0.05) * fs);
     for (let i = 0; i < NL; i++) {
       const w = Math.min(1, Math.max(0, (i / fs - t0) / cf)), wl = Math.sin(0.5 * Math.PI * w) ** 2, we = 1 - wl;
@@ -844,7 +875,7 @@ const ENG = (() => {
     return list.map((q) => { const a = bandAmps(q, dm), rms = Math.sqrt(a.reduce((s, v) => s + v * v, 0) / a.length);
       return { t: q.t, o: q.o, az: Math.atan2(q.h[1], q.h[0]) * 180 / Math.PI, el: Math.asin(Math.max(-1, Math.min(1, q.h[2]))) * 180 / Math.PI, lev: 20 * Math.log10(rms + 1e-12) }; });
   }
-  return { fs, NL, K, HB, HN, i16, setHall, early, renderList, compose, lateDir, lateField, get hasLateDir() { return !!LD && useLD; }, ldParams, setHrir, resetHrir, fullHist, arrivals, arrivalsFromList, buildBank, bandFilter, fftAny, get room() { return room; } };
+  return { fs, NL, K, HB, HN, i16, setHall, early, renderList, compose, lateDir, lateField, get hasLateDir() { return !!LD && useLD; }, ldParams, setHrir, resetHrir, prepBank, fullHist, arrivals, arrivalsFromList, buildBank, bandFilter, fftAny, get room() { return room; } };
 })();
 </script>
 <script>
@@ -3498,7 +3529,7 @@ $("atUndo").onclick = () => {
 };
 addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("autoOverlay").hidden && !AT.ctl) $("autoOverlay").hidden = true; });
 
-setTimeout(async () => { ENG.buildBank(); clampAll(); await rebuildAll(); buildFiles(); buildTable(); fillHall(); refresh(); $("busy").hidden = true; }, 20);
+setTimeout(async () => { clampAll(); if (!isDrawn()) await ENG.prepBank(sourcesAll().map((o) => pathIndex(o) % ENG.K)); await rebuildAll(); buildFiles(); buildTable(); fillHall(); refresh(); $("busy").hidden = true; }, 20);
 
 // Auto-trace needs Claude (the artifact's sample capability); outside Claude the button stays hidden
 $("bAuto").hidden = true;

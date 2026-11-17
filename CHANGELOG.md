@@ -4,6 +4,8 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page start-up: the late-noise templates of the shoebox hall are made only when used and, at start-up, in workers
+  (BRIRs bit-identical); the page responds after 0.7 s instead of 5.3 s on 2 cores.
 - Page and `engine_js.py`: faster computation. The ray tracer reads the surface planes from a flat array and allocates
   nothing per surface test (bit-identical results, about 1.5x faster); the three early-window noise pairs are generated
   only as long as they are used (late field bit-identical, early part a new noise realization within seed-to-seed

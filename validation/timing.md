@@ -109,3 +109,11 @@ headless Chromium, 2 cores, so one ray-tracing worker and one late-noise worker)
    0.22 dB and RMS 0.050, so the change is within seed-to-seed variation.
 
 With more cores both pools grow (up to 8 ray-tracing and 6 noise workers); not measured here.
+
+First load of the page (default shoebox, same machine): the late-noise bank (8 templates of coherent noise pairs, one
+generator stream) was built on the main thread before the first computation (2.5 s). Each template is now made only
+when used (the default hall uses 4 of the 8), from the generator state it has in the stream (found by stepping the
+generator without the arithmetic, 0.13 s), so the numbers are those of the whole stream; the templates needed at
+start-up are made in workers (up to 4). Default page BRIRs bit-identical; after changing the HRIR set the templates
+are made again on first use. Script blocking the page: 5.3 s -> 0.7 s; until the first computation is done:
+5.4 s -> 3.7 s (2 cores: one bank worker; the main thread then waits about 1.9 s for it).
