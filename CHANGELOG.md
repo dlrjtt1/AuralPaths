@@ -4,6 +4,8 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Image sources: rejection tests on squared distances and packed planes, no allocation in the back-trace (identical
+  arrivals); 3D model DUS: 181 -> 70 s for 4 sources, page load 205 -> 128 s on 2 cores.
 - Page start-up: the late-noise templates of the shoebox hall are made only when used and, at start-up, in workers
   (BRIRs bit-identical); the page responds after 0.7 s instead of 5.3 s on 2 cores.
 - Page and `engine_js.py`: faster computation. The ray tracer reads the surface planes from a flat array and allocates

@@ -117,3 +117,17 @@ generator without the arithmetic, 0.13 s), so the numbers are those of the whole
 start-up are made in workers (up to 4). Default page BRIRs bit-identical; after changing the HRIR set the templates
 are made again on first use. Script blocking the page: 5.3 s -> 0.7 s; until the first computation is done:
 5.4 s -> 3.7 s (2 cores: one bank worker; the main thread then waits about 1.9 s for it).
+
+## 3D (OBJ) halls: image sources (2026-11-17)
+
+Loading the DUS model of the Fratoni data (14082 room triangles after voxelisation, 4 sources x 3 seats, page defaults:
+image sources to order 2 plus ray-guided specular paths to order 3, 10000 rays) took 205 s in headless Chromium on
+2 cores, almost all in the ray-tracing worker: per source the exhaustive image-source search took 42 s and the rays
+10.5 s (Node benchmark of the page's worker message). The search tests about 10^8 second-order candidate images per
+source; each was rejected with several `Math.hypot` calls. The rejection tests now use squared distances and the
+packed surface planes, and the back-trace allocates nothing until a point is on its surface. The same candidates are
+accepted, in the same order: the image-source arrivals of all 12 paths are identical (DUS and the fan hall, compared
+as JSON). Image sources of 4 sources: DUS 181 s -> 70 s, fan hall 1.7 s -> 0.8 s. Loading the DUS model in the page:
+205 s -> 128 s on 2 cores (the image sources of the sources are spread over the workers, up to 4 in 3D halls, so a
+larger machine runs them in parallel; not measured here). The model has no coplanar duplicate triangles (14063
+distinct planes of 14082), so grouping by plane would not help.

@@ -980,7 +980,7 @@ const GEOM = (() => {
     // images of the same order within 1 cm count as one (as brir_proto.visible_images)
     const seen = recs.map(() => []);
     const maxD = recs.map((r) => Math.hypot(src[0] - r[0], src[1] - r[1], src[2] - r[2]) + c * tWindow);
-    const maxAll = Math.max(...maxD);
+    const maxAll = Math.max(...maxD), PL = planes(G);
     // direct
     recs.forEach((r, k) => { if (!occluded(G, src, r, -1, -1)) push(k, src, [], r, [r]); });
     // pts: reflection points, source side first (for the direct sound: [receiver]); pts[0] is where the path leaves the source to
@@ -998,13 +998,14 @@ const GEOM = (() => {
     function audible(r, imgs, seq) {
       let p = r, prevWall = -1; const pts = [];
       for (let k = seq.length - 1; k >= 0; k--) {
-        const s = G.S[seq[k]], im = imgs[k + 1];
-        const dx = im[0] - p[0], dy = im[1] - p[1], dz = im[2] - p[2], den = s.n[0] * dx + s.n[1] * dy + s.n[2] * dz;
+        const w = 4 * seq[k], n0 = PL[w], n1 = PL[w + 1], n2 = PL[w + 2], im = imgs[k + 1];
+        const dx = im[0] - p[0], dy = im[1] - p[1], dz = im[2] - p[2], den = n0 * dx + n1 * dy + n2 * dz;
         if (Math.abs(den) < EPS) return null;
-        const t = (s.d - (s.n[0] * p[0] + s.n[1] * p[1] + s.n[2] * p[2])) / den;
+        const t = (PL[w + 3] - (n0 * p[0] + n1 * p[1] + n2 * p[2])) / den;
         if (t <= 1e-9 || t >= 1) return null;
-        const q = [p[0] + t * dx, p[1] + t * dy, p[2] + t * dz];
-        if (!inSurface(s, q)) return null;
+        const qx = p[0] + t * dx, qy = p[1] + t * dy, qz = p[2] + t * dz;
+        if (!inSurfXYZ(G.S[seq[k]], qx, qy, qz)) return null;
+        const q = [qx, qy, qz];
         if (occluded(G, p, q, prevWall, seq[k])) return null;
         p = q; prevWall = seq[k]; pts.unshift(q);
       }
@@ -1012,19 +1013,23 @@ const GEOM = (() => {
     }
     const ctr = G.mesh ? [(G.bbox[0][0] + G.bbox[1][0]) / 2, (G.bbox[0][1] + G.bbox[1][1]) / 2, 0] : [(Math.min(...G.plan.map((q) => q[0])) + Math.max(...G.plan.map((q) => q[0]))) / 2, (G.y0 + G.y1) / 2, 0];
     const span = G.mesh ? Math.hypot(G.bbox[1][0] - G.bbox[0][0], G.bbox[1][1] - G.bbox[0][1]) : Math.hypot(G.y1 - G.y0, 50);
+    // distance tests on squared distances (no square root per candidate; meshes have ~10^8 second-order candidates)
+    const nS = G.S.length, maxD2 = maxD.map((v) => v * v), RX = recs.map((r) => r[0]), RY = recs.map((r) => r[1]), RZ = recs.map((r) => r[2]), nR = recs.length;
+    const far = maxAll + 50 + span, far2 = far * far, maxAll2 = maxAll * maxAll;
     function rec(imgs, seq) {
-      const last = imgs[imgs.length - 1];
-      if (seq.length) recs.forEach((r, k) => { if (Math.hypot(last[0] - r[0], last[1] - r[1], last[2] - r[2]) > maxD[k]) return; const f = audible(r, imgs, seq); if (f) push(k, last, seq, r, f); });
+      const last = imgs[imgs.length - 1], lx = last[0], ly = last[1], lz = last[2];
+      if (seq.length) for (let k = 0; k < nR; k++) { const ex = lx - RX[k], ey = ly - RY[k], ez = lz - RZ[k]; if (ex * ex + ey * ey + ez * ez > maxD2[k]) continue; const f = audible(recs[k], imgs, seq); if (f) push(k, last, seq, recs[k], f); }
       if (seq.length >= order) return;
-      for (let w = 0; w < G.S.length; w++) {
-        if (w === seq[seq.length - 1]) continue;
-        const s = G.S[w], side = s.n[0] * last[0] + s.n[1] * last[1] + s.n[2] * last[2] - s.d;
+      const prev = seq.length ? seq[seq.length - 1] : -1;
+      for (let w = 0; w < nS; w++) {
+        if (w === prev) continue;
+        const q = 4 * w, nx = PL[q], ny = PL[q + 1], nz = PL[q + 2], side = nx * lx + ny * ly + nz * lz - PL[q + 3];
         if (side <= 1e-9) continue; // image must be in front of the reflecting plane
-        const im = [last[0] - 2 * side * s.n[0], last[1] - 2 * side * s.n[1], last[2] - 2 * side * s.n[2]];
-        if (Math.hypot(im[0] - ctr[0], im[1] - ctr[1]) - span > maxAll + 50) continue;
-        let nearest = Infinity; for (const r of recs) nearest = Math.min(nearest, Math.hypot(im[0] - r[0], im[1] - r[1], im[2] - r[2]));
-        if (nearest > maxAll) continue;
-        imgs.push(im); seq.push(w); rec(imgs, seq); imgs.pop(); seq.pop();
+        const ix = lx - 2 * side * nx, iy = ly - 2 * side * ny, iz = lz - 2 * side * nz;
+        const cx = ix - ctr[0], cy = iy - ctr[1]; if (cx * cx + cy * cy > far2) continue;
+        let near = false; for (let k = 0; k < nR; k++) { const ex = ix - RX[k], ey = iy - RY[k], ez = iz - RZ[k]; if (ex * ex + ey * ey + ez * ez <= maxAll2) { near = true; break; } }
+        if (!near) continue;
+        imgs.push([ix, iy, iz]); seq.push(w); rec(imgs, seq); imgs.pop(); seq.pop();
       }
     }
     rec([src.slice()], []);
