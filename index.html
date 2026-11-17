@@ -3049,7 +3049,8 @@ function drawMap() {
     const F = S.front ? null : frontOf(), pts = S.front || [];
     g.save(); g.strokeStyle = css("--text"); g.fillStyle = css("--text"); g.lineWidth = 1.5; g.setLineDash([6, 4]);
     if (F) { g.beginPath(); g.moveTo(X(F.a[0]), Y(F.a[1])); g.lineTo(X(F.b[0]), Y(F.b[1])); g.stroke(); g.setLineDash([]);
-      g.font = `11px ${css("--f-ui")}`; g.textAlign = "center"; g.fillText("stage front", X(F.a[0] + 0.8 * F.n[0]), Y(F.a[1] + 0.8 * F.n[1]) + 4); }
+      g.font = `11px ${css("--f-ui")}`; g.textAlign = "center"; const e = [(F.a[0] - F.b[0]) / F.w, (F.a[1] - F.b[1]) / F.w], q = [F.a[0] + 0.9 * e[0], F.a[1] + 0.9 * e[1]];   // beyond end a of the line
+      g.fillText("STAGE", X(q[0] + 1.6 * F.n[0]), Y(q[1] + 1.6 * F.n[1]) + 4); g.fillText("audience", X(q[0] - 1.8 * F.n[0]), Y(q[1] - 1.8 * F.n[1]) + 4); }
     if (pts.length === 2) { g.beginPath(); g.moveTo(X(pts[0][0]), Y(pts[0][1])); g.lineTo(X(pts[1][0]), Y(pts[1][1])); g.stroke(); }
     g.setLineDash([]); for (const q of pts) { g.beginPath(); g.arc(X(q[0]), Y(q[1]), 4, 0, 2 * Math.PI); g.fill(); }
     g.restore();
@@ -3387,15 +3388,21 @@ function placeByFront() {
 const FRONT_STEPS = ["Click one end of the stage opening (e.g. the proscenium).", "Click the other end of the stage opening.", "Click anywhere on the stage."];
 $("bFront").onclick = () => { if (!isMesh()) return; S.front = []; $("posNote").textContent = `Stage front 1/3: ${FRONT_STEPS[0]} Escape cancels.`; drawMap(); };
 addEventListener("keydown", (e) => { if (e.key === "Escape" && S.front) { S.front = null; $("posNote").textContent = "Stage front: cancelled."; drawMap(); } });
+let frontT = 0;
 function frontClick(x, y) {
-  const P = S.front; P.push([x, y]);
+  const now = performance.now(), fast = now - frontT < 300; frontT = now; if (fast) return;   // a second event of the same click
+  const P = S.front;
+  if (P.length === 2) { // the stage point must be clearly on one side of the line
+    const ux = P[1][0] - P[0][0], uy = P[1][1] - P[0][1], w = Math.hypot(ux, uy), d = Math.abs((x - P[0][0]) * -uy + (y - P[0][1]) * ux) / w;
+    if (d < 0.5) { $("posNote").textContent = "Stage front 3/3: that point is on the line. Click on the stage, away from the line."; return; } }
+  P.push([x, y]);
   if (P.length === 2 && Math.hypot(P[1][0] - P[0][0], P[1][1] - P[0][1]) < 0.5) { P.pop(); $("posNote").textContent = "Stage front 2/3: the two ends are less than 0.5 m apart. " + FRONT_STEPS[1]; return drawMap(); }
   if (P.length < 3) { $("posNote").textContent = `Stage front ${P.length + 1}/3: ${FRONT_STEPS[P.length]} Escape cancels.`; return drawMap(); }
   S.front = null; const m = HALL.mesh;
   m.front = P.map((q) => meshToModel(m, [q[0], q[1], 0]).slice(0, 2).map((v) => Math.round(v * 1000) / 1000));
   const F = frontOf(); if (!F) { m.front = null; $("posNote").textContent = "Stage front: could not use these points; try again."; return drawMap(); }
   stop(); const n = placeByFront(); clampAll();
-  $("posNote").textContent = `Stage front set (opening ${F.w.toFixed(1)} m). ${n} item${n === 1 ? "" : "s"} placed from it; locked items stay. It is saved with the config; drag items to fine-tune.`;
+  $("posNote").textContent = `Stage front set (opening ${F.w.toFixed(1)} m); the plan shows which side is the stage. ${n} item${n === 1 ? "" : "s"} placed from it; locked items stay. Wrong side? Mark it again and click on the stage last.`;
   drawMap(); drawSection(); syncTable(); work(rebuildAll);
 }
 // stop the hall computation in progress (its result would be for the old room): workers terminated, result discarded

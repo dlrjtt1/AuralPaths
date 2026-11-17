@@ -4,6 +4,8 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page, Mark stage front: the plan labels the stage and the audience side; a stage point on the line is refused and a
+  second event of the same click is ignored.
 - Ray tracing in 3D models: nearest-surface search with a surface-area-heuristic tree, flat arrays and near-first
   order (identical results; 3 - 4.4x faster in Node, DUS hall computation at 50000 rays about 320 -> 155 s on 2 cores).
 - Page, 3D models: the engine works in the model's own frame, so turning the plan changes the view only; with the stage
