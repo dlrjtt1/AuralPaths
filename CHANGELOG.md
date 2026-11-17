@@ -4,6 +4,12 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page, 3D models: the engine works in the model's own frame, so turning the plan changes the view only; with the stage
+  front marked the listeners face the stage and a turn keeps all results without a computation (without it they face
+  +y of the page as before and the hall is computed again). Turn 0 without a stage front is bit-identical to before.
+- Page, 3D models: 50000 rays by default (10000 gave 23 - 25 % RMS run-to-run spread of a seat's T30, 50000 gives
+  4 - 8 %, `validation/ray_noise.md`); up to 8 ray-tracing workers (before 4).
+- `engine_geom.js` `rays`: option `face` (direction the listeners face, for the direction bins); default unchanged.
 - Page, 3D models: turning the plan stops the hall computation in progress and computes once the plan has not been
   turned for 1.5 s (several turns, one computation); the aim of directional loudspeakers now turns with the plan
   (before, a loudspeaker pointed elsewhere in the hall after a turn).

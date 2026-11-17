@@ -112,3 +112,18 @@ Reading:
   little there. Detmold, where every position is traced by itself: maximum 2.42 s against 1.47 s, -5.2 ... -1.7 %.
   Opera: per-position values were not stored, not checked.
 
+
+## 3D models: ray count and plan turn (2026-11-17)
+
+BRAS CR3 opened as an OBJ in the page, amplified source to the three seats of the built-in layout, T30 (-5 to -35 dB)
+from the ray histogram alone at 500 Hz, 1 kHz and 2 kHz (9 values), plan turn 0 and 90 degrees, random seeds 0 and 500.
+RMS difference of T30 between two runs:
+
+| rays | same turn, other seeds | turn 0 against turn 90 (4 pairs) |
+|---|---|---|
+| 10000 (default until now when an OBJ was opened) | 24.6 %, 22.8 % | 7.0 - 31.9 % |
+| 50000 | 3.7 %, 8.2 % | 2.5 - 8.6 % |
+
+Turning the plan acted like other random numbers (the rays start in other directions of the model), not like another
+room. About 8 % of the rays leave this model through gaps in both turns. The default is now 50000 rays, and the engine
+works in the model's frame, so that a turn no longer changes the rays.

@@ -493,6 +493,17 @@ energy difference 7 × 10⁻⁷).
   the centre line until it is inside the room. The line is kept in model coordinates (it turns with the plan) and
   saved as `geometry.mesh.stage_front` (three points: the two ends and the stage point; the Python tools ignore it).
   Opening a different OBJ while one is loaded keeps the items at their place relative to the room.
+- Listener direction and plan turn: with the stage front marked the listeners face the stage (the direction across the
+  marked line), otherwise +y of the page (the stage is taken to be at the top of the plan). The engine works in the
+  model's own frame (the page frame of plan turn 0), so turning the plan changes the view and not the room: with the
+  stage front marked a turn keeps all results (no computation); without it the listeners turn with the plan and the
+  hall is computed again. Checked on BRAS CR3 (10000 rays): turn 0 without a stage front bit-identical to the
+  previous page; after a 90 degree turn with the stage front marked the BRIRs are unchanged without a computation.
+  The aim of directional loudspeakers turns with the plan. The Python tools do not read `stage_front`: there the
+  listeners face +y of the model.
+- Rays: 50000 by default when an OBJ is opened (before: 10000). With 10000 rays the T30 of a single seat from the ray
+  histogram moved by 23 - 25 % (RMS, 500 Hz - 2 kHz, three seats) between two runs with other random numbers, with
+  50000 rays by 4 - 8 %; turning the plan had the same effect as other random numbers (`validation/ray_noise.md`).
 - Image sources to order 2 (default; order 1 selectable): every pair of room surfaces is tried and each path is
   checked by back-tracing and occlusion, as for drawn halls. CR3 (2600 faces): order 1 takes 0.2 s, order 2 about 7 s
   per source (the image sources of different sources run in different workers); order 3 would take about 2300 times
