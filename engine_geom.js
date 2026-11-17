@@ -634,6 +634,8 @@ const GEOM = (() => {
     const Rpow = {}; for (const m in mats) Rpow[m] = mats[m].R.map((r) => r * r);
     let escaped = 0, hits = 0, leaked = 0;
     const tHit = new Float64Array(G.S.length), PL = planes(G), nS = G.S.length;
+    // opt.face = [fx, fy]: horizontal direction the listeners face (default +y); direction bins are in the head frame
+    const FACE = opts.face && (opts.face[0] !== 0 || opts.face[1] !== 1) ? opts.face : null;
     for (let k = k0; k < Math.min(k1, n); k++) {
       // each ray has its own random stream (seed, ray index), so that a change of absorption, which ends some rays
       // earlier, leaves the paths of all other rays unchanged (common random numbers: smooth calibration and
@@ -683,13 +685,13 @@ const GEOM = (() => {
             const hw = Math.sqrt(RW * RW - d2), a0 = Math.max(0, tc - hw), b0 = Math.min(best, tc + hw), te = tEarly[m];
             if (b0 > a0) { const dw = L + (a0 + b0) / 2, tt = dw / c;
               if (tt >= te[0] && tt < te[NW]) { let wk = 0; while (wk < NW - 1 && tt >= te[wk + 1]) wk++;
-                let bk = 0, bd = -2; for (let q = 0; q < FIB.length; q++) { const v = -dy * FIB[q][0] + dx * FIB[q][1] - dz * FIB[q][2]; if (v > bd) { bd = v; bk = q; } }
+                const h0 = FACE ? -(dx * FACE[0] + dy * FACE[1]) : -dy, h1 = FACE ? dx * FACE[1] - dy * FACE[0] : dx; let bk = 0, bd = -2; for (let q = 0; q < FIB.length; q++) { const v = h0 * FIB[q][0] + h1 * FIB[q][1] - dz * FIB[q][2]; if (v > bd) { bd = v; bk = q; } }
                 const fw = (b0 - a0) / VW * (1 - qc), o = (wk * FIB.length + bk) * NB; for (let b = 0; b < NB; b++) WE[m][o + b] += e[b] * Math.exp(-air[b] * dw) * fw; } }
           }
           if (W && d2 < RW * RW) { // direction statistics: 1 m sphere (less Monte-Carlo noise; as dirrays.py)
             const hw = Math.sqrt(RW * RW - d2), a0 = Math.max(0, tc - hw), b0 = Math.min(best, tc + hw);
             if (b0 > a0) { const dw = L + (a0 + b0) / 2;
-              if (dw / c >= tLate[m] && dw / c < tMax) { let bk = 0, bd = -2; for (let q = 0; q < FIB.length; q++) { const v = -dy * FIB[q][0] + dx * FIB[q][1] - dz * FIB[q][2]; if (v > bd) { bd = v; bk = q; } }
+              if (dw / c >= tLate[m] && dw / c < tMax) { const h0 = FACE ? -(dx * FACE[0] + dy * FACE[1]) : -dy, h1 = FACE ? dx * FACE[1] - dy * FACE[0] : dx; let bk = 0, bd = -2; for (let q = 0; q < FIB.length; q++) { const v = h0 * FIB[q][0] + h1 * FIB[q][1] - dz * FIB[q][2]; if (v > bd) { bd = v; bk = q; } }
                 const fw = (b0 - a0) / VW; for (let b = 0; b < NB; b++) W[m][bk * NB + b] += e[b] * Math.exp(-air[b] * dw) * fw; } }
           }
           if (d2 >= r2) continue;

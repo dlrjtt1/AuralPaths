@@ -936,6 +936,14 @@ const isMesh = () => !!HALL.mesh;
 function meshOrder() { return Math.max(1, Math.min(2, HALL.order || 2)); }                  // 3D model (OBJ): engine_geom.js buildMesh, as geometry.build_mesh
 const isDrawn = () => !!HALL.geom || isMesh();     // both use the image-source + ray-tracing engine in the worker
 const MESHC = { key: "", G: null, err: "" };       // the voxelised model, rebuilt only when the model or its settings change
+// 3D models: the engine works in the model's own frame (the page frame of plan turn 0), so that turning the plan
+// changes the view and not the room. toEng: page position -> engine frame; vecEng: page vector -> engine frame.
+function toEng(p) { const m = HALL.mesh; return m && m.rot ? meshToPage({ rot: 0, shift: m.shift0 }, meshToModel(m, p)) : p.slice(); }
+function vecEng(v) { const m = HALL.mesh, a = (m ? m.rot : 0) * Math.PI / 180, c = Math.cos(a), s = Math.sin(a); return [c * v[0] + s * v[1], -s * v[0] + c * v[1]]; }
+// horizontal direction the listeners face, page frame: towards the stage when the stage front of a 3D model is
+// marked (then the same for every plan turn), else +y (the stage is at the top of the plan)
+function facePage() { const F = isMesh() ? frontOf() : null; return F ? F.n.slice() : [0, 1]; }
+function faceEng() { const f = facePage(); if (!isMesh()) return null; const v = vecEng(f), r = v.map((x) => Math.round(x * 1e9) / 1e9); return r[0] === 0 && r[1] === 1 ? null : r; }
 function meshSpec(m) { return { obj: GEOM.loadObj(m.text), groups: m.groups, default: m.def || "wall", axes: m.axes, rot: m.rot, shift: m.shift, voxel: m.voxel || 0 }; }
 function buildGeom() {
   if (isMesh()) {
@@ -961,13 +969,13 @@ function meshGuess(name) { const t = name.toLowerCase(); return /seat|audience|c
 function meshState(cm, text, name) {
   const t = text ?? cm.obj_text, obj = GEOM.loadObj(t), axes = cm.axes || "y-up", rot = +cm.rotate_deg || 0, a = rot * Math.PI / 180, c = Math.cos(a), s = Math.sin(a);
   if (!obj.F.length) throw new Error("no faces in the model");
-  const P = obj.V.map((v) => (axes === "z-up" ? v : [v[0], -v[2], v[1]])).map((v) => [c * v[0] - s * v[1], s * v[0] + c * v[1], v[2]]);
+  const P0 = obj.V.map((v) => (axes === "z-up" ? v : [v[0], -v[2], v[1]])), P = P0.map((v) => [c * v[0] - s * v[1], s * v[0] + c * v[1], v[2]]);
   const lo = [0, 1, 2].map((k) => Math.min(...P.map((v) => v[k]))), hi = [0, 1, 2].map((k) => Math.max(...P.map((v) => v[k])));
   const labels = meshLabels(obj), groups = {};
   // config groups are name parts (as geometry.build_mesh): the longest one contained in the name wins
   const cg = Object.entries(cm.groups || {}).sort((a, b) => b[0].length - a[0].length), known = (k) => GROUPS.some(([g]) => g === k) || !!(cm._mats && cm._mats[k]);
   for (const L of labels) { const v = cg.find(([k]) => L.name.toLowerCase().includes(k.toLowerCase())); groups[L.name] = v && known(v[1]) ? v[1] : meshGuess(L.name); }
-  return { name: name || cm.obj || "model.obj", text: t, axes, rot, voxel: +(cm.voxel ?? cm.voxel_m) || 0, def: "wall", groups, labels, shift: lo.map((v) => -v), dims: hi.map((v, k) => +(v - lo[k]).toFixed(2)),
+  return { name: name || cm.obj || "model.obj", text: t, axes, rot, voxel: +(cm.voxel ?? cm.voxel_m) || 0, def: "wall", groups, labels, shift: lo.map((v) => -v), shift0: rot ? [0, 1, 2].map((k) => -Math.min(...P0.map((v) => v[k]))) : lo.map((v) => -v), dims: hi.map((v, k) => +(v - lo[k]).toFixed(2)),
     front: Array.isArray(cm.stage_front) && cm.stage_front.length === 3 ? cm.stage_front.map((q) => [+q[0], +q[1]]) : null };
 }
 buildGeom();
@@ -1007,6 +1015,8 @@ function pathIndex(o) { const list = [AMP(), PAL(), PAR(), ...UNAMPS()]; return 
 const HIST = {};
 // loudspeaker directivity of an item (PAs only; null = omnidirectional)
 const dmOf = (o) => (o.dir && (o.dir.table || (o.kind === "pa" && o.dir.cov > 0)) ? GEOM.dirModel(o.dir, D.praBands) : null);
+// the same for results of the engine (3D models: emission directions are in the engine frame, the aim in the page frame)
+const dmEng = (o) => (isMesh() && HALL.mesh.rot && o.dir ? dmOf(Object.assign({}, o, { dir: Object.assign({}, o.dir, { az: o.dir.az - HALL.mesh.rot }) })) : dmOf(o));
 function buildOne(o, s) {
   const key = s.id + "|" + o.id, dm = dmOf(o), e = ENG.early(o.pos, s.pos, ENG.NL, dm), h = ENG.fullHist(o.pos, s.pos, dm);
   HIST[key] = h; BR[key] = ENG.compose(e.sig, e.tDir, pathIndex(o), h); ARR[key] = ENG.arrivals(o.pos, s.pos, dm);
@@ -1076,15 +1086,15 @@ self.onmessage = (e) => {
   const m = e.data, G = m.geom.mesh ? GEOM.buildMesh(Object.assign({}, m.geom.mesh, { obj: GEOM.loadObj(m.geom.mesh.text) }), m.geom.mesh.seed) : GEOM.build(m.geom), E = m.diff ? GEOM.edges(G) : null;
   for (const t of m.tasks) {
     const src = m.srcs[t.i], ism = t.ism ? GEOM.withDiffraction(G, E, src, m, GEOM.ism(G, src, m.recs, m.order, m.tWin, m.c, m.mats, m.air, m.bands, m.spec)).map((L) => L.map(slim)) : null;
-    const RT = GEOM.rays(G, src, m.recs, { n: m.rays, c: m.c, seed: 1000 + 7919 * m.seeds[t.i], tLate: tLateOf(src, m), tEarly: tEarlyOf(src, m), k0: t.k0, k1: t.k1, nSect: m.nSect }, m.mats, m.air);
+    const RT = GEOM.rays(G, src, m.recs, { n: m.rays, c: m.c, seed: 1000 + 7919 * m.seeds[t.i], tLate: tLateOf(src, m), tEarly: tEarlyOf(src, m), k0: t.k0, k1: t.k1, nSect: m.nSect, face: m.face }, m.mats, m.air);
     self.postMessage({ job: m.job, i: t.i, ism, H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped, n: RT.n }, RT.H.flat().map((a) => a.buffer).concat(RT.W ? RT.W.map((a) => a.buffer) : [], RT.WE ? RT.WE.map((a) => a.buffer) : [], RT.HS ? RT.HS.map((a) => a.buffer) : []));
   }
   self.postMessage({ job: m.job, done: true });
 };`;
 // parallel ray tracing: a pool of workers, each tracing a share of the rays of every source (results identical to one
-// worker: each ray has its own random stream). 3D models build their room in every worker, so the pool is smaller there.
+// worker: each ray has its own random stream). 3D models build their room in every worker (about 3 s for 14000 faces).
 let POOL_N = 0;   // > 0: fixed pool size (tests)
-const POOL = () => POOL_N || Math.max(1, Math.min((navigator.hardwareConcurrency || 2) - 1, isMesh() ? 4 : 8));
+const POOL = () => POOL_N || Math.max(1, Math.min((navigator.hardwareConcurrency || 2) - 1, 8));
 let pool = [];
 let worker = null, jobId = 0, workerOK = true, LOST = 0;
 function workerMats() {
@@ -1093,12 +1103,12 @@ function workerMats() {
   return out;
 }
 function geomCompute(srcs, seats, seedOff = 0) {
-  const M = HALL.mesh, geom = isMesh() ? { mesh: { text: M.text, groups: M.groups, default: M.def || "wall", axes: M.axes, rot: M.rot, shift: M.shift, voxel: GM.vox.h, seed: GM.seed } }
+  const M = HALL.mesh, face = faceEng(), geom = isMesh() ? { mesh: { text: M.text, groups: M.groups, default: M.def || "wall", axes: M.axes, rot: 0, shift: M.rot ? M.shift0 : M.shift, voxel: GM.vox.h, seed: toEng(GM.seed) } }
     : { plan: HALL.geom.plan, floor: HALL.geom.floor, ceil: HALL.geom.ceil, stageY: HALL.dims[1] - HALL.stage };
   const msg = { job: ++jobId, geom,
     mats: workerMats(), air: D.air, c: D.c, order: isMesh() ? meshOrder() : HALL.order, rays: HALL.rays, tWin: Math.max(0.16, DISCRETE_MS / 1000), spec: isMesh() ? SPEC : null, diff: !isMesh() && !!HALL.diff, diffRefl: HALL.diffRefl | 0, diffOrder: HALL.diffOrder | 0, bands: D.praBands, lateDir: !!D.lateDir, tEarly: D.earlyMs / 1000, tXf: D.xfadeMs / 1000,
     seat: seatDipParams(), fs: D.fs, nSect: srcs.some((o) => dmOf(o)) ? RAY_SECT : 0,
-    srcs: srcs.map((o) => o.pos.slice()), seeds: srcs.map((o) => pathIndex(o) + seedOff), recs: seats.map((s) => s.pos.slice()) };
+    srcs: srcs.map((o) => toEng(o.pos)), seeds: srcs.map((o) => pathIndex(o) + seedOff), recs: seats.map((s) => toEng(s.pos)), face };
   const progress = (k) => { $("busy").textContent = `Computing hall ${k}/${srcs.length}`; };
   progress(0);
   if (workerOK) {
@@ -1113,7 +1123,7 @@ function geomCompute(srcs, seats, seedOff = 0) {
         pool.forEach((w, p) => {
           const tasks = srcs.map((_, i) => ({ i, k0: Math.floor(msg.rays * p / P), k1: Math.floor(msg.rays * (p + 1) / P), ism: i % P === p }));
           w.onmessage = (e) => { const m = e.data; if (m.job !== msg.job) return;
-            if (m.done) { if (++finished === P) { URL.revokeObjectURL(url); ok(res); } return; }
+            if (m.done) { if (++finished === P) { URL.revokeObjectURL(url); ok(faceTurn(res, face)); } return; }
             const r = res[m.i]; if (m.ism) r.ism = m.ism; r.escaped += m.escaped; r.parts++;
             if (!r.H) { r.H = m.H; r.W = m.W; r.WE = m.WE; r.HS = m.HS; r.sect = m.sect; r.nSb = m.nSb; } else { m.H.forEach((bs, k) => bs.forEach((a, b) => { const t = r.H[k][b]; for (let j = 0; j < a.length; j++) t[j] += a[j]; }));
               if (m.W) m.W.forEach((a, k) => { const t = r.W[k]; for (let j = 0; j < a.length; j++) t[j] += a[j]; });
@@ -1129,14 +1139,19 @@ function geomCompute(srcs, seats, seedOff = 0) {
   }
   return inline(msg, progress);
 }
+// arrival directions of the image sources come for a listener facing +y of the engine frame: turn them to the facing
+function faceTurn(res, f) { if (f) for (const r of res) for (const L of r.ism || []) for (const q of L) { const h0 = q.h[0], h1 = q.h[1]; q.h = [h0 * f[1] - h1 * f[0], h1 * f[1] + h0 * f[0], q.h[2]]; } return res; }
+let GENG = null;   // fallback without workers: the room in the engine frame (plan turn 0)
+function engRoom(msg) { if (!HALL.mesh.rot) return GM; const k = JSON.stringify([HALL.mesh.text.length, HALL.mesh.axes, msg.geom.mesh.voxel, msg.geom.mesh.seed, HALL.mesh.groups]);
+  if (!GENG || GENG.k !== k) GENG = { k, G: GEOM.buildMesh(Object.assign({}, msg.geom.mesh, { obj: GEOM.loadObj(msg.geom.mesh.text) }), msg.geom.mesh.seed) }; return GENG.G; }
 function inline(msg, progress) { // fallback without a worker: same engine on the main thread
   return new Promise((ok) => {
-    const G = msg.geom.mesh ? GM : GEOM.build(msg.geom), E = msg.diff ? GEOM.edges(G) : null, res = []; let i = 0;
+    const G = msg.geom.mesh ? engRoom(msg) : GEOM.build(msg.geom), E = msg.diff ? GEOM.edges(G) : null, res = []; let i = 0;
     const step = () => {
       const src = msg.srcs[i], I = GEOM.withDiffraction(G, E, src, msg, GEOM.ism(G, src, msg.recs, msg.order, msg.tWin, msg.c, msg.mats, msg.air, msg.bands, msg.spec));
-      const RT = GEOM.rays(G, src, msg.recs, { n: msg.rays, c: msg.c, seed: 1000 + 7919 * msg.seeds[i], tLate: tLateOf(src, msg), tEarly: tEarlyOf(src, msg), nSect: msg.nSect }, msg.mats, msg.air);
+      const RT = GEOM.rays(G, src, msg.recs, { n: msg.rays, c: msg.c, seed: 1000 + 7919 * msg.seeds[i], tLate: tLateOf(src, msg), tEarly: tEarlyOf(src, msg), nSect: msg.nSect, face: msg.face }, msg.mats, msg.air);
       res[i] = { ism: I.map((L) => L.map(slim)), H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped, n: RT.n };
-      progress(++i); if (i < msg.srcs.length) setTimeout(step, 0); else ok(res);
+      progress(++i); if (i < msg.srcs.length) setTimeout(step, 0); else ok(faceTurn(res, msg.face));
     };
     setTimeout(step, 0);
   });
@@ -1168,7 +1183,7 @@ const SPEC = { order: 3, rays: 20000 };
 const RAY_SECT = 64;
 // energy histogram of one path from its image-source list and ray histogram (also used for the ray-tracing spread)
 function geomHist(o, raw) {
-  const r = GEOM.pathHist(raw.list, raw, dmOf(o), ENG.HN, ENG.HB);   // engine_geom.js (also used by engine_js.py)
+  const r = GEOM.pathHist(raw.list, raw, dmEng(o), ENG.HN, ENG.HB);   // engine_geom.js (also used by engine_js.py)
   // early window starts at the first arrival (direct, or diffracted / reflected when the direct path is blocked), as in brir_proto
   const tD = r.list.length ? Math.min(...r.list.map((q) => q.t)) : dist(o.pos, s.pos) / D.c;
   return { list: r.list, tD, hist: r.hist, resid: r.resid };
@@ -1181,7 +1196,7 @@ function earlyW(raw) {   // the three windows' direction weights, or null where 
   for (let k = 0; k < 3; k++) {
     const Wk = Float64Array.from(raw.WE.subarray(k * per, (k + 1) * per));
     if (k === 0) {   // head frame as dirrays.world_to_head: (u_y, -u_x, u_z) of the direction towards the source
-      const u = [raw.pos[0] - raw.seat[0], raw.pos[1] - raw.seat[1], raw.pos[2] - raw.seat[2]], n = Math.hypot(...u) || 1, h = [u[1] / n, -u[0] / n, u[2] / n];
+      const u = [raw.pos[0] - raw.seat[0], raw.pos[1] - raw.seat[1], raw.pos[2] - raw.seat[2]], n = Math.hypot(...u) || 1, f = facePage(), h = [(u[0] * f[0] + u[1] * f[1]) / n, (u[1] * f[0] - u[0] * f[1]) / n, u[2] / n];
       let bk = 0, bd = -2; for (let q = 0; q < nbin; q++) { const v = h[0] * FIB64[q][0] + h[1] * FIB64[q][1] + h[2] * FIB64[q][2]; if (v > bd) { bd = v; bk = q; } }
       const tot = new Float64Array(nb); for (let d = 0; d < nbin; d++) for (let b = 0; b < nb; b++) tot[b] += Wk[d * nb + b];
       Wk.fill(0); for (let b = 0; b < nb; b++) Wk[bk * nb + b] = tot[b] > 0 ? tot[b] : 1;
@@ -1824,7 +1839,7 @@ function loadObjFile(f) {
     if (same) { for (const o of OBJ) o.pos = meshToModel(old, o.pos); m.front = old.front; }
     const place = !same;    // a new model (also replacing another one): put the items into the room afterwards
     HALL.geom = null; HALL.mesh = m; HALL.dims = m.dims.slice(); HALL.stage = 0; HALL.order = 2; HALL.diff = false;
-    if (HALL.rays > 10000) HALL.rays = 10000;    // ray tracing in a mesh is slower; raise in the menu for final results
+    HALL.rays = 50000;    // at 10000 rays the T30 of a seat moves by about 25 % between runs (validation/ray_noise.md)
     if (!place) for (const o of OBJ) o.pos = meshToPage(m, o.pos);
     else if (old) { const [W0, D0] = old.dims; for (const o of OBJ) o.pos = [o.pos[0] / W0 * m.dims[0], o.pos[1] / D0 * m.dims[1], o.pos[2]]; }   // another model: same place relative to the room
     else placeInMesh(m, HALL.boxStash.dims);
@@ -1885,16 +1900,21 @@ function cancelHall() { for (const w of pool) w.terminate(); pool = []; jobId++;
 // several turns), and the computation in progress is stopped at once.
 let meshT = 0;
 const meshSetting = (k, conv) => (e) => { if (!HALL.mesh) return; const m = HALL.mesh;
-  cancelHall(); clearTimeout(meshT);
+  const haveAll = $("busy").hidden && SEATS().every((st) => sourcesAll().every((o) => BR[st.id + "|" + o.id]));   // nothing being computed
+  if (!(k === "rot" && m.front && haveAll)) cancelHall(); clearTimeout(meshT);
   const rot0 = m.rot;
+  for (const key in GC) { const r = GC[key]; r.posM = meshToModel(m, r.pos); r.seatM = meshToModel(m, r.seat); }
   for (const o of OBJ) o.pos = meshToModel(m, o.pos);
-  m[k] = conv(e.target.value); const st = meshState({ axes: m.axes, rotate_deg: m.rot }, m.text); m.shift = st.shift; m.dims = st.dims; HALL.dims = m.dims.slice();
+  m[k] = conv(e.target.value); const st = meshState({ axes: m.axes, rotate_deg: m.rot }, m.text); m.shift = st.shift; m.shift0 = st.shift0; m.dims = st.dims; HALL.dims = m.dims.slice();
   for (const o of OBJ) { o.pos = meshToPage(m, o.pos); delete o.h; }
   const dRot = m.rot - rot0;   // aiming of directional loudspeakers turns with the plan (az: degrees in the page frame)
   if (dRot) for (const o of OBJ) if (o.dir && (o.dir.az || o.dir.el)) { let a = o.dir.az + dRot; a = ((a + 180) % 360 + 360) % 360 - 180; o.dir.az = Math.round(a * 10) / 10; }
   buildGeom(); shapeUI();
   if (GM) { initHeights(OBJ); clampAll(); drawMap(); drawSection(); syncTable();
-    if (k === "rot") { $("busy").textContent = "Plan turned: computing in 1.5 s"; $("busy").hidden = false; meshT = setTimeout(() => work(rebuildAll), 1500); }
+    if (k === "rot" && m.front && haveAll) { // listeners face the stage and the engine works in the model's frame: the results stay
+      for (const key in GC) { const r = GC[key]; r.pos = meshToPage(m, r.posM); r.seat = meshToPage(m, r.seatM); }
+      work(async () => {}); }
+    else if (k === "rot") { $("busy").textContent = "Plan turned: computing in 1.5 s"; $("busy").hidden = false; meshT = setTimeout(() => work(rebuildAll), 1500); }
     else work(rebuildAll); } };
 $("selAxes").onchange = meshSetting("axes", String); $("selRot").onchange = meshSetting("rot", Number); $("selVox").onchange = meshSetting("voxel", Number);
 function shapeUI() {
@@ -2572,8 +2592,8 @@ async function exportSofa() {
     const b = BR[st.id + "|" + o.id]; ir.set(b[0], (m * 2) * N); ir.set(b[1], (m * 2 + 1) * N);
     lis.push(toCfg(st.pos)); src.push(toCfg(o.pos)); names.push(`${st.id} | ${o.id} (${labelOf(o)})`); m++;
   }
-  // listeners face +y in the page frame (as the HRIR directions); a 3D model's page frame is turned by rot degrees
-  const a = isMesh() ? -HALL.mesh.rot * Math.PI / 180 : 0, view = [-Math.sin(a), Math.cos(a), 0].map((v) => +v.toFixed(6));
+  // listeners face +y in the page frame, or the stage when the stage front of a 3D model is marked (facePage)
+  const fv = isMesh() ? vecEng(facePage()) : [0, 1], view = [fv[0], fv[1], 0].map((v) => +v.toFixed(6));   // model coordinates = engine frame axes
   const prov = provenance();
   const comment = JSON.stringify({ measurements: names, time_zero: "emission at the source (propagation delay included); no PA delay or gain applied",
     coordinates: isMesh() ? "model coordinates of the config (z up)" : "config coordinates (x width, y depth towards the stage, z up)",
