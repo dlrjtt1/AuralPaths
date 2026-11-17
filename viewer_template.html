@@ -318,6 +318,7 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
           <input type="file" id="fObj" accept=".obj,text/plain" aria-label="3D model (Wavefront OBJ)">
           <label class="vol">Up axis <select id="selAxes"><option value="y-up">y up (SketchUp, Blender OBJ export)</option><option value="z-up">z up</option></select></label>
           <label class="vol">Turn plan <select id="selRot"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
+          <button class="btn" id="bFront" title="Click both ends of the stage opening, then anywhere on the stage: the sources and seats are placed from that line">Mark stage front…</button>
           <label class="vol">Voxel <select id="selVox"><option value="0">auto</option><option value="0.05">5 cm</option><option value="0.08">8 cm</option><option value="0.1">10 cm</option></select></label>
         </div>
         <p class="note" id="meshNote"></p>
@@ -966,7 +967,8 @@ function meshState(cm, text, name) {
   // config groups are name parts (as geometry.build_mesh): the longest one contained in the name wins
   const cg = Object.entries(cm.groups || {}).sort((a, b) => b[0].length - a[0].length), known = (k) => GROUPS.some(([g]) => g === k) || !!(cm._mats && cm._mats[k]);
   for (const L of labels) { const v = cg.find(([k]) => L.name.toLowerCase().includes(k.toLowerCase())); groups[L.name] = v && known(v[1]) ? v[1] : meshGuess(L.name); }
-  return { name: name || cm.obj || "model.obj", text: t, axes, rot, voxel: +(cm.voxel ?? cm.voxel_m) || 0, def: "wall", groups, labels, shift: lo.map((v) => -v), dims: hi.map((v, k) => +(v - lo[k]).toFixed(2)) };
+  return { name: name || cm.obj || "model.obj", text: t, axes, rot, voxel: +(cm.voxel ?? cm.voxel_m) || 0, def: "wall", groups, labels, shift: lo.map((v) => -v), dims: hi.map((v, k) => +(v - lo[k]).toFixed(2)),
+    front: Array.isArray(cm.stage_front) && cm.stage_front.length === 3 ? cm.stage_front.map((q) => [+q[0], +q[1]]) : null };
 }
 buildGeom();
 // mesh halls: floor and ceiling of the voxel column under (x, y); drawn halls: the section lines
@@ -1523,6 +1525,15 @@ function drawMap() {
   if (S.trace === "plan") drawTracePlan(g, X, Y);
   if (S.stagePreview !== null) { axisText(g); g.textAlign = "right"; g.fillText(`stage ${stageDepth()} m (press Enter or Apply)`, X(W) - 4, Y(stageY) - 4); }
   g.font = `11px ${css("--f-ui")}`; g.fillStyle = css("--grid-text"); g.textAlign = "left"; if (!isMesh()) g.fillText("Stage", X(0.3), Y(Dp) + 15);
+  if (isMesh()) { // stage front of a 3D model (and the clicks while it is being marked)
+    const F = S.front ? null : frontOf(), pts = S.front || [];
+    g.save(); g.strokeStyle = css("--text"); g.fillStyle = css("--text"); g.lineWidth = 1.5; g.setLineDash([6, 4]);
+    if (F) { g.beginPath(); g.moveTo(X(F.a[0]), Y(F.a[1])); g.lineTo(X(F.b[0]), Y(F.b[1])); g.stroke(); g.setLineDash([]);
+      g.font = `11px ${css("--f-ui")}`; g.textAlign = "center"; g.fillText("stage front", X(F.a[0] + 0.8 * F.n[0]), Y(F.a[1] + 0.8 * F.n[1]) + 4); }
+    if (pts.length === 2) { g.beginPath(); g.moveTo(X(pts[0][0]), Y(pts[0][1])); g.lineTo(X(pts[1][0]), Y(pts[1][1])); g.stroke(); }
+    g.setLineDash([]); for (const q of pts) { g.beginPath(); g.arc(X(q[0]), Y(q[1]), 4, 0, 2 * Math.PI); g.fill(); }
+    g.restore();
+  }
   for (const o of OBJ) {
     const [x, y] = o.pos, on = drag && drag.o === o, px = X(x), py = Y(y);
     if (o.kind === "pa") {
@@ -1637,6 +1648,7 @@ function hitObj(mx, my) { let best = null, bd = 14; for (const o of OBJ) { const
 function mouse(e) { const r = $("map").getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top; return { mx, my, x: (mx - MG.pad) / MG.sc, y: MG.Dp - (my - MG.pad) / MG.sc }; }
 $("map").addEventListener("pointerdown", (e) => {
   if (!MG) return; const m = mouse(e);
+  if (S.front) { if (inOutline(m.x, m.y) || S.front.length < 2) frontClick(m.x, m.y); else $("posNote").textContent = "Stage front 3/3: that point is outside the room. " + FRONT_STEPS[2]; return; }
   if (S.trace === "plan") {
     const sp = snapToDrawing("plan", m.x, m.y, 10 / MG.sc, e.altKey).p, p = [Math.min(HALL.dims[0], Math.max(0, sp[0])), Math.min(HALL.dims[1], Math.max(0, sp[1]))], P = S.tracePts;
     if (P.length >= 3 && Math.hypot(MG.X(P[0][0]) - m.mx, MG.Y(P[0][1]) - m.my) < 10) return finishTrace();
@@ -1809,7 +1821,7 @@ function loadObjFile(f) {
     stop();
     const old = HALL.mesh; if (!isMesh()) { HALL.geomStash = HALL.geom || HALL.geomStash; HALL.boxStash = { dims: HALL.dims.slice(), stage: HALL.stage, order: HALL.order, diff: HALL.diff }; }
     const same = !!old && old.text === m.text;   // the same model again (other settings): keep positions in the model frame
-    if (same) for (const o of OBJ) o.pos = meshToModel(old, o.pos);
+    if (same) { for (const o of OBJ) o.pos = meshToModel(old, o.pos); m.front = old.front; }
     const place = !same;    // a new model (also replacing another one): put the items into the room afterwards
     HALL.geom = null; HALL.mesh = m; HALL.dims = m.dims.slice(); HALL.stage = 0; HALL.order = 2; HALL.diff = false;
     if (HALL.rays > 10000) HALL.rays = 10000;    // ray tracing in a mesh is slower; raise in the menu for final results
@@ -1820,10 +1832,52 @@ function loadObjFile(f) {
     buildGeom(); shapeUI();
     if (!GM) { meshNote(); return; }
     initHeights(OBJ); clampAll(); work(rebuildAll);
+    if (place) $("posNote").textContent = "The page does not know where the stage of a 3D model is: use Mark stage front… (Hall, 3D model) to place the sources and seats.";
   };
   r.readAsText(f);
 }
 $("fObj").onchange = (e) => { if (e.target.files[0]) loadObjFile(e.target.files[0]); e.target.value = ""; };
+// ---- 3D models: the stage front (the stage opening, e.g. the proscenium line), marked with three clicks on the plan:
+// both ends of the opening, then a point on the stage. Kept in model coordinates (turns with the plan), saved in the
+// config as geometry.mesh.stage_front. The items are then placed as in the built-in layout, measured from that line.
+function frontOf() {
+  const m = HALL.mesh; if (!m || !m.front) return null;
+  const [a, b, st] = m.front.map((q) => meshToPage(m, [q[0], q[1], 0]));
+  const ux = b[0] - a[0], uy = b[1] - a[1], w = Math.hypot(ux, uy); if (w < 0.5) return null;
+  const c = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; let nx = -uy / w, ny = ux / w;
+  if ((st[0] - c[0]) * nx + (st[1] - c[1]) * ny < 0) { nx = -nx; ny = -ny; }
+  return { a, b, st, c, w, n: [nx, ny], left: [-ny, nx] };   // n: towards the stage; left: audience left, facing the stage
+}
+function placeByFront() {
+  const F = frontOf(); if (!F) return 0;
+  const at = (u, v) => [F.c[0] + u * F.left[0] + v * F.n[0], F.c[1] + u * F.left[1] + v * F.n[1]];
+  // inside the room: move towards the centre line, then towards the stage front, until inside
+  const inside = (u, v) => { for (let k = 0; k < 400; k++) { const p = at(u, v); if (inOutline(p[0], p[1])) return p;
+    if (Math.abs(u) > 0.2) u -= Math.sign(u) * 0.25; else if (Math.abs(v) > 0.2) v -= Math.sign(v) * 0.25; else break; } return null; };
+  let aud = 0; for (let d = 0.25; d < 300; d += 0.25) { const p = at(0, -d); if (!inOutline(p[0], p[1])) { if (aud > 0) break; } else aud = d; }
+  const half = F.w / 2, seatV = -(aud > 2 ? 0.4 * aud : 8);    // built-in layout: seats 8 m into a 19 m audience
+  const lat = { L: 4, C: 0, R: -4 }, set = (o, u, v) => { if (!o || isLocked(o)) return 0; const p = inside(u, v); if (!p) return 0; o.pos = [p[0], p[1], o.pos[2]]; syncZ(o); return 1; };
+  let n = set(AMP(), 0, 2);
+  UNAMPS().forEach((o, i) => (n += set(o, -Math.min(3 + 1.5 * i, Math.max(0.5, half - 0.5)), 2.8)));
+  n += set(PAL(), Math.max(0.5, half - 0.5), 0.5) + set(PAR(), -Math.max(0.5, half - 0.5), 0.5);
+  let extra = 0; for (const o of SEATS()) n += o.id in lat ? set(o, lat[o.id], seatV) : set(o, 0, seatV - 2 * ++extra);
+  for (const o of [PAL(), PAR()]) if (o && !isLocked(o) && o.dir && (o.dir.cov > 0 || o.dir.table)) aimAt(o, seatObj(S.seat).pos);
+  return n;
+}
+const FRONT_STEPS = ["Click one end of the stage opening (e.g. the proscenium).", "Click the other end of the stage opening.", "Click anywhere on the stage."];
+$("bFront").onclick = () => { if (!isMesh()) return; S.front = []; $("posNote").textContent = `Stage front 1/3: ${FRONT_STEPS[0]} Escape cancels.`; drawMap(); };
+addEventListener("keydown", (e) => { if (e.key === "Escape" && S.front) { S.front = null; $("posNote").textContent = "Stage front: cancelled."; drawMap(); } });
+function frontClick(x, y) {
+  const P = S.front; P.push([x, y]);
+  if (P.length === 2 && Math.hypot(P[1][0] - P[0][0], P[1][1] - P[0][1]) < 0.5) { P.pop(); $("posNote").textContent = "Stage front 2/3: the two ends are less than 0.5 m apart. " + FRONT_STEPS[1]; return drawMap(); }
+  if (P.length < 3) { $("posNote").textContent = `Stage front ${P.length + 1}/3: ${FRONT_STEPS[P.length]} Escape cancels.`; return drawMap(); }
+  S.front = null; const m = HALL.mesh;
+  m.front = P.map((q) => meshToModel(m, [q[0], q[1], 0]).slice(0, 2).map((v) => Math.round(v * 1000) / 1000));
+  const F = frontOf(); if (!F) { m.front = null; $("posNote").textContent = "Stage front: could not use these points; try again."; return drawMap(); }
+  stop(); const n = placeByFront(); clampAll();
+  $("posNote").textContent = `Stage front set (opening ${F.w.toFixed(1)} m). ${n} item${n === 1 ? "" : "s"} placed from it; locked items stay. It is saved with the config; drag items to fine-tune.`;
+  drawMap(); drawSection(); syncTable(); work(rebuildAll);
+}
 const meshSetting = (k, conv) => (e) => { if (!HALL.mesh) return; const m = HALL.mesh;
   for (const o of OBJ) o.pos = meshToModel(m, o.pos);
   m[k] = conv(e.target.value); const st = meshState({ axes: m.axes, rotate_deg: m.rot }, m.text); m.shift = st.shift; m.dims = st.dims; HALL.dims = m.dims.slice();
@@ -2605,7 +2659,7 @@ function currentConfig() {
   out.receivers = rec;
   if (HALL.seatMap) out.seats = Object.assign(base.seats || { ear_height_m: 1.2 }, { xyz: isMesh() ? HALL.seatMap.map(P) : HALL.seatMap }); else delete out.seats;
   if (isMesh()) { const m = HALL.mesh;
-    out.geometry = { mesh: { obj: m.name, axes: m.axes, groups: m.groups, default: m.def || "wall", voxel: m.voxel || (GM ? +GM.vox.h.toFixed(4) : 0.05), rotate_deg: m.rot, obj_text: m.text,
+    out.geometry = { mesh: { obj: m.name, axes: m.axes, groups: m.groups, default: m.def || "wall", voxel: m.voxel || (GM ? +GM.vox.h.toFixed(4) : 0.05), rotate_deg: m.rot, obj_text: m.text, ...(m.front ? { stage_front: m.front } : {}),
       _note: "obj_text: the OBJ itself (this page and geometry.load_obj read it instead of the obj file); rotate_deg: plan turn used by the page only; voxel: the page's voxel size, so that geometry.build_mesh builds the same room; positions are in model coordinates" },
       materials: HALL.mats, ism_order: 1, rays: Math.max(HALL.rays, 50000), diffraction: false, ...seatDipConfig() };
     out.geometry.mesh.page_ism_order = meshOrder();   // the page's order; the Python mesh path (pyroomacoustics) stays at order 1
@@ -3555,6 +3609,7 @@ const GUIDE = {
       ["HRIR set…", "Render with another HRIR set (SOFA), e.g. an individual one, instead of the KU100."],
       ["Load plan drawing… / Auto-trace", "Put a PDF or image under the plan or section and trace the hall outline from it."],
       ["Lock all / Reset layout", "Stop accidental dragging / go back to the positions of the config."],
+      ["Mark stage front… (3D model)", "Click both ends of the stage opening, then the stage: sources and seats are placed from that line."],
       ["?", "On each panel: notes on what it shows."]],
     note: "Results are model estimates, not a reproduction of a real hall. For research use, calibrate with measured T30 and check early reflections against a measurement.",
     hide: "Don't show at start", start: "Start" },
@@ -3574,6 +3629,7 @@ const GUIDE = {
       ["HRIR set…", "KU100 대신 다른 HRIR 세트(SOFA, 예: 개인 측정 세트)로 렌더링합니다."],
       ["Load plan drawing… / Auto-trace", "PDF나 이미지 도면을 평면·단면 밑에 깔고 홀 외곽선을 따라 그립니다."],
       ["Lock all / Reset layout", "실수로 끌어 옮기지 않게 고정 / config의 위치로 되돌리기."],
+      ["Mark stage front… (3D model)", "무대 개구부 양 끝을 찍고 무대를 찍으면, 그 선을 기준으로 음원과 좌석을 배치."],
       ["?", "각 패널의 설명을 펼칩니다."]],
     note: "결과는 모델 추정치이며 실제 홀을 재현한 것이 아닙니다. 연구에 쓸 때는 실측 T30으로 보정하고, 초기 반사를 실측과 대조해 보세요.",
     hide: "시작할 때 다시 보지 않기", start: "시작" },
@@ -3593,6 +3649,7 @@ const GUIDE = {
       ["HRIR set…", "KU100 の代わりに別の HRIR セット(SOFA、例: 個人測定のセット)でレンダリングします。"],
       ["Load plan drawing… / Auto-trace", "PDF や画像の図面を平面・断面の下に敷き、ホールの外形をトレースします。"],
       ["Lock all / Reset layout", "誤ってドラッグしないよう固定 / config の位置に戻す。"],
+      ["Mark stage front… (3D model)", "舞台開口の両端と舞台をクリックすると、その線を基準に音源と座席を配置する。"],
       ["?", "各パネルの説明を開きます。"]],
     note: "結果はモデルによる推定値であり、実在のホールを再現したものではありません。研究に用いる際は実測 T30 で校正し、初期反射を実測と照合してください。",
     hide: "起動時に表示しない", start: "始める" } };

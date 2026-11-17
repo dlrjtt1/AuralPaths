@@ -4,6 +4,8 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page, 3D models: **Mark stage front…** (three clicks: both ends of the stage opening, then the stage) places the
+  sources and seats from that line as in the built-in layout; saved as `geometry.mesh.stage_front`.
 - Page, 3D models: opening a different OBJ while one is loaded no longer keeps the items in the old model's frame;
   they keep their place relative to the room (the same model reloaded with other settings still keeps the frame).
 - Image sources: rejection tests on squared distances and packed planes, no allocation in the back-trace (identical

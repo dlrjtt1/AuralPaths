@@ -484,6 +484,15 @@ energy difference 7 × 10⁻⁷).
   ceiling, or a material of its own. Plan and section show the room projected from the voxels (outline = x range
   of each 0.25 m row; floor / ceiling lines = lowest floor and highest ceiling of each row), with the model's wall
   faces drawn on the plan. Heights of sources and seats are above the lowest floor under each point.
+- Stage front (**Mark stage front…**): the page does not know where the stage of a model is, so a new model gets the
+  built-in layout squeezed towards the middle. Three clicks on the plan (both ends of the stage opening, then a point
+  on the stage) mark the stage front; the unlocked items are then placed from that line as in the built-in layout:
+  the amplified source 2 m upstage on the centre line, unamplified sources 2.8 m upstage beside it, the PA loudspeakers
+  0.5 m upstage at the ends of the opening (aimed at the selected seat if directional), seats C / L / R at 40 % of the
+  audience depth along the centre line (measured to the last point inside the room) and 4 m apart, each moved towards
+  the centre line until it is inside the room. The line is kept in model coordinates (it turns with the plan) and
+  saved as `geometry.mesh.stage_front` (three points: the two ends and the stage point; the Python tools ignore it).
+  Opening a different OBJ while one is loaded keeps the items at their place relative to the room.
 - Image sources to order 2 (default; order 1 selectable): every pair of room surfaces is tried and each path is
   checked by back-tracing and occlusion, as for drawn halls. CR3 (2600 faces): order 1 takes 0.2 s, order 2 about 7 s
   per source (the image sources of different sources run in different workers); order 3 would take about 2300 times
