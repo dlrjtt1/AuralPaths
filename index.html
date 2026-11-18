@@ -2468,6 +2468,8 @@ function buildGeom() {
   GM = isDrawn() ? GEOM.build({ plan: HALL.geom.plan, floor: HALL.geom.floor, ceil: HALL.geom.ceil, stageY: HALL.dims[1] - HALL.stage }) : null; return GM;
 }
 // model frame (after the up-axis change, as in the Python config) <-> page frame (turned, shifted to x, y, z >= 0)
+// the shift of a 3D model is in whole millimetres, so that page <-> model positions convert without rounding drift
+const R3 = (v) => Math.round(v * 1000) / 1000;
 function meshToPage(m, p) { const a = m.rot * Math.PI / 180, c = Math.cos(a), s = Math.sin(a); return [c * p[0] - s * p[1] + m.shift[0], s * p[0] + c * p[1] + m.shift[1], p[2] + m.shift[2]].map((v) => Math.round(v * 1000) / 1000); }
 function meshToModel(m, p) { const a = m.rot * Math.PI / 180, c = Math.cos(a), s = Math.sin(a), x = p[0] - m.shift[0], y = p[1] - m.shift[1]; return [c * x + s * y, -s * x + c * y, p[2] - m.shift[2]].map((v) => Math.round(v * 1000) / 1000); }
 // one name per model face for the material table: its OBJ material (usemtl), else its group, else its object
@@ -2483,7 +2485,7 @@ function meshState(cm, text, name) {
   // config groups are name parts (as geometry.build_mesh): the longest one contained in the name wins
   const cg = Object.entries(cm.groups || {}).sort((a, b) => b[0].length - a[0].length), known = (k) => GROUPS.some(([g]) => g === k) || !!(cm._mats && cm._mats[k]);
   for (const L of labels) { const v = cg.find(([k]) => L.name.toLowerCase().includes(k.toLowerCase())); groups[L.name] = v && known(v[1]) ? v[1] : meshGuess(L.name); }
-  return { name: name || cm.obj || "model.obj", text: t, axes, rot, voxel: +(cm.voxel ?? cm.voxel_m) || 0, def: "wall", groups, labels, shift: lo.map((v) => -v), shift0: rot ? [0, 1, 2].map((k) => -Math.min(...P0.map((v) => v[k]))) : lo.map((v) => -v), dims: hi.map((v, k) => +(v - lo[k]).toFixed(2)),
+  return { name: name || cm.obj || "model.obj", text: t, axes, rot, voxel: +(cm.voxel ?? cm.voxel_m) || 0, def: "wall", groups, labels, shift: lo.map((v) => -R3(v)), shift0: rot ? [0, 1, 2].map((k) => -R3(Math.min(...P0.map((v) => v[k])))) : lo.map((v) => -R3(v)), dims: hi.map((v, k) => +(v - lo[k]).toFixed(2)),
     front: Array.isArray(cm.stage_front) && cm.stage_front.length === 3 ? cm.stage_front.map((q) => [+q[0], +q[1]]) : null };
 }
 buildGeom();
@@ -2525,7 +2527,10 @@ const HIST = {};
 const dmOf = (o) => (o.dir && (o.dir.table || (o.kind === "pa" && o.dir.cov > 0)) ? GEOM.dirModel(o.dir, D.praBands) : null);
 // the same for results of the engine (3D models: emission directions are in the engine frame, the aim in the page frame)
 const dmEng = (o) => (isMesh() && HALL.mesh.rot && o.dir ? dmOf(Object.assign({}, o, { dir: Object.assign({}, o.dir, { az: o.dir.az - HALL.mesh.rot }) })) : dmOf(o));
+// positions are computed and saved in millimetres, so that a saved config gives the same results again
+const mm = (o) => { o.pos = o.pos.map((v) => Math.round(v * 1000) / 1000); };
 function buildOne(o, s) {
+  mm(o); mm(s);
   const key = s.id + "|" + o.id, dm = dmOf(o), e = ENG.early(o.pos, s.pos, ENG.NL, dm), h = ENG.fullHist(o.pos, s.pos, dm);
   HIST[key] = h; BR[key] = ENG.compose(e.sig, e.tDir, pathIndex(o), h); ARR[key] = ENG.arrivals(o.pos, s.pos, dm);
 }
@@ -2643,6 +2648,7 @@ function workerMats() {
   return out;
 }
 function geomCompute(srcs, seats, seedOff = 0) {
+  srcs.forEach(mm); seats.forEach(mm);
   const M = HALL.mesh, face = faceEng(), geom = isMesh() ? { mesh: { text: M.text, groups: M.groups, default: M.def || "wall", axes: M.axes, rot: 0, shift: M.rot ? M.shift0 : M.shift, voxel: GM.vox.h, seed: toEng(GM.seed) } }
     : { plan: HALL.geom.plan, floor: HALL.geom.floor, ceil: HALL.geom.ceil, stageY: HALL.dims[1] - HALL.stage };
   const msg = { job: ++jobId, geom,
@@ -2725,7 +2731,7 @@ const RAY_SECT = 64;
 function geomHist(o, raw) {
   const r = GEOM.pathHist(raw.list, raw, dmEng(o), ENG.HN, ENG.HB);   // engine_geom.js (also used by engine_js.py)
   // early window starts at the first arrival (direct, or diffracted / reflected when the direct path is blocked), as in brir_proto
-  const tD = r.list.length ? Math.min(...r.list.map((q) => q.t)) : dist(o.pos, s.pos) / D.c;
+  const tD = r.list.length ? Math.min(...r.list.map((q) => q.t)) : (raw.pos && raw.seat ? dist(raw.pos, raw.seat) / D.c : 0);   // no arrival at all (source shut off from the seat)
   return { list: r.list, tD, hist: r.hist, resid: r.resid };
 }
 // early scattered-energy noise per window (brir_proto.early_resid_directions): the first window (0 - 20 ms) all from the
@@ -3451,16 +3457,25 @@ const meshSetting = (k, conv) => (e) => { if (!HALL.mesh) return; const m = HALL
   if (!(k === "rot" && m.front && haveAll)) cancelHall(); clearTimeout(meshT);
   const rot0 = m.rot;
   for (const key in GC) { const r = GC[key]; r.posM = meshToModel(m, r.pos); r.seatM = meshToModel(m, r.seat); }
+  const objM = OBJ.map((o) => meshToModel(m, o.pos)), mapM = HALL.seatMap ? HALL.seatMap.map((p) => meshToModel(m, p)) : null;
+  if (k === "axes") m.front = null;   // the stage front was marked in the other axes
   for (const o of OBJ) o.pos = meshToModel(m, o.pos);
   m[k] = conv(e.target.value); const st = meshState({ axes: m.axes, rotate_deg: m.rot }, m.text); m.shift = st.shift; m.shift0 = st.shift0; m.dims = st.dims; HALL.dims = m.dims.slice();
   for (const o of OBJ) { o.pos = meshToPage(m, o.pos); delete o.h; }
+  if (mapM) HALL.seatMap = mapM.map((p) => meshToPage(m, p));   // the seat map turns with the model
   const dRot = m.rot - rot0;   // aiming of directional loudspeakers turns with the plan (az: degrees in the page frame)
-  if (dRot) for (const o of OBJ) if (o.dir && (o.dir.az || o.dir.el)) { let a = o.dir.az + dRot; a = ((a + 180) % 360 + 360) % 360 - 180; o.dir.az = Math.round(a * 10) / 10; }
+  if (dRot) for (const o of OBJ) if (o.dir) { let a = (o.dir.az || 0) + dRot; a = ((a + 180) % 360 + 360) % 360 - 180; o.dir.az = Math.round(a * 10) / 10; }
   buildGeom(); shapeUI();
   if (GM) { initHeights(OBJ); clampAll(); drawMap(); drawSection(); syncTable();
     if (k === "rot" && m.front && haveAll) { // listeners face the stage and the engine works in the model's frame: the results stay
       for (const key in GC) { const r = GC[key]; r.pos = meshToPage(m, r.posM); r.seat = meshToPage(m, r.seatM); }
-      work(async () => {}); }
+      // an item the rebuilt room moved (clamped into the room, other floor height) no longer has valid results
+      // the items keep their place in the model exactly (the rebuilt room has slightly other floor heights: the height
+      // above the floor takes the difference); an item that is no longer inside the room is computed again
+      const off = []; OBJ.forEach((o, i) => { const q = meshToPage(m, objM[i]); if (inOutline(q[0], q[1])) { o.pos = q; o.h = q[2] - floorAt(q[1], q[0]); } else off.push(o); });
+      drawMap(); drawSection(); syncTable();
+      if (off.length) { const au = S.auto; S.auto = false; off.forEach(moved); S.auto = au; if (au) applyPending(); else work(async () => {}); }
+      else work(async () => {}); }
     else if (k === "rot") { $("busy").textContent = "Plan turned: computing in 1.5 s"; $("busy").hidden = false; meshT = setTimeout(() => work(rebuildAll), 1500); }
     else work(rebuildAll); } };
 $("selAxes").onchange = meshSetting("axes", String); $("selRot").onchange = meshSetting("rot", Number); $("selVox").onchange = meshSetting("voxel", Number);
@@ -4072,14 +4087,14 @@ function applyConfig(c, name) {
   HALL.alpha = alpha.map(Number); if (Array.isArray(r.absorption_octave?._bands_hz)) HALL.alphaBands = r.absorption_octave._bands_hz.slice();
   if (gm) {
     HALL.geom = null; HALL.mesh = mstate; HALL.mats = Object.assign(defaultMats(HALL.alpha, r.scattering ?? 0.1), g.materials ? deep(g.materials) : {}); HALL.matsSet = !!g.materials; HALL.matNames = {};
-    HALL.rays = +g.rays >= 50000 ? 50000 : +g.rays >= 30000 ? 30000 : 10000; HALL.order = +gm.page_ism_order === 1 ? 1 : 2; HALL.diff = false; HALL.stage = 0;
+    HALL.rays = [10000, 30000, 50000, 100000].includes(+g.page_rays) ? +g.page_rays : +g.rays >= 50000 ? 50000 : +g.rays >= 30000 ? 30000 : 10000;   // page_rays: what the page used (rays: at least 50000, for run.py) HALL.order = +gm.page_ism_order === 1 ? 1 : 2; HALL.diff = false; HALL.stage = 0;
     if (mstate) HALL.dims = mstate.dims.slice();
   } else if (g) {
     HALL.mesh = null;
     HALL.geom = { plan: deep(g.plan), floor: deep(g.floor || [[0, 0]]), ceil: deep(g.ceiling || [[0, HALL.dims[2]]]) };
     HALL.mats = g.materials ? deep(g.materials) : defaultMats(HALL.alpha, r.scattering ?? 0.1); HALL.matsSet = !!g.materials;
     HALL.order = [2, 3, 4, 5].includes(+g.ism_order) ? +g.ism_order : 4;
-    HALL.rays = +g.rays >= 50000 ? 50000 : +g.rays >= 30000 ? 30000 : 10000;
+    HALL.rays = [10000, 30000, 50000, 100000].includes(+g.page_rays) ? +g.page_rays : +g.rays >= 50000 ? 50000 : +g.rays >= 30000 ? 30000 : 10000;   // page_rays: what the page used (rays: at least 50000, for run.py)
     HALL.diff = g.diffraction !== false;
     HALL.diffRefl = g.diffraction_refl | 0;
     HALL.diffOrder = g.diffraction_order | 0;
@@ -4224,8 +4239,8 @@ $("bSymPA").onclick = () => {
   if (!(x > 0.2 && x < HALL.dims[0] - 0.2 && y > 0.2 && y < HALL.dims[1] - 0.2 && inOutline(x, y))) { $("posNote").textContent = `The mirror image of ${labelOf(a)} about the line through seat ${c.id} (${x.toFixed(2)}, ${y.toFixed(2)} m) is outside the room. Nothing moved.`; return; }
   const r2 = (v) => Math.round(v * 100) / 100;
   b.pos[0] = r2(x); b.pos[1] = r2(y); b.h = a.h; syncZ(b);
-  if (a.dir && b.dir && (a.dir.az || a.dir.el)) { const t = a.dir.az * Math.PI / 180, ux = Math.sin(t), uy = -Math.cos(t), ua = ux * f[0] + uy * f[1], vx = 2 * ua * f[0] - ux, vy = 2 * ua * f[1] - uy;
-    b.dir.az = Math.round(Math.atan2(vx, -vy) * 180 / Math.PI * 10) / 10; b.dir.el = a.dir.el; }
+  if (a.dir && b.dir) { const t = (a.dir.az || 0) * Math.PI / 180, ux = Math.sin(t), uy = -Math.cos(t), ua = ux * f[0] + uy * f[1], vx = 2 * ua * f[0] - ux, vy = 2 * ua * f[1] - uy;
+    b.dir.az = Math.round(Math.atan2(vx, -vy) * 180 / Math.PI * 10) / 10; b.dir.el = a.dir.el || 0; }
   const d = (o) => Math.hypot(o.pos[0] - c.pos[0], o.pos[1] - c.pos[1]);
   $("posNote").textContent = `${labelOf(b)} mirrored from ${labelOf(a)} about the line through seat ${c.id}: ${d(a).toFixed(2)} m and ${d(b).toFixed(2)} m from the seat (plan).`;
   stop(); buildPaTable(); moved(b);
@@ -4246,7 +4261,7 @@ $("bSaveCfg").onclick = saveConfig;
 $("fCfg").onchange = (e) => { if (e.target.files[0]) loadConfigFile(e.target.files[0]); e.target.value = ""; };
 // the current hall, sources and seats as a complete config (the loaded / built-from config with these parts replaced)
 function currentConfig() {
-  const P = (p) => (isMesh() ? meshToModel(HALL.mesh, p) : p).map((v) => +v.toFixed(2));   // mesh halls: model coordinates, as the Python config
+  const P = (p) => (isMesh() ? meshToModel(HALL.mesh, p) : p).map((v) => +v.toFixed(3));   // millimetres; mesh halls: model coordinates, as the Python config
   const src = {}; OBJ.filter((o) => o.kind !== "seat").forEach((o) => { src[o.id] = { pos: P(o.pos), role: labelOf(o) };
     if (o.dir && o.dir.table && (o.dir.rows || o.dir.table.balloon || o.dir.file)) { src[o.id].directivity = o.dir.rows ? { name: o.dir.file || "data", normalize: o.dir.normalize || "axis", data: o.dir.rows } : o.dir.table.balloon ? { name: o.dir.file || "data", balloon: { bands: D.praBands, db: o.dir.table.balloon } } : o.dir.file; src[o.id].aim = { az: +(+o.dir.az).toFixed(1), el: +(+o.dir.el).toFixed(1) }; }
     else if (o.kind === "pa" && o.dir && o.dir.cov > 0) { src[o.id].coverage = o.dir.cov; src[o.id].aim = { az: +(+o.dir.az).toFixed(1), el: +(+o.dir.el).toFixed(1) }; } });
@@ -4260,12 +4275,12 @@ function currentConfig() {
   out.receivers = rec;
   if (HALL.seatMap) out.seats = Object.assign(base.seats || { ear_height_m: 1.2 }, { xyz: isMesh() ? HALL.seatMap.map(P) : HALL.seatMap }); else delete out.seats;
   if (isMesh()) { const m = HALL.mesh;
-    out.geometry = { mesh: { obj: m.name, axes: m.axes, groups: m.groups, default: m.def || "wall", voxel: m.voxel || (GM ? +GM.vox.h.toFixed(4) : 0.05), rotate_deg: m.rot, obj_text: m.text, ...(m.front ? { stage_front: m.front } : {}),
+    out.geometry = { mesh: { obj: m.name, axes: m.axes, groups: m.groups, default: m.def || "wall", voxel: m.voxel || (GM ? GM.vox.h : 0.05), rotate_deg: m.rot, obj_text: m.text, ...(m.front ? { stage_front: m.front } : {}),
       _note: "obj_text: the OBJ itself (this page and geometry.load_obj read it instead of the obj file); rotate_deg: plan turn used by the page only; voxel: the page's voxel size, so that geometry.build_mesh builds the same room; positions are in model coordinates" },
-      materials: HALL.mats, ism_order: 1, rays: Math.max(HALL.rays, 50000), diffraction: false, ...seatDipConfig() };
+      materials: HALL.mats, ism_order: 1, rays: Math.max(HALL.rays, 50000), page_rays: HALL.rays, diffraction: false, ...seatDipConfig() };
     out.geometry.mesh.page_ism_order = meshOrder();   // the page's order; the Python mesh path (pyroomacoustics) stays at order 1
     out.room = Object.assign(out.room, { dims_m: m.dims, stage_depth_m: 0 }); }
-  else if (isDrawn()) out.geometry = Object.assign(base.geometry || {}, { plan: HALL.geom.plan, floor: HALL.geom.floor, ceiling: HALL.geom.ceil, materials: HALL.mats, ism_order: HALL.order, rays: Math.max(HALL.rays, 50000), diffraction: HALL.diff, ...(HALL.diffRefl ? { diffraction_refl: HALL.diffRefl } : {}), ...(HALL.diffOrder >= 2 ? { diffraction_order: HALL.diffOrder } : {}), ...seatDipConfig() }); else delete out.geometry;
+  else if (isDrawn()) out.geometry = Object.assign(base.geometry || {}, { plan: HALL.geom.plan, floor: HALL.geom.floor, ceiling: HALL.geom.ceil, materials: HALL.mats, ism_order: HALL.order, rays: Math.max(HALL.rays, 50000), page_rays: HALL.rays, diffraction: HALL.diff, ...(HALL.diffRefl ? { diffraction_refl: HALL.diffRefl } : {}), ...(HALL.diffOrder >= 2 ? { diffraction_order: HALL.diffOrder } : {}), ...seatDipConfig() }); else delete out.geometry;
   if (out.geometry && !HALL.seatDip.on) delete out.geometry.seat_dip;
   if (S.calibration) out._calibration = S.calibration; else delete out._calibration;
   out._provenance = provenance();
@@ -4560,6 +4575,7 @@ $("fCal").onchange = (e) => { const f = e.target.files[0]; e.target.value = ""; 
 const spreadSig = () => JSON.stringify([OBJ.map((o) => o.pos), HALL.rays, HALL.order, HALL.diff, HALL.seatDip, HALL.mats, isMesh() ? HALL.mesh.text.length : HALL.geom]);
 $("bSpread").onclick = async () => {
   if (!isDrawn() || !$("busy").hidden) { $("spreadNote").textContent = "Wait until the hall is computed."; return; }
+  if (pendN()) { $("spreadNote").textContent = "Some moves are not computed yet: press Compute changes (Layout) first."; return; }
   const seat = seatObj(S.seat), srcs = [AMP(), PAL(), PAR()], runs = [metrics(S.seat, C, false)], keys = srcs.map((o) => S.seat + "|" + o.id);
   $("bSpread").disabled = true;
   try {

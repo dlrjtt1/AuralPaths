@@ -4,6 +4,24 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Audit of 2026-11-18 (page), found by saving a config and loading it again, and by computing one set-up two ways:
+  - Saved configs now give the same BRIRs again. Before: positions were saved in centimetres while the page computed
+    with finer values; `geometry.rays` is at least 50000 (for `run.py`), so a page session with 10000 / 30000 /
+    100000 rays came back with another ray count (new key `geometry.page_rays`); in 3D models the shift between
+    model and page coordinates was not a whole number of millimetres, so positions drifted by 1 - 2 mm when the plan
+    was turned or the config reloaded (the shift is now in whole millimetres: 3D-model results change once, within
+    ray noise, CR3 at 10000 rays: T30 of a path by up to 2 %); the voxel size was saved with four decimals.
+    Checked: drawn hall and a 3D model (stage front, plan turned, directional PA) saved and reloaded: identical BRIRs
+    (3D model: 7e-11 on the paths of the directional PA, from the aim saved with one decimal).
+  - Fix: a source with no arrival at a seat (shut off, no image source within the order) raised an error (`s` not
+    defined in `geomHist`).
+  - Fix: turning the plan did not turn the aim of a directional loudspeaker whose azimuth and elevation were both 0,
+    nor the seat map of a 3D model.
+  - After a plan turn without a new computation the items keep their model coordinates exactly; one that is no
+    longer inside the rebuilt room is computed again. Changing the up axis clears the stage front.
+  - Ray-tracing spread is refused while moves are pending.
+  - Check of the listener direction: stage front marked at plan turn 0 against no stage front at turn 270 (the same
+    set-up physically, directional PA): BRIRs agree to 2e-10.
 - Page, Layout: **Mirror PA R from PA L** puts PA R at the mirror image of PA L about the line through seat C in the
   direction the listeners face (same height above the floor, aim mirrored), so both are at the same distance from C.
 - Page, Layout: **Compute on every change** (toggle) and **Compute changes**. With the toggle off (the default for 3D

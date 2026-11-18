@@ -501,6 +501,9 @@ energy difference 7 × 10⁻⁷).
   previous page; after a 90 degree turn with the stage front marked the BRIRs are unchanged without a computation.
   The aim of directional loudspeakers turns with the plan. The Python tools do not read `stage_front`: there the
   listeners face +y of the model.
+- Saved configs: positions in millimetres, `geometry.page_rays` (the ray count the page used; `geometry.rays` stays at
+  least 50000 for `run.py`), the voxel size in full precision; the shift between model and page coordinates is a whole
+  number of millimetres. A config saved by the page and loaded again gives the same BRIRs (checked 2026-11-18).
 - Rays: 50000 by default when an OBJ is opened (before: 10000). With 10000 rays the T30 of a single seat from the ray
   histogram moved by 23 - 25 % (RMS, 500 Hz - 2 kHz, three seats) between two runs with other random numbers, with
   50000 rays by 4 - 8 %; turning the plan had the same effect as other random numbers (`validation/ray_noise.md`).
@@ -550,7 +553,8 @@ energy difference 7 × 10⁻⁷).
   pyroomacoustics does). It added about 45 % ray energy with the same decay on the box (T30 unchanged), raised C80 on
   CR3 by 0.2–0.3 dB and made ray tracing 3–4 times slower; it did not reduce the seed-to-seed spread of T30. Left
   out: without it the browser's C80 is within 0.2 dB of Python's (table).
-- Time: CR3 (2600 faces) builds in about 4 s; 10 000 rays per source take about 25 s. The worker rebuilds the room
+- Time: CR3 (2600 faces) builds in about 4 s; 10 000 rays per source took about 25 s until 2026-11-17 and take
+  about 3 s since (Node; about twice that in the browser's worker, `validation/timing.md`). The worker rebuilds the room
   for every computation (no shared memory with the page).
 
 ## Room criteria against measured halls (`validate_fratoni.py`)
