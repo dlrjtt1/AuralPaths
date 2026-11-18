@@ -318,7 +318,7 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
       <div id="meshCtl" hidden>
         <div class="row">
           <input type="file" id="fObj" accept=".obj,.skp,text/plain" aria-label="3D model (Wavefront OBJ or SketchUp SKP)">
-          <label class="vol">Up axis <select id="selAxes"><option value="y-up">y up (SketchUp, Blender OBJ export)</option><option value="z-up">z up</option></select></label>
+          <label class="vol">Up axis <select id="selAxes"><option value="y-up">y up in the file (OBJ from SketchUp or Blender; .skp files are converted to this)</option><option value="z-up">z up in the file</option></select></label>
           <label class="vol">Turn plan <select id="selRot"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
           <button class="btn" id="bFront" title="Click both ends of the stage opening, then anywhere on the stage: the sources and seats are placed from that line">Mark stage front…</button>
           <label class="vol">Voxel <select id="selVox"><option value="0">auto</option><option value="0.05">5 cm</option><option value="0.08">8 cm</option><option value="0.1">10 cm</option></select></label>
@@ -336,6 +336,7 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
         <button class="btn primary" id="bApplyHall">Apply</button>
         <button class="btn" id="bResetHall">Reset to config</button>
         <span class="note" id="rtNote"></span>
+        <p class="note" id="leakNote" role="alert" style="color:var(--warn-fg);font-weight:600" hidden></p>
       </div>
       <p class="cap">Plan drawing (top view)</p>
       <div class="row">
@@ -723,7 +724,20 @@ const GEOM = (() => {
     for (let q = 0; q < N; q++) if (solid[q]) { const k = q % nz, j = ((q - k) / nz) % ny, i = (q - k - j * nz) / (ny * nz);
       if ((i > 0 && room[q - ny * nz] === 1) || (i < nx - 1 && room[q + ny * nz] === 1) || (j > 0 && room[q - nz] === 1) || (j < ny - 1 && room[q + nz] === 1) || (k > 0 && room[q - 1] === 1) || (k < nz - 1 && room[q + 1] === 1)) nBand++; }
     for (let q = 0; q < N; q++) if (solid[q] && !room[q]) room[q] = 2;   // 2: surface band (neither room nor enclosed void)
-    return { lo, h, dims: [nx, ny, nz], room, volume: (nIn + 0.5 * nBand) * h ** 3 };
+    return { lo, h, dims: [nx, ny, nz], room, volume: (nIn + 1.5 * nBand) * h ** 3 };
+  }
+  // room voxels within r voxels of the points C, counted in front of and behind the plane through each point (normal n)
+  function voxNear(vx, C, n, r) {
+    const [nx, ny, nz] = vx.dims, h = vx.h, lo = vx.lo; let fwd = 0, bwd = 0;
+    for (const p of C) {
+      const i0 = Math.floor((p[0] - lo[0]) / h), j0 = Math.floor((p[1] - lo[1]) / h), k0 = Math.floor((p[2] - lo[2]) / h);
+      for (let i = Math.max(0, i0 - r); i <= Math.min(nx - 1, i0 + r); i++) for (let j = Math.max(0, j0 - r); j <= Math.min(ny - 1, j0 + r); j++) for (let k = Math.max(0, k0 - r); k <= Math.min(nz - 1, k0 + r); k++) {
+        if (vx.room[(i * ny + j) * nz + k] !== 1) continue;
+        const d = (lo[0] + (i + 0.5) * h - p[0]) * n[0] + (lo[1] + (j + 0.5) * h - p[1]) * n[1] + (lo[2] + (k + 0.5) * h - p[2]) * n[2];
+        if (d > 0) fwd++; else bwd++;
+      }
+    }
+    return [fwd, bwd];
   }
   function voxInRoom(vx, p) {
     const [nx, ny, nz] = vx.dims, i = Math.floor((p[0] - vx.lo[0]) / vx.h), j = Math.floor((p[1] - vx.lo[1]) / vx.h), k = Math.floor((p[2] - vx.lo[2]) / vx.h);
@@ -763,35 +777,63 @@ const GEOM = (() => {
     const V = obj.V.map((v) => (axes === "z-up" ? v.slice() : [v[0], -v[2], v[1]])).map((v) => [cr * v[0] - sr * v[1] + sh[0], sr * v[0] + cr * v[1] + sh[1], v[2] + sh[2]]);
     // longer names first, so that a name that is part of another one does not take its faces
     const groups = Object.entries(spec.groups || {}).map(([g, v]) => [g.toLowerCase(), v]).sort((a, b) => b[0].length - a[0].length);
+    // faces of a name mapped to "__none" are not part of the room (loudspeaker and microphone markers, furniture of a
+    // measurement set-up): left out of the voxel grid and of the surfaces
+    const keyOf = (k) => { const nm = obj.names[k].toLowerCase(); for (const [g, v] of groups) if (nm.includes(g)) return v; return spec.default; };
+    const skip = obj.F.map((f, k) => keyOf(k) === "__none"), nSkip = skip.filter(Boolean).length;
     const T = [], owner = [];
-    obj.F.forEach((f, k) => { for (let i = 1; i + 1 < f.length; i++) { T.push([f[0], f[i], f[i + 1]]); owner.push(k); } });
+    obj.F.forEach((f, k) => { if (skip[k]) return; for (let i = 1; i + 1 < f.length; i++) { T.push([f[0], f[i], f[i + 1]]); owner.push(k); } });
+    if (!T.length) throw new Error("no faces left: every name of the model is set to 'not part of the room'");
     const ext = [0, 1, 2].map((a) => Math.max(...V.map((v) => v[a])) - Math.min(...V.map((v) => v[a])));
     // voxel size: as given, but never more than 2.5 x maxVoxels cells (browser memory); auto: >= 5 cm within maxVoxels
     const box = (ext[0] + 0.3) * (ext[1] + 0.3) * (ext[2] + 0.3), mv = spec.maxVoxels || 2e7;
     const h = spec.voxel ? Math.max(spec.voxel, Math.cbrt(box / (2.5 * mv))) : Math.max(0.05, Math.cbrt(box / mv));
     const vx = voxelRoom(V, T, [seed].concat(spec.seeds || []), h), off = 2.5 * h, inflate = (spec.inflateMm == null ? 1 : spec.inflateMm) / 1000, twoSided = spec.twoSided !== false;
     const triOf = new Map(); owner.forEach((k, i) => { if (!triOf.has(k)) triOf.set(k, []); triOf.get(k).push(T[i]); });
-    const S = [], unmatched = new Set(); let dropped = 0;
+    const S = [], unmatched = new Set(); let dropped = 0, narrow = 0, tiny = 0, noMat = 0, vol3 = 0, aOne = 0; const clos = [0, 0, 0], cen = [0, 1, 2].map((a) => (Math.max(...V.map((v) => v[a])) + Math.min(...V.map((v) => v[a]))) / 2);
     obj.F.forEach((f, k) => {
-      const P = f.map((i) => V[i]), nw = newell(P), A = Math.hypot(...nw) / 2; if (A < 1e-6) return;
+      if (skip[k]) return;
+      const P = f.map((i) => V[i]), nw = newell(P), A = Math.hypot(...nw) / 2; if (A < 1e-6) { tiny++; return; }
       const n = nw.map((v) => v / (2 * A)), C = [];
       for (const [a, b, c] of triOf.get(k)) { C.push([(V[a][0] + V[b][0] + V[c][0]) / 3, (V[a][1] + V[b][1] + V[c][1]) / 3, (V[a][2] + V[b][2] + V[c][2]) / 3]); }
       for (const [a, b, c] of triOf.get(k)) sampleTri(V[a], V[b], V[c], 0.2, C);
       let fwd = 0, bwd = 0; for (const p of C) { if (voxInRoom(vx, [p[0] + off * n[0], p[1] + off * n[1], p[2] + off * n[2]])) fwd++; if (voxInRoom(vx, [p[0] - off * n[0], p[1] - off * n[1], p[2] - off * n[2]])) bwd++; }
-      if (fwd === 0 && bwd === 0) { dropped++; return; }
-      const both = Math.min(fwd, bwd) > 0.2 * Math.max(fwd, bwd), nn = fwd >= bwd ? n : n.map((v) => -v);
-      const nm = obj.names[k].toLowerCase(); let key = spec.default;
-      for (const [g, v] of groups) if (nm.includes(g)) { key = v; break; }
+      // A face narrower than the surface band of its neighbours (a step riser, a narrow strip) has no room voxel at
+      // 2.5 h in front of or behind it although it bounds the room. Dropping such faces opened holes (BRAS CR3 at
+      // 6.5 cm: 285 faces, 8.1 m2, 8 % of the rays lost). Second look: room voxels within 3 voxels of the face's own
+      // points. A face with any of them is kept as a two-sided one (its orientation cannot be told from the voxels,
+      // and a two-sided face needs none); only a face with no room voxel near it (inside a solid, outside the hall) is
+      // dropped. spec.keepAll keeps those as well (validation runs).
+      let near = false, nar = false;
+      if (fwd === 0 && bwd === 0) {
+        const [f2, b2] = voxNear(vx, C, n, 3); fwd = f2; bwd = b2; near = true;
+        if (fwd === 0 && bwd === 0) { dropped++; if (spec.dropLog) spec.dropLog.push(k); if (!spec.keepAll) return; }
+        else { narrow++; nar = true; }
+      }
+      const both = near || Math.min(fwd, bwd) > 0.2 * Math.max(fwd, bwd), nn = fwd >= bwd ? n : n.map((v) => -v);
+      let key = keyOf(k);
       if (key && typeof key === "object") key = key[nn[2] < -0.3 ? "ceiling" : nn[2] > 0.3 ? "floor" : "wall"] || key.default;
-      if (key == null) { unmatched.add(obj.names[k]); return; }
+      // a face without a material that was only found by the second look (it lies in the surface band of other faces:
+      // loose, untagged geometry inside walls) is left out and counted, as it was before 2026-11-18
+      if (key == null) { if (near) { noMat++; if (nar) narrow--; return; } unmatched.add(obj.names[k]); return; }
       const Pv = inflate > 0 ? inflatePoly(P, nn, inflate) : P;
       const s = makeSurface(Pv, nn, key, "mesh"); s.area = A; S.push(s);
-      if (both || twoSided) { const t = makeSurface(Pv.map((p) => [p[0] - 0.002 * nn[0], p[1] - 0.002 * nn[1], p[2] - 0.002 * nn[2]]), nn.map((v) => -v), key, "mesh-twin"); t.area = A; t.solo = !both; S.push(t); }
+      if (!both || near) { const q = A * ((P[0][0] - cen[0]) * nn[0] + (P[0][1] - cen[1]) * nn[1] + (P[0][2] - cen[2]) * nn[2]); vol3 -= q; for (let a = 0; a < 3; a++) clos[a] += A * nn[a]; aOne += A; }
+      // the back of a one-sided face lies 2 mm behind it; the two sides of a two-sided face share one plane (a back
+      // set 2 mm behind left a slit at the edge towards the next face when the front was the side taken for the back:
+      // steps model at 10 cm voxels, 0.24 % of the rays lost)
+      if (both || twoSided) { const o = both ? 0 : 0.002, t = makeSurface(Pv.map((p) => [p[0] - o * nn[0], p[1] - o * nn[1], p[2] - o * nn[2]]), nn.map((v) => -v), key, "mesh-twin"); t.area = A; t.solo = !both; S.push(t); }
     });
     if (unmatched.size) throw new Error("model faces without a material: " + [...unmatched].slice(0, 8).join("; "));
     const area = {}; for (const s of S) if (s.kind === "mesh") area[s.mat] = (area[s.mat] || 0) + s.area;
     const lo = [0, 1, 2].map((a) => Math.min(...V.map((v) => v[a]))), hi = [0, 1, 2].map((a) => Math.max(...V.map((v) => v[a])));
-    const G = { S, mesh: true, vox: vx, V: vx.volume, area: Object.values(area).reduce((a, b) => a + b, 0), areaByMat: area, nDropped: dropped, nFaces: obj.F.length, bbox: [lo, hi], h };
+// room volume: the voxel count (free voxels + 1.5 voxels of the surface band next to them: the band is the
+    // surface voxel and one voxel of dilation, so the surface lies 1.5 h behind the first band voxel on average;
+    // before: 0.5, which gave a volume too small by about surface area x h, CR3 at 6.5 cm: 3124 instead of 3293 m3).
+    // If the one-sided faces, as oriented here, form a closed surface (sum of the area vectors below 0.1 % of their
+    // area) and the divergence theorem agrees with the voxel count within 3 %, that value is used instead.
+    const vVox = vx.volume, vMesh = vol3 / 3, meshOk = aOne > 0 && Math.hypot(...clos) < 0.001 * aOne && Math.abs(vMesh - vVox) < 0.03 * vVox;
+    const G = { S, mesh: true, vox: vx, V: meshOk ? vMesh : vVox, vVox, vMesh, volFrom: meshOk ? "mesh" : "voxels", closure: Math.hypot(...clos) / (aOne || 1), nNarrow: narrow, nSkipped: nSkip, nTiny: tiny, nNoMat: noMat, area: Object.values(area).reduce((a, b) => a + b, 0), areaByMat: area, nDropped: dropped, nFaces: obj.F.length, bbox: [lo, hi], h };
     G.bvh = bvhBuild(G.S);
     meshViews(G);
     return G;
@@ -2483,7 +2525,7 @@ function meshState(cm, text, name) {
   const lo = [0, 1, 2].map((k) => Math.min(...P.map((v) => v[k]))), hi = [0, 1, 2].map((k) => Math.max(...P.map((v) => v[k])));
   const labels = meshLabels(obj), groups = {};
   // config groups are name parts (as geometry.build_mesh): the longest one contained in the name wins
-  const cg = Object.entries(cm.groups || {}).sort((a, b) => b[0].length - a[0].length), known = (k) => GROUPS.some(([g]) => g === k) || !!(cm._mats && cm._mats[k]);
+  const cg = Object.entries(cm.groups || {}).sort((a, b) => b[0].length - a[0].length), known = (k) => k === "__none" || GROUPS.some(([g]) => g === k) || !!(cm._mats && cm._mats[k]);
   for (const L of labels) { const v = cg.find(([k]) => L.name.toLowerCase().includes(k.toLowerCase())); groups[L.name] = v && known(v[1]) ? v[1] : meshGuess(L.name); }
   return { name: name || cm.obj || "model.obj", text: t, axes, rot, voxel: +(cm.voxel ?? cm.voxel_m) || 0, def: "wall", groups, labels, shift: lo.map((v) => -R3(v)), shift0: rot ? [0, 1, 2].map((k) => -R3(Math.min(...P0.map((v) => v[k])))) : lo.map((v) => -R3(v)), dims: hi.map((v, k) => +(v - lo[k]).toFixed(2)),
     front: Array.isArray(cm.stage_front) && cm.stage_front.length === 3 ? cm.stage_front.map((q) => [+q[0], +q[1]]) : null };
@@ -2601,7 +2643,7 @@ function provenance() {
   return { page: "AuralPaths web " + "v" + D.version, engine_geom_sha256: ENGINE_SHA, saved: new Date().toISOString(),
     model: mm ? "3D mesh (OBJ)" : d ? "drawn 2.5D hall" : "shoebox",
     ...(mm ? { obj_sha256: HALL.mesh.sha || (HALL.mesh.sha = sha256(HALL.mesh.text)), voxel_m: GM ? +GM.vox.h.toFixed(4) : null } : {}),
-    ...(d ? { page_rays_per_source: HALL.rays, page_ism_order: mm ? meshOrder() : HALL.order, page_diffraction: !mm && !!HALL.diff,
+    ...(d ? { ...(mm ? { rays_lost_fraction: +LOST.toFixed(5), rays_lost_limit: LEAK_MAX, valid: LOST <= LEAK_MAX, room_faces: GM ? GM.S.filter((q) => q.kind === "mesh").length : null, volume_m3: GM ? +GM.V.toFixed(1) : null } : {}), page_rays_per_source: HALL.rays, page_ism_order: mm ? meshOrder() : HALL.order, page_diffraction: !mm && !!HALL.diff,
       ray_seed: "1000 + 7919 x path index (amplified 0, PA L 1, PA R 2, unamplified 3...), the same every run" } : {}),
     materials: d ? (HALL.matsSet ? "edited or loaded" : "page defaults (placeholders)") : undefined,
     hrir: S.hrir ? S.hrir : KU100_NAME,
@@ -2632,7 +2674,7 @@ self.onmessage = (e) => {
   for (const t of m.tasks) {
     const src = m.srcs[t.i], ism = t.ism ? GEOM.withDiffraction(G, E, src, m, GEOM.ism(G, src, m.recs, m.order, m.tWin, m.c, m.mats, m.air, m.bands, m.spec)).map((L) => L.map(slim)) : null;
     const RT = GEOM.rays(G, src, m.recs, { n: m.rays, c: m.c, seed: 1000 + 7919 * m.seeds[t.i], tLate: tLateOf(src, m), tEarly: tEarlyOf(src, m), k0: t.k0, k1: t.k1, nSect: m.nSect, face: m.face }, m.mats, m.air);
-    self.postMessage({ job: m.job, i: t.i, ism, H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped, n: RT.n }, RT.H.flat().map((a) => a.buffer).concat(RT.W ? RT.W.map((a) => a.buffer) : [], RT.WE ? RT.WE.map((a) => a.buffer) : [], RT.HS ? RT.HS.map((a) => a.buffer) : []));
+    self.postMessage({ job: m.job, i: t.i, ism, H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped + (RT.leaked || 0), n: RT.n }, RT.H.flat().map((a) => a.buffer).concat(RT.W ? RT.W.map((a) => a.buffer) : [], RT.WE ? RT.WE.map((a) => a.buffer) : [], RT.HS ? RT.HS.map((a) => a.buffer) : []));
   }
   self.postMessage({ job: m.job, done: true });
 };`;
@@ -2642,6 +2684,11 @@ let POOL_N = 0;   // > 0: fixed pool size (tests)
 const POOL = () => POOL_N || Math.max(1, Math.min((navigator.hardwareConcurrency || 2) - 1, 8));
 let pool = [];
 let worker = null, jobId = 0, workerOK = true, LOST = 0;
+// LOST: share of the rays that left the room (found no surface, entered a space the room fill did not reach, or moved
+// behind the faces). A closed model loses none; above LEAK_MAX the room-acoustic values are marked as not valid.
+const LEAK_MAX = 0.001;
+function leakNote() { const bad = isMesh() && LOST > LEAK_MAX, el = $("leakNote"); el.hidden = !bad;
+  if (bad) el.textContent = `Not valid: ${(LOST * 100).toFixed(2)} % of the rays left the room through gaps in the model (limit ${(LEAK_MAX * 100).toFixed(1)} %). T30, EDT, C80 and the BRIRs of this model are too short / too weak in the late part by an unknown amount. Close the gaps in the model, or try a smaller voxel size.`; }
 function workerMats() {
   const out = {};
   for (const [g] of matGroups()) { const a = HALL.mats[g].alpha, a8 = D.praBands.map((_, i) => (i < a.length ? a[i] : a[a.length - 1])); out[g] = { R: a8.map((v) => Math.sqrt(Math.max(1e-6, 1 - v))), s: HALL.mats[g].s }; }
@@ -2696,7 +2743,7 @@ function inline(msg, progress) { // fallback without a worker: same engine on th
     const step = () => {
       const src = msg.srcs[i], I = GEOM.withDiffraction(G, E, src, msg, GEOM.ism(G, src, msg.recs, msg.order, msg.tWin, msg.c, msg.mats, msg.air, msg.bands, msg.spec));
       const RT = GEOM.rays(G, src, msg.recs, { n: msg.rays, c: msg.c, seed: 1000 + 7919 * msg.seeds[i], tLate: tLateOf(src, msg), tEarly: tEarlyOf(src, msg), nSect: msg.nSect, face: msg.face }, msg.mats, msg.air);
-      res[i] = { ism: I.map((L) => L.map(slim)), H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped, n: RT.n };
+      res[i] = { ism: I.map((L) => L.map(slim)), H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped + (RT.leaked || 0), n: RT.n };
       progress(++i); if (i < msg.srcs.length) setTimeout(step, 0); else ok(faceTurn(res, msg.face));
     };
     setTimeout(step, 0);
@@ -2711,7 +2758,7 @@ async function geomRebuild(srcs, seats) {
     const r = res[i]; lost += r.escaped; total += r.n;
     seats.forEach((s, k) => { GC[s.id + "|" + o.id] = { list: r.ism[k], H: r.H[k], W: r.W ? r.W[k] : null, WE: r.WE ? r.WE[k] : null, HS: r.HS ? r.HS[k] : null, sect: r.sect, nSb: r.nSb, pos: o.pos.slice(), seat: s.pos.slice() }; todo.push([o, s]); });
   });
-  LOST = total ? lost / total : 0;
+  LOST = total ? lost / total : 0; leakNote();
   if (ENG.hasLateDir && ldOK && typeof Worker !== "undefined") {
     $("busy").textContent = `Rendering ${todo.length} path${todo.length > 1 ? "s" : ""}…`;
     try { await Promise.all(todo.map(([o, s]) => prepLate(s.id + "|" + o.id))); } catch (e) { ldOK = false; }
@@ -3358,17 +3405,17 @@ function readMats() {
 function meshTable() {
   const m = HALL.mesh; if (!m) { $("meshTable").innerHTML = ""; return; }
   $("meshTable").innerHTML = `<thead><tr><th>Name in the model</th><th>Faces</th><th>Material</th></tr></thead><tbody>` + m.labels.map((L, i) =>
-    `<tr><td class="name">${L.name.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c])}</td><td>${L.faces}</td><td><select id="mg_${i}" aria-label="Material of ${L.name.replace(/"/g, "")}">${matGroups().map(([g, nm]) => `<option value="${g}"${m.groups[L.name] === g ? " selected" : ""}>${esc(nm)}</option>`).join("")}${matGroups().some(([g]) => g === ownKey(L.name)) ? "" : `<option value="__own">Own material…</option>`}</select></td></tr>`).join("") + "</tbody>";
+    `<tr><td class="name">${L.name.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c])}</td><td>${L.faces}</td><td><select id="mg_${i}" aria-label="Material of ${L.name.replace(/"/g, "")}">${matGroups().map(([g, nm]) => `<option value="${g}"${m.groups[L.name] === g ? " selected" : ""}>${esc(nm)}</option>`).join("")}${matGroups().some(([g]) => g === ownKey(L.name)) ? "" : `<option value="__own">Own material…</option>`}<option value="__none"${m.groups[L.name] === "__none" ? " selected" : ""}>Not part of the room</option></select></td></tr>`).join("") + "</tbody>";
   m.labels.forEach((L, i) => ($(`mg_${i}`).onchange = (e) => {
     let v = e.target.value;
-    if (v === "__own") { v = ownKey(L.name); HALL.mats[v] = deep(HALL.mats[m.groups[L.name]] || HALL.mats.wall); HALL.matNames = Object.assign(HALL.matNames || {}, { [v]: L.name }); }
+    if (v === "__own") { v = ownKey(L.name); HALL.mats[v] = deep(HALL.mats[m.groups[L.name]] || HALL.mats.wall) || deep(HALL.mats.wall); HALL.matNames = Object.assign(HALL.matNames || {}, { [v]: L.name }); }
     m.groups[L.name] = v; HALL.matsSet = true;
     for (const k of Object.keys(HALL.mats)) if (k.startsWith("own_") && !Object.values(m.groups).includes(k)) delete HALL.mats[k];   // drop unused own materials
     buildMatTable(); meshTable(); meshRebuild(); }));
 }
 function meshNote() {
   const m = HALL.mesh; if (!m) return;
-  $("meshNote").textContent = GM ? `${m.name}: ${GM.nFaces} faces, ${GM.S.filter((q) => q.kind === "mesh").length} room surfaces (${GM.nDropped} hidden faces dropped), voxel ${(GM.vox.h * 100).toFixed(1)} cm, volume ${GM.V.toFixed(0)} m³, ${m.dims.join(" × ")} m. Heights are above the lowest floor under each point.`
+  $("meshNote").textContent = GM ? `${m.name}: ${GM.nFaces} faces in the file, ${GM.S.filter((q) => q.kind === "mesh").length} used as room faces` + (() => { const t = []; if (GM.nNarrow) t.push(`${GM.nNarrow} narrow ones kept two-sided`); if (GM.nDropped) t.push(`${GM.nDropped} not at the room (inside solids or outside), left out`); if (GM.nSkipped) t.push(`${GM.nSkipped} set to "not part of the room"`); if (GM.nTiny) t.push(`${GM.nTiny} without area`); return t.length ? ` (${t.join("; ")})` : ""; })() + `, voxel ${(GM.vox.h * 100).toFixed(1)} cm, volume ${GM.V.toFixed(0)} m³ (${GM.volFrom === "mesh" ? "from the faces" : "voxel count"}), ${m.dims.join(" × ")} m. Heights are above the lowest floor under each point.`
     : `${m.name}: ${MESHC.err || "could not be built"}. Check the up axis, or place a source inside the hall.`;
 }
 // rebuild the voxel room after a model setting changed (main thread), then the BRIRs (worker)
@@ -3589,7 +3636,7 @@ function fillHall() {
   HALL.alpha.forEach((a, i) => (alphaInputs[i].value = a));
   shapeUI();
   const h = HIST[D.ref + "|" + AMP().id];
-  if (h) { const t = [2, 3].map((b) => t30(h[b])), f = (v) => (Number.isFinite(v) ? v.toFixed(2) + " s" : "longer than the window"); $("rtNote").textContent = `Simulated T30, amplified → seat ${D.ref}: ${f(t[0])} (500 Hz) / ${f(t[1])} (1 kHz)` + (isDrawn() && GM ? ` · ${GM.S.length} surfaces, ${GM.V.toFixed(0)} m³` + (LOST > 0.001 ? ` · ${(LOST * 100).toFixed(1)} % of rays leaked through gaps` : "") : ""); }
+  if (h) { const t = [2, 3].map((b) => t30(h[b])), f = (v) => (Number.isFinite(v) ? v.toFixed(2) + " s" : "longer than the window"); $("rtNote").textContent = `Simulated T30, amplified → seat ${D.ref}: ${f(t[0])} (500 Hz) / ${f(t[1])} (1 kHz)` + (isDrawn() && GM ? (GM.mesh ? ` · ${GM.S.filter((q) => q.kind === "mesh").length} room faces, ${GM.V.toFixed(0)} m³ · rays lost ${(LOST * 100).toFixed(2)} %` : ` · ${GM.S.length} surfaces, ${GM.V.toFixed(0)} m³` + (LOST > LEAK_MAX ? ` · ${(LOST * 100).toFixed(1)} % of rays leaked through gaps` : "")) : ""); leakNote(); }
 }
 $("bApplyHall").onclick = () => {
   const dims = ["hW", "hD", "hH"].map((id) => +$(id).value), stage = +$("hS").value, alpha = alphaInputs.map((i) => +i.value);
@@ -4416,7 +4463,7 @@ function drawTrust() {
   const model = mm ? `3D model (${HALL.mesh.name}): image sources to order ${meshOrder()} + ray tracing, no diffraction` : d ? `drawn 2.5D hall: image sources to order ${HALL.order}${HALL.diff ? " + edge diffraction" : ""} + ray tracing` : "shoebox: image sources only (no random part; same values every run)";
   items.push(["Model", model]);
   items.push(["Materials", cal ? `calibrated to measured T30 (${[].concat(S.calibration.positions).length} position(s)${S.calibration.engine ? "" : ", calibrate.py"})` : HALL.matsSet || S.loaded ? "from the config or edited, <b>not calibrated</b> to measurements" : "<b>page defaults (placeholders)</b>, not a real hall"]);
-  if (d) items.push(["Ray tracing", `${HALL.rays.toLocaleString("en")} rays per source${LOST > 0.01 ? `, ${(LOST * 100).toFixed(1)} % left the model through gaps` : ""}; values carry random noise (use <i>Ray-tracing spread</i>)`]);
+  if (d) items.push(["Ray tracing", `${HALL.rays.toLocaleString("en")} rays per source${isMesh() ? `, ${(LOST * 100).toFixed(2)} % left the model through gaps${LOST > LEAK_MAX ? " (above the 0.1 % limit: values not valid)" : ""}` : LOST > 0.01 ? `, ${(LOST * 100).toFixed(1)} % left the model through gaps` : ""}; values carry random noise (use <i>Ray-tracing spread</i>)`]);
   const ev = [];
   if (d && !cal) ev.push(`uncalibrated, the 3D model of two measured halls gave T30 8–11 % (1.6–2.3 JND) long and C80 / C50 / Ts within 0.8–2.3 JND; calibrated on some positions, T30 at the others came within 0.8 JND (<a href="${BRAS_URL}" target="_blank" rel="noopener">BRAS CR3 / CR4</a>, see docs/MODEL_en.md)`);
   if (mm) ev.push("first-order reflection levels: median +1.6 dB (CR3) and +4.6 dB (CR4) above the measurement, poor reflection by reflection in CR4" + (meshOrder() > 1 ? "; second-order reflections: CR3 median level within 0.5 dB of the measurement, but their timing was confirmed in only about half of the cases (measured level above the window 2 ms later); CR4 about +6 dB" : ""));

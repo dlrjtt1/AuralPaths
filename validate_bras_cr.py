@@ -206,7 +206,7 @@ def main():
     G = bp._geom(cfg)
     vol_ref = {"CR3": 3330.6, "CR4": 8656.5}.get(hall)
     log(f"{hall}: OBJ {G['n_input']} faces -> {G['n_faces']} after decimation -> "
-        f"{sum(1 for s in G['S'] if s['kind'] == 'mesh')} room-facing faces ({G['n_dropped']} dropped); room volume "
+        f"{sum(1 for s in G['S'] if s['kind'] == 'mesh')} room faces ({G['n_narrow']} narrow ones kept two-sided, {G['n_dropped']} not at the room dropped); room volume "
         f"(voxels) {G['volume']:.0f} m3 (BRAS documentation: {vol_ref} m3)")
     log("surface areas (m2): " + ", ".join(f"{k.split('_', 2)[2]} {v:.1f}" for k, v in sorted(G["area"].items()))
         + f"; total {sum(G['area'].values()):.0f}")

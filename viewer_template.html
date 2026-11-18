@@ -316,7 +316,7 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
       <div id="meshCtl" hidden>
         <div class="row">
           <input type="file" id="fObj" accept=".obj,.skp,text/plain" aria-label="3D model (Wavefront OBJ or SketchUp SKP)">
-          <label class="vol">Up axis <select id="selAxes"><option value="y-up">y up (SketchUp, Blender OBJ export)</option><option value="z-up">z up</option></select></label>
+          <label class="vol">Up axis <select id="selAxes"><option value="y-up">y up in the file (OBJ from SketchUp or Blender; .skp files are converted to this)</option><option value="z-up">z up in the file</option></select></label>
           <label class="vol">Turn plan <select id="selRot"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
           <button class="btn" id="bFront" title="Click both ends of the stage opening, then anywhere on the stage: the sources and seats are placed from that line">Mark stage front…</button>
           <label class="vol">Voxel <select id="selVox"><option value="0">auto</option><option value="0.05">5 cm</option><option value="0.08">8 cm</option><option value="0.1">10 cm</option></select></label>
@@ -334,6 +334,7 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
         <button class="btn primary" id="bApplyHall">Apply</button>
         <button class="btn" id="bResetHall">Reset to config</button>
         <span class="note" id="rtNote"></span>
+        <p class="note" id="leakNote" role="alert" style="color:var(--warn-fg);font-weight:600" hidden></p>
       </div>
       <p class="cap">Plan drawing (top view)</p>
       <div class="row">
@@ -978,7 +979,7 @@ function meshState(cm, text, name) {
   const lo = [0, 1, 2].map((k) => Math.min(...P.map((v) => v[k]))), hi = [0, 1, 2].map((k) => Math.max(...P.map((v) => v[k])));
   const labels = meshLabels(obj), groups = {};
   // config groups are name parts (as geometry.build_mesh): the longest one contained in the name wins
-  const cg = Object.entries(cm.groups || {}).sort((a, b) => b[0].length - a[0].length), known = (k) => GROUPS.some(([g]) => g === k) || !!(cm._mats && cm._mats[k]);
+  const cg = Object.entries(cm.groups || {}).sort((a, b) => b[0].length - a[0].length), known = (k) => k === "__none" || GROUPS.some(([g]) => g === k) || !!(cm._mats && cm._mats[k]);
   for (const L of labels) { const v = cg.find(([k]) => L.name.toLowerCase().includes(k.toLowerCase())); groups[L.name] = v && known(v[1]) ? v[1] : meshGuess(L.name); }
   return { name: name || cm.obj || "model.obj", text: t, axes, rot, voxel: +(cm.voxel ?? cm.voxel_m) || 0, def: "wall", groups, labels, shift: lo.map((v) => -R3(v)), shift0: rot ? [0, 1, 2].map((k) => -R3(Math.min(...P0.map((v) => v[k])))) : lo.map((v) => -R3(v)), dims: hi.map((v, k) => +(v - lo[k]).toFixed(2)),
     front: Array.isArray(cm.stage_front) && cm.stage_front.length === 3 ? cm.stage_front.map((q) => [+q[0], +q[1]]) : null };
@@ -1096,7 +1097,7 @@ function provenance() {
   return { page: "AuralPaths web " + "v" + D.version, engine_geom_sha256: ENGINE_SHA, saved: new Date().toISOString(),
     model: mm ? "3D mesh (OBJ)" : d ? "drawn 2.5D hall" : "shoebox",
     ...(mm ? { obj_sha256: HALL.mesh.sha || (HALL.mesh.sha = sha256(HALL.mesh.text)), voxel_m: GM ? +GM.vox.h.toFixed(4) : null } : {}),
-    ...(d ? { page_rays_per_source: HALL.rays, page_ism_order: mm ? meshOrder() : HALL.order, page_diffraction: !mm && !!HALL.diff,
+    ...(d ? { ...(mm ? { rays_lost_fraction: +LOST.toFixed(5), rays_lost_limit: LEAK_MAX, valid: LOST <= LEAK_MAX, room_faces: GM ? GM.S.filter((q) => q.kind === "mesh").length : null, volume_m3: GM ? +GM.V.toFixed(1) : null } : {}), page_rays_per_source: HALL.rays, page_ism_order: mm ? meshOrder() : HALL.order, page_diffraction: !mm && !!HALL.diff,
       ray_seed: "1000 + 7919 x path index (amplified 0, PA L 1, PA R 2, unamplified 3...), the same every run" } : {}),
     materials: d ? (HALL.matsSet ? "edited or loaded" : "page defaults (placeholders)") : undefined,
     hrir: S.hrir ? S.hrir : KU100_NAME,
@@ -1127,7 +1128,7 @@ self.onmessage = (e) => {
   for (const t of m.tasks) {
     const src = m.srcs[t.i], ism = t.ism ? GEOM.withDiffraction(G, E, src, m, GEOM.ism(G, src, m.recs, m.order, m.tWin, m.c, m.mats, m.air, m.bands, m.spec)).map((L) => L.map(slim)) : null;
     const RT = GEOM.rays(G, src, m.recs, { n: m.rays, c: m.c, seed: 1000 + 7919 * m.seeds[t.i], tLate: tLateOf(src, m), tEarly: tEarlyOf(src, m), k0: t.k0, k1: t.k1, nSect: m.nSect, face: m.face }, m.mats, m.air);
-    self.postMessage({ job: m.job, i: t.i, ism, H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped, n: RT.n }, RT.H.flat().map((a) => a.buffer).concat(RT.W ? RT.W.map((a) => a.buffer) : [], RT.WE ? RT.WE.map((a) => a.buffer) : [], RT.HS ? RT.HS.map((a) => a.buffer) : []));
+    self.postMessage({ job: m.job, i: t.i, ism, H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped + (RT.leaked || 0), n: RT.n }, RT.H.flat().map((a) => a.buffer).concat(RT.W ? RT.W.map((a) => a.buffer) : [], RT.WE ? RT.WE.map((a) => a.buffer) : [], RT.HS ? RT.HS.map((a) => a.buffer) : []));
   }
   self.postMessage({ job: m.job, done: true });
 };`;
@@ -1137,6 +1138,11 @@ let POOL_N = 0;   // > 0: fixed pool size (tests)
 const POOL = () => POOL_N || Math.max(1, Math.min((navigator.hardwareConcurrency || 2) - 1, 8));
 let pool = [];
 let worker = null, jobId = 0, workerOK = true, LOST = 0;
+// LOST: share of the rays that left the room (found no surface, entered a space the room fill did not reach, or moved
+// behind the faces). A closed model loses none; above LEAK_MAX the room-acoustic values are marked as not valid.
+const LEAK_MAX = 0.001;
+function leakNote() { const bad = isMesh() && LOST > LEAK_MAX, el = $("leakNote"); el.hidden = !bad;
+  if (bad) el.textContent = `Not valid: ${(LOST * 100).toFixed(2)} % of the rays left the room through gaps in the model (limit ${(LEAK_MAX * 100).toFixed(1)} %). T30, EDT, C80 and the BRIRs of this model are too short / too weak in the late part by an unknown amount. Close the gaps in the model, or try a smaller voxel size.`; }
 function workerMats() {
   const out = {};
   for (const [g] of matGroups()) { const a = HALL.mats[g].alpha, a8 = D.praBands.map((_, i) => (i < a.length ? a[i] : a[a.length - 1])); out[g] = { R: a8.map((v) => Math.sqrt(Math.max(1e-6, 1 - v))), s: HALL.mats[g].s }; }
@@ -1191,7 +1197,7 @@ function inline(msg, progress) { // fallback without a worker: same engine on th
     const step = () => {
       const src = msg.srcs[i], I = GEOM.withDiffraction(G, E, src, msg, GEOM.ism(G, src, msg.recs, msg.order, msg.tWin, msg.c, msg.mats, msg.air, msg.bands, msg.spec));
       const RT = GEOM.rays(G, src, msg.recs, { n: msg.rays, c: msg.c, seed: 1000 + 7919 * msg.seeds[i], tLate: tLateOf(src, msg), tEarly: tEarlyOf(src, msg), nSect: msg.nSect, face: msg.face }, msg.mats, msg.air);
-      res[i] = { ism: I.map((L) => L.map(slim)), H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped, n: RT.n };
+      res[i] = { ism: I.map((L) => L.map(slim)), H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped + (RT.leaked || 0), n: RT.n };
       progress(++i); if (i < msg.srcs.length) setTimeout(step, 0); else ok(faceTurn(res, msg.face));
     };
     setTimeout(step, 0);
@@ -1206,7 +1212,7 @@ async function geomRebuild(srcs, seats) {
     const r = res[i]; lost += r.escaped; total += r.n;
     seats.forEach((s, k) => { GC[s.id + "|" + o.id] = { list: r.ism[k], H: r.H[k], W: r.W ? r.W[k] : null, WE: r.WE ? r.WE[k] : null, HS: r.HS ? r.HS[k] : null, sect: r.sect, nSb: r.nSb, pos: o.pos.slice(), seat: s.pos.slice() }; todo.push([o, s]); });
   });
-  LOST = total ? lost / total : 0;
+  LOST = total ? lost / total : 0; leakNote();
   if (ENG.hasLateDir && ldOK && typeof Worker !== "undefined") {
     $("busy").textContent = `Rendering ${todo.length} path${todo.length > 1 ? "s" : ""}…`;
     try { await Promise.all(todo.map(([o, s]) => prepLate(s.id + "|" + o.id))); } catch (e) { ldOK = false; }
@@ -1853,17 +1859,17 @@ function readMats() {
 function meshTable() {
   const m = HALL.mesh; if (!m) { $("meshTable").innerHTML = ""; return; }
   $("meshTable").innerHTML = `<thead><tr><th>Name in the model</th><th>Faces</th><th>Material</th></tr></thead><tbody>` + m.labels.map((L, i) =>
-    `<tr><td class="name">${L.name.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c])}</td><td>${L.faces}</td><td><select id="mg_${i}" aria-label="Material of ${L.name.replace(/"/g, "")}">${matGroups().map(([g, nm]) => `<option value="${g}"${m.groups[L.name] === g ? " selected" : ""}>${esc(nm)}</option>`).join("")}${matGroups().some(([g]) => g === ownKey(L.name)) ? "" : `<option value="__own">Own material…</option>`}</select></td></tr>`).join("") + "</tbody>";
+    `<tr><td class="name">${L.name.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c])}</td><td>${L.faces}</td><td><select id="mg_${i}" aria-label="Material of ${L.name.replace(/"/g, "")}">${matGroups().map(([g, nm]) => `<option value="${g}"${m.groups[L.name] === g ? " selected" : ""}>${esc(nm)}</option>`).join("")}${matGroups().some(([g]) => g === ownKey(L.name)) ? "" : `<option value="__own">Own material…</option>`}<option value="__none"${m.groups[L.name] === "__none" ? " selected" : ""}>Not part of the room</option></select></td></tr>`).join("") + "</tbody>";
   m.labels.forEach((L, i) => ($(`mg_${i}`).onchange = (e) => {
     let v = e.target.value;
-    if (v === "__own") { v = ownKey(L.name); HALL.mats[v] = deep(HALL.mats[m.groups[L.name]] || HALL.mats.wall); HALL.matNames = Object.assign(HALL.matNames || {}, { [v]: L.name }); }
+    if (v === "__own") { v = ownKey(L.name); HALL.mats[v] = deep(HALL.mats[m.groups[L.name]] || HALL.mats.wall) || deep(HALL.mats.wall); HALL.matNames = Object.assign(HALL.matNames || {}, { [v]: L.name }); }
     m.groups[L.name] = v; HALL.matsSet = true;
     for (const k of Object.keys(HALL.mats)) if (k.startsWith("own_") && !Object.values(m.groups).includes(k)) delete HALL.mats[k];   // drop unused own materials
     buildMatTable(); meshTable(); meshRebuild(); }));
 }
 function meshNote() {
   const m = HALL.mesh; if (!m) return;
-  $("meshNote").textContent = GM ? `${m.name}: ${GM.nFaces} faces, ${GM.S.filter((q) => q.kind === "mesh").length} room surfaces (${GM.nDropped} hidden faces dropped), voxel ${(GM.vox.h * 100).toFixed(1)} cm, volume ${GM.V.toFixed(0)} m³, ${m.dims.join(" × ")} m. Heights are above the lowest floor under each point.`
+  $("meshNote").textContent = GM ? `${m.name}: ${GM.nFaces} faces in the file, ${GM.S.filter((q) => q.kind === "mesh").length} used as room faces` + (() => { const t = []; if (GM.nNarrow) t.push(`${GM.nNarrow} narrow ones kept two-sided`); if (GM.nDropped) t.push(`${GM.nDropped} not at the room (inside solids or outside), left out`); if (GM.nSkipped) t.push(`${GM.nSkipped} set to "not part of the room"`); if (GM.nTiny) t.push(`${GM.nTiny} without area`); return t.length ? ` (${t.join("; ")})` : ""; })() + `, voxel ${(GM.vox.h * 100).toFixed(1)} cm, volume ${GM.V.toFixed(0)} m³ (${GM.volFrom === "mesh" ? "from the faces" : "voxel count"}), ${m.dims.join(" × ")} m. Heights are above the lowest floor under each point.`
     : `${m.name}: ${MESHC.err || "could not be built"}. Check the up axis, or place a source inside the hall.`;
 }
 // rebuild the voxel room after a model setting changed (main thread), then the BRIRs (worker)
@@ -2084,7 +2090,7 @@ function fillHall() {
   HALL.alpha.forEach((a, i) => (alphaInputs[i].value = a));
   shapeUI();
   const h = HIST[D.ref + "|" + AMP().id];
-  if (h) { const t = [2, 3].map((b) => t30(h[b])), f = (v) => (Number.isFinite(v) ? v.toFixed(2) + " s" : "longer than the window"); $("rtNote").textContent = `Simulated T30, amplified → seat ${D.ref}: ${f(t[0])} (500 Hz) / ${f(t[1])} (1 kHz)` + (isDrawn() && GM ? ` · ${GM.S.length} surfaces, ${GM.V.toFixed(0)} m³` + (LOST > 0.001 ? ` · ${(LOST * 100).toFixed(1)} % of rays leaked through gaps` : "") : ""); }
+  if (h) { const t = [2, 3].map((b) => t30(h[b])), f = (v) => (Number.isFinite(v) ? v.toFixed(2) + " s" : "longer than the window"); $("rtNote").textContent = `Simulated T30, amplified → seat ${D.ref}: ${f(t[0])} (500 Hz) / ${f(t[1])} (1 kHz)` + (isDrawn() && GM ? (GM.mesh ? ` · ${GM.S.filter((q) => q.kind === "mesh").length} room faces, ${GM.V.toFixed(0)} m³ · rays lost ${(LOST * 100).toFixed(2)} %` : ` · ${GM.S.length} surfaces, ${GM.V.toFixed(0)} m³` + (LOST > LEAK_MAX ? ` · ${(LOST * 100).toFixed(1)} % of rays leaked through gaps` : "")) : ""); leakNote(); }
 }
 $("bApplyHall").onclick = () => {
   const dims = ["hW", "hD", "hH"].map((id) => +$(id).value), stage = +$("hS").value, alpha = alphaInputs.map((i) => +i.value);
@@ -2911,7 +2917,7 @@ function drawTrust() {
   const model = mm ? `3D model (${HALL.mesh.name}): image sources to order ${meshOrder()} + ray tracing, no diffraction` : d ? `drawn 2.5D hall: image sources to order ${HALL.order}${HALL.diff ? " + edge diffraction" : ""} + ray tracing` : "shoebox: image sources only (no random part; same values every run)";
   items.push(["Model", model]);
   items.push(["Materials", cal ? `calibrated to measured T30 (${[].concat(S.calibration.positions).length} position(s)${S.calibration.engine ? "" : ", calibrate.py"})` : HALL.matsSet || S.loaded ? "from the config or edited, <b>not calibrated</b> to measurements" : "<b>page defaults (placeholders)</b>, not a real hall"]);
-  if (d) items.push(["Ray tracing", `${HALL.rays.toLocaleString("en")} rays per source${LOST > 0.01 ? `, ${(LOST * 100).toFixed(1)} % left the model through gaps` : ""}; values carry random noise (use <i>Ray-tracing spread</i>)`]);
+  if (d) items.push(["Ray tracing", `${HALL.rays.toLocaleString("en")} rays per source${isMesh() ? `, ${(LOST * 100).toFixed(2)} % left the model through gaps${LOST > LEAK_MAX ? " (above the 0.1 % limit: values not valid)" : ""}` : LOST > 0.01 ? `, ${(LOST * 100).toFixed(1)} % left the model through gaps` : ""}; values carry random noise (use <i>Ray-tracing spread</i>)`]);
   const ev = [];
   if (d && !cal) ev.push(`uncalibrated, the 3D model of two measured halls gave T30 8–11 % (1.6–2.3 JND) long and C80 / C50 / Ts within 0.8–2.3 JND; calibrated on some positions, T30 at the others came within 0.8 JND (<a href="${BRAS_URL}" target="_blank" rel="noopener">BRAS CR3 / CR4</a>, see docs/MODEL_en.md)`);
   if (mm) ev.push("first-order reflection levels: median +1.6 dB (CR3) and +4.6 dB (CR4) above the measurement, poor reflection by reflection in CR4" + (meshOrder() > 1 ? "; second-order reflections: CR3 median level within 0.5 dB of the measurement, but their timing was confirmed in only about half of the cases (measured level above the window 2 ms later); CR4 about +6 dB" : ""));

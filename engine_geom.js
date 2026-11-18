@@ -231,7 +231,20 @@ const GEOM = (() => {
     for (let q = 0; q < N; q++) if (solid[q]) { const k = q % nz, j = ((q - k) / nz) % ny, i = (q - k - j * nz) / (ny * nz);
       if ((i > 0 && room[q - ny * nz] === 1) || (i < nx - 1 && room[q + ny * nz] === 1) || (j > 0 && room[q - nz] === 1) || (j < ny - 1 && room[q + nz] === 1) || (k > 0 && room[q - 1] === 1) || (k < nz - 1 && room[q + 1] === 1)) nBand++; }
     for (let q = 0; q < N; q++) if (solid[q] && !room[q]) room[q] = 2;   // 2: surface band (neither room nor enclosed void)
-    return { lo, h, dims: [nx, ny, nz], room, volume: (nIn + 0.5 * nBand) * h ** 3 };
+    return { lo, h, dims: [nx, ny, nz], room, volume: (nIn + 1.5 * nBand) * h ** 3 };
+  }
+  // room voxels within r voxels of the points C, counted in front of and behind the plane through each point (normal n)
+  function voxNear(vx, C, n, r) {
+    const [nx, ny, nz] = vx.dims, h = vx.h, lo = vx.lo; let fwd = 0, bwd = 0;
+    for (const p of C) {
+      const i0 = Math.floor((p[0] - lo[0]) / h), j0 = Math.floor((p[1] - lo[1]) / h), k0 = Math.floor((p[2] - lo[2]) / h);
+      for (let i = Math.max(0, i0 - r); i <= Math.min(nx - 1, i0 + r); i++) for (let j = Math.max(0, j0 - r); j <= Math.min(ny - 1, j0 + r); j++) for (let k = Math.max(0, k0 - r); k <= Math.min(nz - 1, k0 + r); k++) {
+        if (vx.room[(i * ny + j) * nz + k] !== 1) continue;
+        const d = (lo[0] + (i + 0.5) * h - p[0]) * n[0] + (lo[1] + (j + 0.5) * h - p[1]) * n[1] + (lo[2] + (k + 0.5) * h - p[2]) * n[2];
+        if (d > 0) fwd++; else bwd++;
+      }
+    }
+    return [fwd, bwd];
   }
   function voxInRoom(vx, p) {
     const [nx, ny, nz] = vx.dims, i = Math.floor((p[0] - vx.lo[0]) / vx.h), j = Math.floor((p[1] - vx.lo[1]) / vx.h), k = Math.floor((p[2] - vx.lo[2]) / vx.h);
@@ -271,35 +284,63 @@ const GEOM = (() => {
     const V = obj.V.map((v) => (axes === "z-up" ? v.slice() : [v[0], -v[2], v[1]])).map((v) => [cr * v[0] - sr * v[1] + sh[0], sr * v[0] + cr * v[1] + sh[1], v[2] + sh[2]]);
     // longer names first, so that a name that is part of another one does not take its faces
     const groups = Object.entries(spec.groups || {}).map(([g, v]) => [g.toLowerCase(), v]).sort((a, b) => b[0].length - a[0].length);
+    // faces of a name mapped to "__none" are not part of the room (loudspeaker and microphone markers, furniture of a
+    // measurement set-up): left out of the voxel grid and of the surfaces
+    const keyOf = (k) => { const nm = obj.names[k].toLowerCase(); for (const [g, v] of groups) if (nm.includes(g)) return v; return spec.default; };
+    const skip = obj.F.map((f, k) => keyOf(k) === "__none"), nSkip = skip.filter(Boolean).length;
     const T = [], owner = [];
-    obj.F.forEach((f, k) => { for (let i = 1; i + 1 < f.length; i++) { T.push([f[0], f[i], f[i + 1]]); owner.push(k); } });
+    obj.F.forEach((f, k) => { if (skip[k]) return; for (let i = 1; i + 1 < f.length; i++) { T.push([f[0], f[i], f[i + 1]]); owner.push(k); } });
+    if (!T.length) throw new Error("no faces left: every name of the model is set to 'not part of the room'");
     const ext = [0, 1, 2].map((a) => Math.max(...V.map((v) => v[a])) - Math.min(...V.map((v) => v[a])));
     // voxel size: as given, but never more than 2.5 x maxVoxels cells (browser memory); auto: >= 5 cm within maxVoxels
     const box = (ext[0] + 0.3) * (ext[1] + 0.3) * (ext[2] + 0.3), mv = spec.maxVoxels || 2e7;
     const h = spec.voxel ? Math.max(spec.voxel, Math.cbrt(box / (2.5 * mv))) : Math.max(0.05, Math.cbrt(box / mv));
     const vx = voxelRoom(V, T, [seed].concat(spec.seeds || []), h), off = 2.5 * h, inflate = (spec.inflateMm == null ? 1 : spec.inflateMm) / 1000, twoSided = spec.twoSided !== false;
     const triOf = new Map(); owner.forEach((k, i) => { if (!triOf.has(k)) triOf.set(k, []); triOf.get(k).push(T[i]); });
-    const S = [], unmatched = new Set(); let dropped = 0;
+    const S = [], unmatched = new Set(); let dropped = 0, narrow = 0, tiny = 0, noMat = 0, vol3 = 0, aOne = 0; const clos = [0, 0, 0], cen = [0, 1, 2].map((a) => (Math.max(...V.map((v) => v[a])) + Math.min(...V.map((v) => v[a]))) / 2);
     obj.F.forEach((f, k) => {
-      const P = f.map((i) => V[i]), nw = newell(P), A = Math.hypot(...nw) / 2; if (A < 1e-6) return;
+      if (skip[k]) return;
+      const P = f.map((i) => V[i]), nw = newell(P), A = Math.hypot(...nw) / 2; if (A < 1e-6) { tiny++; return; }
       const n = nw.map((v) => v / (2 * A)), C = [];
       for (const [a, b, c] of triOf.get(k)) { C.push([(V[a][0] + V[b][0] + V[c][0]) / 3, (V[a][1] + V[b][1] + V[c][1]) / 3, (V[a][2] + V[b][2] + V[c][2]) / 3]); }
       for (const [a, b, c] of triOf.get(k)) sampleTri(V[a], V[b], V[c], 0.2, C);
       let fwd = 0, bwd = 0; for (const p of C) { if (voxInRoom(vx, [p[0] + off * n[0], p[1] + off * n[1], p[2] + off * n[2]])) fwd++; if (voxInRoom(vx, [p[0] - off * n[0], p[1] - off * n[1], p[2] - off * n[2]])) bwd++; }
-      if (fwd === 0 && bwd === 0) { dropped++; return; }
-      const both = Math.min(fwd, bwd) > 0.2 * Math.max(fwd, bwd), nn = fwd >= bwd ? n : n.map((v) => -v);
-      const nm = obj.names[k].toLowerCase(); let key = spec.default;
-      for (const [g, v] of groups) if (nm.includes(g)) { key = v; break; }
+      // A face narrower than the surface band of its neighbours (a step riser, a narrow strip) has no room voxel at
+      // 2.5 h in front of or behind it although it bounds the room. Dropping such faces opened holes (BRAS CR3 at
+      // 6.5 cm: 285 faces, 8.1 m2, 8 % of the rays lost). Second look: room voxels within 3 voxels of the face's own
+      // points. A face with any of them is kept as a two-sided one (its orientation cannot be told from the voxels,
+      // and a two-sided face needs none); only a face with no room voxel near it (inside a solid, outside the hall) is
+      // dropped. spec.keepAll keeps those as well (validation runs).
+      let near = false, nar = false;
+      if (fwd === 0 && bwd === 0) {
+        const [f2, b2] = voxNear(vx, C, n, 3); fwd = f2; bwd = b2; near = true;
+        if (fwd === 0 && bwd === 0) { dropped++; if (spec.dropLog) spec.dropLog.push(k); if (!spec.keepAll) return; }
+        else { narrow++; nar = true; }
+      }
+      const both = near || Math.min(fwd, bwd) > 0.2 * Math.max(fwd, bwd), nn = fwd >= bwd ? n : n.map((v) => -v);
+      let key = keyOf(k);
       if (key && typeof key === "object") key = key[nn[2] < -0.3 ? "ceiling" : nn[2] > 0.3 ? "floor" : "wall"] || key.default;
-      if (key == null) { unmatched.add(obj.names[k]); return; }
+      // a face without a material that was only found by the second look (it lies in the surface band of other faces:
+      // loose, untagged geometry inside walls) is left out and counted, as it was before 2026-11-18
+      if (key == null) { if (near) { noMat++; if (nar) narrow--; return; } unmatched.add(obj.names[k]); return; }
       const Pv = inflate > 0 ? inflatePoly(P, nn, inflate) : P;
       const s = makeSurface(Pv, nn, key, "mesh"); s.area = A; S.push(s);
-      if (both || twoSided) { const t = makeSurface(Pv.map((p) => [p[0] - 0.002 * nn[0], p[1] - 0.002 * nn[1], p[2] - 0.002 * nn[2]]), nn.map((v) => -v), key, "mesh-twin"); t.area = A; t.solo = !both; S.push(t); }
+      if (!both || near) { const q = A * ((P[0][0] - cen[0]) * nn[0] + (P[0][1] - cen[1]) * nn[1] + (P[0][2] - cen[2]) * nn[2]); vol3 -= q; for (let a = 0; a < 3; a++) clos[a] += A * nn[a]; aOne += A; }
+      // the back of a one-sided face lies 2 mm behind it; the two sides of a two-sided face share one plane (a back
+      // set 2 mm behind left a slit at the edge towards the next face when the front was the side taken for the back:
+      // steps model at 10 cm voxels, 0.24 % of the rays lost)
+      if (both || twoSided) { const o = both ? 0 : 0.002, t = makeSurface(Pv.map((p) => [p[0] - o * nn[0], p[1] - o * nn[1], p[2] - o * nn[2]]), nn.map((v) => -v), key, "mesh-twin"); t.area = A; t.solo = !both; S.push(t); }
     });
     if (unmatched.size) throw new Error("model faces without a material: " + [...unmatched].slice(0, 8).join("; "));
     const area = {}; for (const s of S) if (s.kind === "mesh") area[s.mat] = (area[s.mat] || 0) + s.area;
     const lo = [0, 1, 2].map((a) => Math.min(...V.map((v) => v[a]))), hi = [0, 1, 2].map((a) => Math.max(...V.map((v) => v[a])));
-    const G = { S, mesh: true, vox: vx, V: vx.volume, area: Object.values(area).reduce((a, b) => a + b, 0), areaByMat: area, nDropped: dropped, nFaces: obj.F.length, bbox: [lo, hi], h };
+// room volume: the voxel count (free voxels + 1.5 voxels of the surface band next to them: the band is the
+    // surface voxel and one voxel of dilation, so the surface lies 1.5 h behind the first band voxel on average;
+    // before: 0.5, which gave a volume too small by about surface area x h, CR3 at 6.5 cm: 3124 instead of 3293 m3).
+    // If the one-sided faces, as oriented here, form a closed surface (sum of the area vectors below 0.1 % of their
+    // area) and the divergence theorem agrees with the voxel count within 3 %, that value is used instead.
+    const vVox = vx.volume, vMesh = vol3 / 3, meshOk = aOne > 0 && Math.hypot(...clos) < 0.001 * aOne && Math.abs(vMesh - vVox) < 0.03 * vVox;
+    const G = { S, mesh: true, vox: vx, V: meshOk ? vMesh : vVox, vVox, vMesh, volFrom: meshOk ? "mesh" : "voxels", closure: Math.hypot(...clos) / (aOne || 1), nNarrow: narrow, nSkipped: nSkip, nTiny: tiny, nNoMat: noMat, area: Object.values(area).reduce((a, b) => a + b, 0), areaByMat: area, nDropped: dropped, nFaces: obj.F.length, bbox: [lo, hi], h };
     G.bvh = bvhBuild(G.S);
     meshViews(G);
     return G;

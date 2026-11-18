@@ -257,9 +257,11 @@ images). The interior is therefore found by voxel flood fill from a point known 
 are rasterised into a voxel grid (spacing `voxel`, default 5 cm, closed by one voxel of dilation so that gaps
 below ~10 cm do not leak), the free voxels connected to the seed are the room, and each face's inward normal is
 the side whose offset points (2.5 voxels, spread over the face at 0.2 m) fall in the room. Faces with the room
-on neither side (outer skins of thick walls, hidden faces) are dropped; a face with the room on both sides (a
-free-standing panel or suspended reflector) is kept twice, once per side, 2 mm apart. The voxel set also gives
-the room volume (interior voxels + half of the surface band next to them).
+on neither side at that distance are looked at again: one with room voxels within 3 voxels of its own points (a
+step riser or strip narrower than the surface band) is kept as a two-sided face, one without (outer skins of thick
+walls, faces inside solids) is dropped. A face with the room on both sides (a free-standing panel or suspended
+reflector) is kept twice, once per side, 2 mm apart. The voxel set also gives the room volume (interior voxels +
+1.5 voxels of the surface band next to them).
 """
 
 
@@ -354,8 +356,30 @@ def voxel_room(V, T, seed, h=0.05, dilate=1):
         room |= lab == lab[s]
     if room[0, 0, 0]:
         raise ValueError("the mesh is not closed: the room leaks to the outside (gap wider than the voxel band)")
-    vol = float(room.sum() + 0.5 * (ndimage.binary_dilation(room) & solid).sum()) * h ** 3
+    # free voxels + 1.5 voxels of the surface band next to them (the band is the surface voxel and one voxel of
+    # dilation, so the surface lies 1.5 h behind the first band voxel on average; before: 0.5, about area x h too small)
+    vol = float(room.sum() + 1.5 * (ndimage.binary_dilation(room) & solid).sum()) * h ** 3
     return dict(origin=lo, h=h, inside=room, volume=vol)
+
+
+def _room_near(vr, C, n, r):
+    """Room voxels within r voxels of the points C, counted in front of and behind the plane through each point."""
+    ins, h, lo = vr["inside"], vr["h"], vr["origin"]
+    sh = np.array(ins.shape)
+    fwd = bwd = 0
+    for p in C:
+        c = np.floor((p - lo) / h).astype(int)
+        a, b = np.maximum(c - r, 0), np.minimum(c + r, sh - 1)
+        if np.any(b < a):
+            continue
+        sub = ins[a[0]:b[0] + 1, a[1]:b[1] + 1, a[2]:b[2] + 1]
+        idx = np.argwhere(sub)
+        if not len(idx):
+            continue
+        d = (lo + (idx + a + 0.5) * h - p) @ n
+        fwd += int((d > 0).sum())
+        bwd += int((d <= 0).sum())
+    return fwd, bwd
 
 
 def _in_room(vr, P):
@@ -378,13 +402,20 @@ def build_mesh(geom, seed):
     n_in = len(F)
     if spec.get("max_faces") and len(F) > int(spec["max_faces"]):
         V, F, names = simplify_mesh(V, F, names, int(spec["max_faces"]))
+    # faces of a name mapped to "__none" are not part of the room (markers of a measurement set-up): left out of the
+    # voxel grid and of the surfaces (as engine_geom.js buildMesh)
+    key_of = lambda nm: next((v for g_, v in groups.items() if g_ in nm.lower()), default)
+    keep = [k for k in range(len(F)) if key_of(names[k]) != "__none"]
+    n_skipped = len(F) - len(keep)
+    if n_skipped:
+        F, names = [F[k] for k in keep], [names[k] for k in keep]
     T, owner = _tri_fan(F)
     h = float(spec.get("voxel", 0.05))
     vr = voxel_room(V, T, [list(seed)] + [list(map(float, p)) for p in spec.get("seeds", [])], h)
     off = 2.5 * h                                       # beyond the dilated surface band (1.5 h half-width)
     two_sided = bool(spec.get("two_sided", True))
     inflate = float(spec.get("inflate_mm", 1.0)) / 1000
-    S, dropped, unmatched = [], 0, set()
+    S, dropped, narrow, no_mat, unmatched = [], 0, 0, 0, set()
     for k, f in enumerate(F):
         P = V[f]
         n = _newell_np(P)
@@ -397,15 +428,32 @@ def build_mesh(geom, seed):
         # another solid (a wall behind a seat block) still has room on its exposed part
         C = np.vstack([V[tri].mean(1), _sample_tris(V, tri, 0.2)])
         fwd, bwd = _in_room(vr, C + off * n).sum(), _in_room(vr, C - off * n).sum()
+        near = nar = False
         if fwd == 0 and bwd == 0:
-            dropped += 1
-            continue
-        both = min(fwd, bwd) > 0.2 * max(fwd, bwd)         # room on both sides (free-standing panel, reflector)
+            # A face narrower than the surface band of its neighbours (a step riser, a narrow strip) has no room voxel
+            # at 2.5 h on either side although it bounds the room; dropping such faces opened holes (BRAS CR3 at
+            # 6.5 cm: 285 faces, 8.1 m2). Second look: room voxels within 3 voxels of the face's own points. A face
+            # with any is kept as a two-sided one; only a face with none (inside a solid, outside the hall) is
+            # dropped, and spec["keep_all"] keeps those too (as engine_geom.js buildMesh).
+            fwd, bwd = _room_near(vr, C, n, 3)
+            near = True
+            if fwd == 0 and bwd == 0:
+                dropped += 1
+                if not spec.get("keep_all"):
+                    continue
+            else:
+                narrow += 1
+                nar = True
+        both = near or min(fwd, bwd) > 0.2 * max(fwd, bwd)  # room on both sides (free-standing panel, reflector)
         nn = n if fwd >= bwd else -n
         key = next((v for g, v in groups.items() if g in names[k].lower()), default)
         if isinstance(key, dict):                           # split one OBJ group by orientation of the inward normal
             key = key.get("ceiling" if nn[2] < -0.3 else "floor" if nn[2] > 0.3 else "wall", key.get("default"))
         if key is None:
+            if near:                                        # untagged face in the band of other faces: left out
+                no_mat += 1
+                narrow -= int(nar)
+                continue
             unmatched.add(names[k])
             continue
         if inflate > 0:
@@ -420,7 +468,7 @@ def build_mesh(geom, seed):
     if unmatched:
         raise ValueError("mesh faces without a material (add them to mesh.groups or set mesh.default): "
                          + "; ".join(sorted(unmatched)[:8]))
-    return dict(S=S, mesh=True, volume=vr["volume"], voxel=vr, n_dropped=dropped, n_input=n_in, n_faces=len(F),
+    return dict(S=S, mesh=True, volume=vr["volume"], voxel=vr, n_dropped=dropped, n_narrow=narrow, n_no_mat=no_mat, n_skipped=n_skipped, n_input=n_in, n_faces=len(F),
                 area={k: sum(x["area"] for x in S if x["mat"] == k and x["kind"] == "mesh") for k in {x["mat"] for x in S}},
                 bbox=(V.min(0), V.max(0)))
 
