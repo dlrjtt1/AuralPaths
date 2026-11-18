@@ -7,10 +7,14 @@ files.
 - **3D models lost rays through faces that the engine itself dropped** (found 2026-11-18, `validation/mesh_leak.md`).
   `buildMesh` / `build_mesh` dropped every face with no room voxel 2.5 voxels in front of or behind it; faces narrower
   than the surface band (step risers, strips, panel sides) went with them. BRAS CR3: 285 of 2598 faces (8.1 m²),
-  11 % of the rays lost, now 0.015 %; Arni model 8.5 % → 0.007 %; Fratoni DUS 38 % → 2.2 %, TCB 10 % → 2.6 %; BRAS
-  CR4 39 % → 25 % (22 % of it in the space above the ceiling panels, which the engine does not count as room: open).
-  Effect with real materials: CR3 T30 +2 %, EDT +1.3 %, C80 −0.1 dB; CR4 T30 +2.5 … +4.1 %. Such faces are now kept
-  as two-sided faces, both sides in one plane. Results of 3D models change; documented runs made with the Python
+  11 % of the rays lost, now 0 %; Arni model 8.5 % → 0 %; BRAS CR4 39 % → 0 %; Fratoni DUS 38 % → 1.4 %, TCB 10 % →
+  0.29 % (these two models have openings to the outside). Effect with real materials: CR3 T30 +2 %, EDT +1.3 %, C80
+  −0.1 dB; CR4 T30 +3 … +5 %, EDT +3 %, C80 −0.2 dB. Such faces are now kept as two-sided faces, both sides in one
+  plane.
+  - Spaces behind narrow openings are part of the room (JavaScript engine): pockets of free voxels closed in by
+    surface bands, and free spaces that probe rays enter and that are not joined to the outside (CR4: 16 m³ between
+    the ceiling panels and the ceiling). A ray between the backs of one-sided faces is followed instead of ended
+    (CR4: the 4 cm slot inside the double-skin ceiling panels). Results of 3D models change; documented runs made with the Python
   engine (BRAS CR3 / CR4, STC, ULH, Arni, OperaRIR) have not been rerun and carry a note.
   - Volume of a 3D model: 1.5 voxels of the surface band instead of 0.5 (CR3 3124 → 3293 m³; documentation 3330.6).
   - Page: lost rays always shown for a 3D model, warning and `valid: false` in the saved config above 0.1 %;

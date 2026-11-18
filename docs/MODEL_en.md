@@ -526,9 +526,10 @@ closed room (BRAS RS5) is refused, as its OBJ would be. If a file does not open,
   by too few probe rays when the model was built). A closed model loses none.
   Above 0.1 % the page shows a warning that the values are not valid and names the two shares; the saved config
   (`_provenance.rays_lost_fraction`, `rays_lost_in_unreached_spaces`, `valid`) and the SOFA comment carry them.
-  Values on 2026-11-18 (`validation/mesh_leak.md`): BRAS CR3 0.015 % (before the fix of that day 11 %), Fratoni STC
-  0.007 %; BRAS CR4 25 % (22 % of it in the space above the ceiling panels), Fratoni DUS 2.2 %, TCB 2.6 %, ULH
-  3.1 %: these four are above the limit, and their documented results stand with that reservation.
+  Values on 2026-11-18 (`validation/mesh_leak.md`; before the fixes of that day in brackets): BRAS CR3 0 % (11 %),
+  CR4 0 % (39 %), Fratoni ULH 0 %, STC 0 %, Arni and OperaRIR models 0 % (8.5 %, 1.3 %); Fratoni DUS 1.4 % (38 %) and
+  TCB 0.29 % (10 %) are above the limit: these two models have openings to the outside at the voxel size used, and
+  their documented results stand with that reservation.
 - Page settings: up axis of the file (y up for OBJ exports of SketchUp and Blender; a `.skp` is converted to y up
   by the reader, so the setting stays at y up for it), plan turn (0 / 90 / 180 / 270°, display only:
   the page shows the depth along y), voxel size (auto: at least 5 cm and at most 2 × 10⁷ cells, for browser memory).

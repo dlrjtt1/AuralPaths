@@ -102,12 +102,14 @@ of this check in the session, not in the repository).
 | | now | -0.02 | 1.22 | 1.57 | 1.19 | 1.39 | 2.80 |
 
   So the holes shortened T30 by about 2 % and EDT by about 1.3 % in CR3 with its real materials, and raised C80
-  by 0.1 dB. The documented comparison with the measurement (`validation/bras_CR3.md`, Python engine, not rerun)
+  by 0.1 dB; in CR4 the holes and the rays ended above the ceiling panels shortened T30 by 3 - 5 %. The documented comparison with the measurement (`validation/bras_CR3.md`, Python engine, not rerun)
   had the simulated T30 4 - 14 % longer than measured before calibration; without the holes it is about 2 % longer
   still, and the calibration factors fitted there are about 2 % too small for the same reason.
 - CR4 with the BRAS fitted absorption and scattering, not calibrated (`out/bras_shape_CR4/config.json`, LS1 ×
-  MP1 - 5, 50 000 rays): T30 +3.8 / +4.1 / +3.9 / +3.7 / +3.2 / +2.5 % at 125 Hz - 4 kHz (largest of a pair +6.1 %),
-  EDT +1.9 … +2.6 %, C80 −0.2 dB. CR4 still loses 25 % of the rays after the fix (see *Open*).
+  MP1 - 5, 50 000 rays), engine now against before: T30 +4.7 / +5.2 / +4.8 / +4.4 / +4.0 / +2.9 % at 125 Hz - 4 kHz
+  (largest of a pair +6.9 %), EDT +2.6 … +3.7 %, C80 −0.2 … −0.3 dB. With fixes 1 - 3 only (25 % of the rays still
+  lost): T30 +3.8 / +4.1 / +3.9 / +3.7 / +3.2 / +2.5 %, EDT +1.9 … +2.6 %, C80 −0.2 dB. CR3 is the same with and
+  without fixes 5, 6 (no space added).
 - Fratoni DUS and TCB, rerun with `validation/check_fratoni_js.py` (20 000 rays; `validation/fratoni_DUS.md`,
   `fratoni_TCB.md`): DUS T30 +0.9 % on average (single zone and band −5.0 … +5.3 %), EDT +0.4 %, C80 within 0.2 dB;
   TCB T30 0.0 % (−3.0 … +6.7 %), EDT +3.1 %, C80 −0.2 dB. Mean absolute error at 500 Hz - 1 kHz, before → now:

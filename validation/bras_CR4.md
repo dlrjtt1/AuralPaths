@@ -1,6 +1,6 @@
 # BRAS CR4: measured RIRs vs AuralPaths (Python engine)
 
-**Note of 2026-11-18.** This run was made before the dropped-face fix (`validation/mesh_leak.md`): 344 faces were dropped. It has not been rerun. After the fix CR4 still loses 25 % of the rays, 22 % of them in the space above the ceiling panels, which the engine does not count as part of the room; the results and calibration factors below stand with that reservation.
+**Note of 2026-11-18.** This run was made before the dropped-face fix (`validation/mesh_leak.md`): 344 faces were dropped. It has not been rerun. With the page's engine as it is now CR4 loses no rays (the air between the ceiling panels and the ceiling is part of the room), and T30 is 3 - 5 % longer than with the engine of this run (`validation/mesh_leak.md`, *Effect*); the calibration factors below include that difference.
 
 Data: Aspöck et al. (2020), *BRAS – Benchmark for Room Acoustical Simulation*, v3, https://doi.org/10.14279/depositonce-6726.3, CC BY-SA 4.0 (dodecahedron RIRs, positions, surface descriptions). Material set: fitted_estimates. This file is derived from BRAS and is CC BY-SA 4.0.
 
