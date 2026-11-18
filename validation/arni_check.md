@@ -1,6 +1,6 @@
 # Arni variable-acoustics room: early decay where the absorption is known (2026-11-13)
 
-**Note of 2026-11-18.** These runs were made before the dropped-face fix (`validation/mesh_leak.md`): the 106 side faces of the panels (90.3 m² of 351 m²) were dropped and 8.5 % of the rays were lost in the slots between panels (now 0.007 %). Not rerun.
+**Note of 2026-11-18.** These runs were made before the dropped-face fix (`validation/mesh_leak.md`): the 106 side faces of the panels (90.3 m² of 351 m²) were dropped and 8.5 % of the rays were lost in the slots between panels (now 0.007 %). Rerun with the page's engine on 2026-11-19 (`out/arni_js_fix`, same command as `engine_js_halls.md`): calibration factors 4.00 / 1.32 / 2.97 / 3.44 / 4.12 / 6.10 (before 3.90 / 1.31 / 2.97 / 3.41 / 4.09 / 6.00); 185 pairs, 125 Hz - 4 kHz: T30 bias +13 / +25 / +10 / +4 / +3 / +0 % (before +14 / +25 / +10 / +4 / +3 / +1), EDT bias +3 / +22 / +7 / +2 / +0 / -2 % (before +3 / +22 / +7 / +2 / +1 / -2), C80 bias +0.40 / -0.96 / +0.17 / +0.04 / +0.32 / -0.01 dB (before +0.34 / -0.97 / +0.17 / +0.02 / +0.31 / -0.06). The findings below do not change. The Python-engine numbers below are from before the fix.
 
 Question: in Arvedi the measured EDT is 15 - 20 % shorter than T30 and the simulated EDT is about T30. Does the engine
 produce an early decay faster than the late one at all, when the absorption sits in known places? And does it follow

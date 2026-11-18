@@ -42,6 +42,11 @@ Calibration on the all-closed state: factors 3.90 / 1.31 / 2.97 / 3.41 / 4.09 / 
 Same picture; the decay times are 3 - 6 points longer (the states with open panels), C80 0.1 - 0.3 dB closer at
 1 - 4 kHz.
 
+Rerun on 2026-11-19 after the dropped-face fix (`validation/mesh_leak.md`; the 106 panel side faces are kept now):
+factors 4.00 / 1.32 / 2.97 / 3.44 / 4.12 / 6.10; T30 bias +13 / +25 / +10 / +4 / +3 / +0 %, EDT bias +3 / +22 / +7 /
++2 / +0 / -2 %, C80 bias +0.40 / -0.96 / +0.17 / +0.04 / +0.32 / -0.01 dB, C80 within 1 dB 43 / 47 / 58 / 94 / 88 /
+94 %, EDT within 5 % 24 / 11 / 30 / 63 / 77 / 41 %. OperaRIR (below) rerun the same day: histograms unchanged.
+
 ## Detmold Konzerthaus (drawn hall), calibration only, 24 omnidirectional-microphone positions, 80000 rays
 
 Factors 1.20 / 1.11 / 1.06 / 1.00 / 1.00 / 1.00 after one iteration (Python, median, 20000 rays: 0.94 / 0.83 / 0.76 /

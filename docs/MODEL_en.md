@@ -707,7 +707,7 @@ signed mean in brackets; tables and figures in `validation/fratoni_DUS.*`, `frat
 |---|---|---|---|---|
 | DUS (2 sources × 3 zones) | 2.8 (+2.8) | 1.0 (−0.1) | 1.2 (−0.6) | 0.8 (+0.7) |
 | TCB (2 sources × 3 zones) | 7.9 (−7.9) | 4.0 (−4.0) | 2.5 (+2.1) | 3.4 (−3.4) |
-| TCB, hall plaster as Wood (sensitivity; run of 2026-11-07, not rerun) | 5.1 (−5.1) | 2.4 (−2.4) | 2.0 (+1.3) | 2.5 (−2.1) |
+| TCB, hall plaster as Wood (sensitivity; rerun 2026-11-19) | 4.6 (−4.6) | 2.5 (−2.5) | 1.8 (+1.0) | 2.4 (−1.9) |
 
 Reading:
 - DUS: T30 at mid frequencies within about 1 JND; as in ULH, T30 is short at 125–250 Hz (−3 … −4 JND) and long at
