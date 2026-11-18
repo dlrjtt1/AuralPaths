@@ -45,8 +45,8 @@ for (const voxel of [0.05, 0.065, 0.1]) {
 for (const f of process.argv.slice(2).filter((a) => a !== "--json")) {
   const obj = GEOM.loadObj(fs.readFileSync(f, "utf8")), lo = [0, 1, 2].map((k) => Math.min(...obj.V.map((v) => v[k]))), hi = [0, 1, 2].map((k) => Math.max(...obj.V.map((v) => v[k])));
   const c = [(lo[0] + hi[0]) / 2, -(lo[2] + hi[2]) / 2, (lo[1] + hi[1]) / 2], G = GEOM.buildMesh({ obj, groups: {}, default: "wall", axes: "y-up" }, c); let lost = 0, tot = 0;
-  let vd = 0;
-  for (const seed of [1, 2, 3]) { const R = GEOM.rays(G, c, [c], { n: N, seed }, mats, air); lost += R.escaped + R.leaked; vd += R.voided; tot += N; }
-  lines.push(`${path.basename(f)}: ${G.nFaces} faces, ${G.nNarrow} narrow kept, ${G.nDropped} dropped, voxel ${(G.h * 100).toFixed(1)} cm, volume ${G.V.toFixed(0)} m3, rays lost ${(100 * lost / tot).toFixed(3)} % (through gaps ${(100 * (lost - vd) / tot).toFixed(3)} %, into spaces the room fill did not reach ${(100 * vd / tot).toFixed(3)} %)`);
+  let vd = 0, bh = 0;
+  for (const seed of [1, 2, 3]) { const R = GEOM.rays(G, c, [c], { n: N, seed }, mats, air); lost += R.escaped + R.leaked; vd += R.voided; bh += R.behind; tot += N; }
+  lines.push(`${path.basename(f)}: ${G.nFaces} faces, ${G.nNarrow} narrow kept, ${G.nDropped} dropped, voxel ${(G.h * 100).toFixed(1)} cm, volume ${G.V.toFixed(0)} m3, rays lost ${(100 * lost / tot).toFixed(3)} % (through gaps ${(100 * (lost - vd) / tot).toFixed(3)} %, into spaces the room fill did not reach ${(100 * vd / tot).toFixed(3)} %); ${G.nSpaces} spaces behind narrow openings added (${G.vSpaces.toFixed(1)} m3); rays that went behind faces and were followed ${(100 * bh / tot).toFixed(2)} %`);
 }
 if (process.argv.includes("--json")) console.log(JSON.stringify(out)); else console.log(lines.join("\n"));

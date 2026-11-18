@@ -53,32 +53,31 @@ the JavaScript engine itself, so the page and the Python tools share the ray tra
 ## Result
 
 `node validation/check_mesh_leak.js <files>` (source at the model centre, α 0.2, scattering 0.3, automatic voxel
-size, 3 seeds × 20 000 rays). "Unreached space": the ray entered a space that the room fill did not reach, i.e. one
-joined to the room only by openings narrower than about 3 voxels (a ceiling cavity behind slotted panels, the inside
-of a thin slab); the engine ends it there, so such a space acts as an absorber.
+size, 3 seeds × 20 000 rays). Three states of the engine: before (commit `1e911b9`), with fixes 1 - 3 only (commit
+`82158f3`), and now, with the spaces behind narrow openings counted as room and the rays behind faces followed (5, 6
+below).
 
-| model | rays lost before | rays lost now | of which through gaps | of which in unreached space | faces: narrow kept / left out |
-|---|---|---|---|---|---|
-| steps model (built in the script; 5, 6.5, 10 cm voxels) | 44.5 - 50.6 % | 0.000 % | 0.000 % | 0.000 % | 20 - 24 / 0 |
-| BRAS CR3 | 11.3 % | 0.015 % | 0.015 % | 0.000 % | 285 / 0 |
-| BRAS CR4 | 38.7 % | 25.1 % | 3.2 % | 21.8 % | 1306 / 55 |
-| Fratoni DUS | 38.2 % | 2.2 % | 1.3 % | 0.9 % | 2494 / 41 |
-| Fratoni TCB | 10.1 % | 2.6 % | 2.4 % | 0.2 % | 1207 / 1 |
-| Fratoni ULH | not run | 3.1 % | 0.2 % | 2.9 % | 257 / 38 |
-| Fratoni STC | not run | 0.007 % | 0.007 % | 0.000 % | 312 / 29 |
-| Arni model (`arni_model.py`, 5 cm) | 8.5 % | 0.007 % | 0.007 % | 0.000 % | 106 / 0 |
-| OperaRIR model without / with seat rows (`opera_model.py`, 12 cm) | 1.3 % / 1.5 % | 0.000 % / 0.003 % | | 0.000 % | 3 / 0, 5 / 0 |
+| model | rays lost before | fixes 1 - 3 | now | now: through gaps / in space that is not room | space added | rays followed behind faces |
+|---|---|---|---|---|---|---|
+| steps model (built in the script; 5, 6.5, 10 cm voxels) | 44.5 - 50.6 % | 0.000 % | 0.000 % | 0 / 0 | 0 | 0 |
+| BRAS CR3 | 11.3 % | 0.015 % | 0.000 % | 0 / 0 | 0 | 0.01 % |
+| BRAS CR4 | 38.7 % | 25.1 % | 0.000 % | 0 / 0 | 16.1 m³ (11 spaces and pockets) | 5.82 % |
+| Fratoni ULH | not run | 3.1 % | 0.000 % | 0 / 0 | 1.3 m³ | 0.01 % |
+| Fratoni STC | not run | 0.007 % | 0.000 % | 0 / 0 | 0 | 0.01 % |
+| Arni model (`arni_model.py`, 5 cm) | 8.5 % | 0.007 % | 0.000 % | 0 / 0 | not read | not read |
+| OperaRIR model without / with seat rows (`opera_model.py`, 12 cm) | 1.3 % / 1.5 % | 0.000 % / 0.003 % | 0.000 % / 0.000 % | 0 / 0 | not read | not read |
+| Fratoni DUS | 38.2 % | 2.2 % | 1.40 % | 0.35 % / 1.05 % | 2.6 m³ | 1.44 % |
+| Fratoni TCB | 10.1 % | 2.6 % | 0.29 % | 0.11 % / 0.19 % | 0.6 m³ | 2.33 % |
 
-CR3 with the page's four source positions and three further ones (stage, mid-hall, near a side wall, balcony
-height), 50 000 rays, 3 seeds at the first: 0.012 - 0.018 % at the two positions run after fix 2 (0.05 - 0.07 % at all
-positions with fix 1 alone).
+5. Spaces behind narrow openings are part of the room (`docs/MODEL_*`, mesh rule): pockets of up to 64 free voxels
+   closed in by surface bands, and larger free spaces that at least 5 of 10 000 probe rays enter and that are not
+   joined to the outside. In CR4 this is the air between the ceiling panels and the ceiling (16 m³).
+6. A ray between the backs of one-sided faces is followed instead of ended. In CR4 these are rays in the 4 cm slot
+   between the two skins of the ceiling panels, which are open at the rim (5.8 % of the rays over the run).
 
-**Open.** CR4, DUS, TCB and ULH are above the 0.1 % limit after the fix. In CR4 almost all of it is rays that
-enter the space above the ceiling panels through the slots between them; the room fill does not reach that space at
-9.4 cm voxels, the faces that bound only that space are left out, and the rays are ended. This is not the dropped-face
-error; it is how the engine treats a space behind narrow openings, and it needs its own decision (make such spaces
-part of the room, or keep them as absorbers and say so). The rest ("through gaps", 1 - 3 % in CR4, DUS, TCB) has not
-been traced to its cause.
+**Still above the 0.1 % limit: DUS and TCB.** In DUS the free space that the remaining lost rays enter is joined to
+the border of the voxel grid, i.e. to the outside, and 0.35 % of the rays find no surface at all: the model has
+openings to the outside at 10 cm voxels. Where they are has not been determined. TCB: the same kind, smaller.
 
 ## Effect on the results
 

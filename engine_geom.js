@@ -227,11 +227,55 @@ const GEOM = (() => {
       for (const r of nb) if (r >= 0 && !solid[r] && !room[r]) { room[r] = 1; queue[qt++] = r; }
     }
     if (room[0]) throw new Error("the model is not closed: the room leaks to the outside (gap wider than the voxel band)");
-    let nIn = qt, nBand = 0;
-    for (let q = 0; q < N; q++) if (solid[q]) { const k = q % nz, j = ((q - k) / nz) % ny, i = (q - k - j * nz) / (ny * nz);
-      if ((i > 0 && room[q - ny * nz] === 1) || (i < nx - 1 && room[q + ny * nz] === 1) || (j > 0 && room[q - nz] === 1) || (j < ny - 1 && room[q + nz] === 1) || (k > 0 && room[q - 1] === 1) || (k < nz - 1 && room[q + 1] === 1)) nBand++; }
     for (let q = 0; q < N; q++) if (solid[q] && !room[q]) room[q] = 2;   // 2: surface band (neither room nor enclosed void)
-    return { lo, h, dims: [nx, ny, nz], room, volume: (nIn + 1.5 * nBand) * h ** 3 };
+    const vx = { lo, h, dims: [nx, ny, nz], room }; vx.volume = voxVolume(vx);
+    return vx;
+  }
+  // room volume from the voxels: free voxels + 1.5 voxels of the surface band next to them
+  function voxVolume(vx) {
+    const [nx, ny, nz] = vx.dims, room = vx.room, N = nx * ny * nz, sx = ny * nz; let nIn = 0, nBand = 0;
+    for (let q = 0; q < N; q++) { const r = room[q]; if (r === 1) nIn++; else if (r === 2) { const k = q % nz, j = ((q - k) / nz) % ny, i = (q - k - j * nz) / sx;
+      if ((i > 0 && room[q - sx] === 1) || (i < nx - 1 && room[q + sx] === 1) || (j > 0 && room[q - nz] === 1) || (j < ny - 1 && room[q + nz] === 1) || (k > 0 && room[q - 1] === 1) || (k < nz - 1 && room[q + 1] === 1)) nBand++; } }
+    return (nIn + 1.5 * nBand) * vx.h ** 3;
+  }
+  // Spaces behind narrow openings. The surface band closes every opening narrower than about 3 voxels, so a space
+  // that the model joins to the room by slots (the cavity above ceiling panels, the space under a raised floor with
+  // gaps) is not reached by the room fill. Probe rays from the seed show which of these spaces sound can enter: a
+  // connected set of free voxels in which at least minRays probe rays arrive (one ray for a pocket of up to 64 voxels:
+  // the free voxels left between the bands of two surfaces a few voxels apart, e.g. a panel hung below a ceiling), and
+  // which does not reach the border of the grid (that would be the outside: a real hole in the model), becomes part
+  // of the room. pts: the points (x, y,
+  // z, ...) where probe rays entered such voxels. Returns the number of spaces and voxels added.
+  function addSpaces(vx, pts, minRays) {
+    const [nx, ny, nz] = vx.dims, room = vx.room, N = nx * ny * nz, sx = ny * nz, h = vx.h, lo = vx.lo;
+    let nRoom = 0; for (let q = 0; q < N; q++) if (room[q] === 1) nRoom++;
+    // pockets of up to 64 free voxels, closed in by surface bands (what is left of an air layer a few voxels thick
+    // between two surfaces), are room without a probe ray: mark 254 = seen, part of something larger
+    let nPock = 0; { const st = new Int32Array(66);
+      for (let q0 = 0; q0 < N; q0++) { if (room[q0] !== 0) continue; let n = 0, big = false; st[n++] = q0; room[q0] = 253;
+        for (let t = 0; t < n && !big; t++) { const q = st[t], k = q % nz, j = ((q - k) / nz) % ny, i = (q - k - j * nz) / sx;
+          if (i === 0 || j === 0 || k === 0 || i === nx - 1 || j === ny - 1 || k === nz - 1) { big = true; break; }
+          for (const r of [q - sx, q + sx, q - nz, q + nz, q - 1, q + 1]) { if (room[r] === 254) { big = true; break; } if (room[r] === 0) { if (n >= 64) { big = true; break; } room[r] = 253; st[n++] = r; } } }
+        for (let t = 0; t < n; t++) room[st[t]] = big ? 254 : 1; if (!big) nPock += n; }
+      for (let q = 0; q < N; q++) if (room[q] === 254) room[q] = 0; }
+    const at = (i3) => { const i = Math.floor((pts[i3] - lo[0]) / h), j = Math.floor((pts[i3 + 1] - lo[1]) / h), k = Math.floor((pts[i3 + 2] - lo[2]) / h); return i < 0 || j < 0 || k < 0 || i >= nx || j >= ny || k >= nz ? -1 : (i * ny + j) * nz + k; };
+    const queue = new Int32Array(Math.min(N, nRoom + 16)), cnt = [], size = []; let nc = 0;   // marks: 3 + c = space c, 255 = outside
+    for (let p = 0; p < pts.length; p += 3) {
+      const q0 = at(p); if (q0 < 0 || room[q0] !== 0 || nc >= 240) continue;
+      const mark = 3 + nc; let qh = 0, qt = 0, out = false; room[q0] = mark; queue[qt++] = q0;
+      while (qh < qt && !out) {
+        const q = queue[qh++], k = q % nz, j = ((q - k) / nz) % ny, i = (q - k - j * nz) / sx;
+        if (i === 0 || j === 0 || k === 0 || i === nx - 1 || j === ny - 1 || k === nz - 1) { out = true; break; }
+        for (const r of [q - sx, q + sx, q - nz, q + nz, q - 1, q + 1]) if (room[r] === 0) { if (qt >= queue.length) { out = true; break; } room[r] = mark; queue[qt++] = r; }
+      }
+      if (out) { for (let t = 0; t < qt; t++) room[queue[t]] = 255; continue; }   // the outside, or larger than the room itself
+      cnt.push(0); size.push(qt); nc++;
+    }
+    for (let p = 0; p < pts.length; p += 3) { const q = at(p); if (q >= 0 && room[q] >= 3 && room[q] < 255) cnt[room[q] - 3]++; }
+    let nSp = 0, nVox = 0; const ok = cnt.map((c, i) => { const y = c >= (size[i] <= 64 ? 1 : minRays); if (y) { nSp++; nVox += size[i]; } return y; });
+    for (let q = 0; q < N; q++) { const r = room[q]; if (r >= 3) room[q] = r < 255 && ok[r - 3] ? 1 : 0; }
+    if (nSp || nPock) vx.volume = voxVolume(vx);
+    return { spaces: nSp, voxels: nVox, pockets: nPock };
   }
   // room voxels within r voxels of the points C, counted in front of and behind the plane through each point (normal n)
   function voxNear(vx, C, n, r) {
@@ -297,6 +341,7 @@ const GEOM = (() => {
     const h = spec.voxel ? Math.max(spec.voxel, Math.cbrt(box / (2.5 * mv))) : Math.max(0.05, Math.cbrt(box / mv));
     const vx = voxelRoom(V, T, [seed].concat(spec.seeds || []), h), off = 2.5 * h, inflate = (spec.inflateMm == null ? 1 : spec.inflateMm) / 1000, twoSided = spec.twoSided !== false;
     const triOf = new Map(); owner.forEach((k, i) => { if (!triOf.has(k)) triOf.set(k, []); triOf.get(k).push(T[i]); });
+    const classify = () => {
     const S = [], unmatched = new Set(); let dropped = 0, narrow = 0, tiny = 0, noMat = 0, vol3 = 0, aOne = 0; const clos = [0, 0, 0], cen = [0, 1, 2].map((a) => (Math.max(...V.map((v) => v[a])) + Math.min(...V.map((v) => v[a]))) / 2);
     obj.F.forEach((f, k) => {
       if (skip[k]) return;
@@ -342,6 +387,18 @@ const GEOM = (() => {
     const vVox = vx.volume, vMesh = vol3 / 3, meshOk = aOne > 0 && Math.hypot(...clos) < 0.001 * aOne && Math.abs(vMesh - vVox) < 0.03 * vVox;
     const G = { S, mesh: true, vox: vx, V: meshOk ? vMesh : vVox, vVox, vMesh, volFrom: meshOk ? "mesh" : "voxels", closure: Math.hypot(...clos) / (aOne || 1), nNarrow: narrow, nSkipped: nSkip, nTiny: tiny, nNoMat: noMat, area: Object.values(area).reduce((a, b) => a + b, 0), areaByMat: area, nDropped: dropped, nFaces: obj.F.length, bbox: [lo, hi], h };
     G.bvh = bvhBuild(G.S);
+    return G;
+    };
+    let G = classify(), nSpaces = 0, vSpaces = 0;
+    // spaces behind narrow openings become part of the room (spec.spaces === false: as before 2026-11-18, they end rays)
+    if (spec.spaces !== false) for (let pass = 0; pass < 4; pass++) {
+      const mats = {}; for (const q of G.S) if (!mats[q.mat]) mats[q.mat] = { R: [1], s: 1 };
+      const pts = [], nP = 10000; rays(G, seed, [], { n: nP, seed: 7, tMax: 0.5, voidLog: pts }, mats, [0]);
+      const r = pts.length || !pass ? addSpaces(vx, pts, 5) : { spaces: 0, voxels: 0, pockets: 0 };
+      if (!r.spaces && !r.pockets) break;
+      nSpaces += r.spaces; vSpaces += (r.voxels + r.pockets) * h ** 3; G = classify();
+    }
+    G.nSpaces = nSpaces; G.vSpaces = vSpaces;
     meshViews(G);
     return G;
   }
@@ -733,7 +790,7 @@ const GEOM = (() => {
     let st = seed >>> 0 || 1; const rnd = () => { st ^= st << 13; st >>>= 0; st ^= st >>> 17; st ^= st << 5; st >>>= 0; return st / 4294967296; };
     const Vs = 4 / 3 * Math.PI * radius ** 3, r2 = radius * radius, Lmax = c * tMax, e0 = 4 * Math.PI / n;
     const Rpow = {}; for (const m in mats) Rpow[m] = mats[m].R.map((r) => r * r);
-    let escaped = 0, hits = 0, leaked = 0, voided = 0;   // voided: the part of leaked that entered a space the room fill did not reach
+    let escaped = 0, hits = 0, leaked = 0, voided = 0, behind = 0;   // voided: the part of leaked that entered a space the room fill did not reach
     const tHit = new Float64Array(G.S.length), PL = planes(G), nS = G.S.length;
     // opt.face = [fx, fy]: horizontal direction the listeners face (default +y); direction bins are in the head frame
     const FACE = opts.face && (opts.face[0] !== 0 || opts.face[1] !== 1) ? opts.face : null;
@@ -745,7 +802,7 @@ const GEOM = (() => {
       // uniform direction (stratified in z)
       const zc = 1 - 2 * (k + rnd()) / n, ph = 2 * Math.PI * rnd(), sr = Math.sqrt(Math.max(0, 1 - zc * zc));
       let dx = sr * Math.cos(ph), dy = sr * Math.sin(ph), dz = zc;
-      let ox = src[0], oy = src[1], oz = src[2], L = 0, last = -1, twinPrev = false;
+      let ox = src[0], oy = src[1], oz = src[2], L = 0, last = -1, twinPrev = false, wasBehind = false;
       const e = new Float64Array(NB).fill(e0), d0 = [dx, dy, dz]; let firstS = -1, ks = 0, qc = 1;
       if (nSect > 0) { let bd = -2; for (let q = 0; q < nSect; q++) { const v = dx * SD[q][0] + dy * SD[q][1] + dz * SD[q][2]; if (v > bd) { bd = v; ks = q; } } }
       for (let bounce = 0; bounce < 400; bounce++) {
@@ -765,12 +822,14 @@ const GEOM = (() => {
         // near a receiver, add a long artificial tail (CR3: T30 +50 %). The segment is tested at 1/4, 1/2 and 3/4 of its
         // length: a point in a void that the room flood fill did not reach ends the ray. Points in the surface band are
         // not counted (a ray passing close to a seat or a rail is still in the room).
-        // A ray that meets the back-facing twin of a one-sided face came through a crack in that face and is sent
-        // back into the room; one that meets two such twins in a row is moving inside a solid and is ended.
-        if (G.mesh && G.S[bi].solo) { if (twinPrev) { leaked++; break; } twinPrev = true; } else twinPrev = false;
+        // A ray that meets the back-facing twin of a one-sided face is behind that face and is reflected by it (same
+        // material). One that meets two such twins in a row moves between the backs of faces: in a slot between two
+        // sheets closer than the voxel band (double-skin panels open at the rim), or inside a solid that it entered
+        // through a crack. It goes on (until 2026-11-18 it was ended) and is counted once in `behind`.
+        if (G.mesh && G.S[bi].solo) { if (twinPrev && !wasBehind) { wasBehind = true; behind++; } twinPrev = true; } else twinPrev = false;
         if (G.mesh && best > 3 * G.vox.h) { let lk = false;
           for (const f of [0.25, 0.5, 0.75]) if (voxVoid(G.vox, [ox + f * best * dx, oy + f * best * dy, oz + f * best * dz])) { lk = true; break; }
-          if (lk) { leaked++; voided++; break; } }
+          if (lk) { leaked++; voided++; if (opts.voidLog) for (const f of [0.25, 0.5, 0.75]) { const x = ox + f * best * dx, y = oy + f * best * dy, z = oz + f * best * dz; if (voxVoid(G.vox, [x, y, z])) { opts.voidLog.push(x, y, z); break; } } break; } }
         // receivers along this segment
         for (let m = 0; m < recs.length; m++) {
           const r = recs[m], wx = r[0] - ox, wy = r[1] - oy, wz = r[2] - oz, tc = wx * dx + wy * dy + wz * dz;
@@ -829,7 +888,7 @@ const GEOM = (() => {
         last = bi; if (firstS < 0) firstS = bi;
       }
     }
-    const out = { H, W, WE, escaped, hits, n, leaked, voided };
+    const out = { H, W, WE, escaped, hits, n, leaked, voided, behind };
     if (HS) Object.assign(out, { HS, sect: SD, nSb });
     if (LOG) out.LOG = LOG;
     return out;

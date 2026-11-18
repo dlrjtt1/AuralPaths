@@ -437,7 +437,16 @@ are wanted.
   (inside a solid, outside the hall) is left out. Until 2026-11-18 all such faces were dropped ("hidden faces"),
   which opened holes in closed models: see *Lost rays* under *3D models in the browser* and
   `validation/mesh_leak.md`. `"mesh": {"keep_all": true}` (Python) / `keepAll` (JavaScript) keeps every face.
-  A name mapped to `"__none"` in `groups` is not part of the room (markers of a measurement set-up). A space joined to the source's room only by a gap narrower than the voxel band (a door ajar between
+  A name mapped to `"__none"` in `groups` is not part of the room (markers of a measurement set-up).
+  Spaces behind narrow openings (JavaScript engine only, since 2026-11-18): the surface band closes every opening
+  narrower than about 3 voxels, so the room fill does not reach a space that the model joins to the room by slots.
+  After the fill, pockets of up to 64 free voxels closed in by surface bands (what is left of an air layer a few
+  voxels thick, e.g. between a hung panel and the ceiling) become room; then 10 000 probe rays from the seed (0.5 s,
+  no absorption) show which larger free spaces sound enters: one that at least 5 probe rays enter, and that is not
+  joined to the border of the grid (the outside), becomes room, and the faces are sorted again (up to 4 rounds).
+  `"spaces": false` in the engine's `spec` turns this off. A ray that goes behind one-sided faces (between two
+  sheets closer than the band, or into a solid through a crack) is reflected there with the faces' material and
+  followed; until 2026-11-18 it was ended. `geometry.build_mesh` (Python, pyroomacoustics path) has neither step. A space joined to the source's room only by a gap narrower than the voxel band (a door ajar between
   coupled rooms) is not reached by the fill; mark it with `"mesh": {"seeds": [[x, y, z]]}`. OBJ group names select the materials (case-insensitive substring match, so the SketchUp tags that
   Blender writes into the group names work). Large meshes are decimated (`max_faces`, fast-simplification, MIT).
   Image sources to order 1 only (pyroomacoustics enumerates N^order images), no diffraction (a tessellated curved
@@ -513,9 +522,8 @@ closed room (BRAS RS5) is refused, as its OBJ would be. If a file does not open,
   faces form a closed surface (sum of their area vectors below 0.1 % of their area) and the divergence theorem
   agrees within 3 %, that value is shown ("from the faces"). The volume is reported only; no result uses it.
 - Lost rays: the status line gives the share of rays that were ended early, at any of their reflections: through
-  gaps (the ray found no surface, or moved behind the faces), or in a space the room fill did not reach (one joined
-  to the room only by openings narrower than about 3 voxels, such as the cavity above slotted ceiling panels; the
-  engine does not count it as room, so it acts as an absorber). A closed model without such spaces loses none.
+  gaps (the ray found no surface), or in free space that is not part of the room (joined to the outside, or entered
+  by too few probe rays when the model was built). A closed model loses none.
   Above 0.1 % the page shows a warning that the values are not valid and names the two shares; the saved config
   (`_provenance.rays_lost_fraction`, `rays_lost_in_unreached_spaces`, `valid`) and the SOFA comment carry them.
   Values on 2026-11-18 (`validation/mesh_leak.md`): BRAS CR3 0.015 % (before the fix of that day 11 %), Fratoni STC

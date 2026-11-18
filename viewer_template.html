@@ -1138,14 +1138,13 @@ let POOL_N = 0;   // > 0: fixed pool size (tests)
 const POOL = () => POOL_N || Math.max(1, Math.min((navigator.hardwareConcurrency || 2) - 1, 8));
 let pool = [];
 let worker = null, jobId = 0, workerOK = true, LOST = 0, LOSTV = 0;
-// LOST: share of the rays that were ended early: through gaps (found no surface, or moved behind the faces), or in a
-// space that the room fill did not reach (LOSTV, part of LOST: a cavity or side room behind openings narrower than
-// about 3 voxels, which the model treats as not part of the room, so it acts as an absorber). A closed model without
-// such spaces loses none; above LEAK_MAX the room-acoustic values are marked as not valid.
+// LOST: share of the rays that were ended early: through gaps (found no surface), or in a space that is not part of
+// the room (LOSTV, part of LOST: free space that probe rays did not reach when the model was built, or that is joined
+// to the outside). A closed model loses none; above LEAK_MAX the room-acoustic values are marked as not valid.
 const LEAK_MAX = 0.001;
 function leakNote() { const bad = isMesh() && LOST > LEAK_MAX, el = $("leakNote"); el.hidden = !bad;
   if (bad) { const g = LOST - LOSTV, f = (v) => (v * 100).toFixed(2) + " %";
-    el.textContent = `Not valid: ${f(LOST)} of the rays were lost (limit ${(LEAK_MAX * 100).toFixed(1)} %)` + (g > LEAK_MAX / 2 ? `; ${f(g)} left the room through gaps in the model` : "") + (LOSTV > LEAK_MAX / 2 ? `; ${f(LOSTV)} entered a space that is not counted as part of the room (behind openings narrower than about ${(3 * (GM ? GM.vox.h : 0.07) * 100).toFixed(0)} cm: a ceiling cavity, a side room) and were ended there` : "") + `. The late part of the response is too weak by an unknown amount (T30 and EDT too short). Close the gaps in the model, try a smaller voxel size, or map names that are not room surfaces to "Not part of the room".`; } }
+    el.textContent = `Not valid: ${f(LOST)} of the rays were lost (limit ${(LEAK_MAX * 100).toFixed(1)} %)` + (g > LEAK_MAX / 2 ? `; ${f(g)} left the room through gaps in the model` : "") + (LOSTV > LEAK_MAX / 2 ? `; ${f(LOSTV)} entered a space that is not counted as part of the room (joined to the outside, or reached by too few rays to be found when the model was built) and were ended there` : "") + `. The late part of the response is too weak by an unknown amount (T30 and EDT too short). Close the gaps in the model, try a smaller voxel size, or map names that are not room surfaces to "Not part of the room".`; } }
 function workerMats() {
   const out = {};
   for (const [g] of matGroups()) { const a = HALL.mats[g].alpha, a8 = D.praBands.map((_, i) => (i < a.length ? a[i] : a[a.length - 1])); out[g] = { R: a8.map((v) => Math.sqrt(Math.max(1e-6, 1 - v))), s: HALL.mats[g].s }; }
@@ -1872,7 +1871,7 @@ function meshTable() {
 }
 function meshNote() {
   const m = HALL.mesh; if (!m) return;
-  $("meshNote").textContent = GM ? `${m.name}: ${GM.nFaces} faces in the file, ${GM.S.filter((q) => q.kind === "mesh").length} used as room faces` + (() => { const t = []; if (GM.nNarrow) t.push(`${GM.nNarrow} narrow ones kept two-sided`); if (GM.nDropped) t.push(`${GM.nDropped} not at the room (inside solids or outside), left out`); if (GM.nSkipped) t.push(`${GM.nSkipped} set to "not part of the room"`); if (GM.nTiny) t.push(`${GM.nTiny} without area`); return t.length ? ` (${t.join("; ")})` : ""; })() + `, voxel ${(GM.vox.h * 100).toFixed(1)} cm, volume ${GM.V.toFixed(0)} m³ (${GM.volFrom === "mesh" ? "from the faces" : "voxel count"}), ${m.dims.join(" × ")} m. Heights are above the lowest floor under each point.`
+  $("meshNote").textContent = GM ? `${m.name}: ${GM.nFaces} faces in the file, ${GM.S.filter((q) => q.kind === "mesh").length} used as room faces` + (() => { const t = []; if (GM.nNarrow) t.push(`${GM.nNarrow} narrow ones kept two-sided`); if (GM.nDropped) t.push(`${GM.nDropped} not at the room (inside solids or outside), left out`); if (GM.nSkipped) t.push(`${GM.nSkipped} set to "not part of the room"`); if (GM.nTiny) t.push(`${GM.nTiny} without area`); if (GM.vSpaces > 0.05) t.push(`${GM.vSpaces.toFixed(1)} m³ behind narrow openings counted as room`); return t.length ? ` (${t.join("; ")})` : ""; })() + `, voxel ${(GM.vox.h * 100).toFixed(1)} cm, volume ${GM.V.toFixed(0)} m³ (${GM.volFrom === "mesh" ? "from the faces" : "voxel count"}), ${m.dims.join(" × ")} m. Heights are above the lowest floor under each point.`
     : `${m.name}: ${MESHC.err || "could not be built"}. Check the up axis, or place a source inside the hall.`;
 }
 // rebuild the voxel room after a model setting changed (main thread), then the BRIRs (worker)
