@@ -1,5 +1,7 @@
 # Arni variable-acoustics room: early decay where the absorption is known (2026-11-13)
 
+**Note of 2026-11-18.** These runs were made before the dropped-face fix (`validation/mesh_leak.md`): the 106 side faces of the panels (90.3 m² of 351 m²) were dropped and 8.5 % of the rays were lost in the slots between panels (now 0.007 %). Not rerun.
+
 Question: in Arvedi the measured EDT is 15 - 20 % shorter than T30 and the simulated EDT is about T30. Does the engine
 produce an early decay faster than the late one at all, when the absorption sits in known places? And does it follow
 where the absorption is?

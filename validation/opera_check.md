@@ -1,5 +1,7 @@
 # OperaRIR, Finnish National Opera: a directional loudspeaker in a large hall (2026-11-13)
 
+**Note of 2026-11-18.** These runs were made before the dropped-face fix (`validation/mesh_leak.md`): 3 - 5 faces were dropped and 1.3 - 1.5 % of the rays were lost (now 0.000 - 0.003 %). Not rerun.
+
 Question: with a directional loudspeaker of known directivity, does the engine get EDT and C80 right at 2 - 4 kHz in a
 large hall? (Arvedi, Genelec 8020: simulated C80 1.2 - 2.8 dB too low at 2 - 4 kHz.)
 

@@ -512,9 +512,15 @@ closed room (BRAS RS5) is refused, as its OBJ would be. If a file does not open,
   about surface area × voxel size; CR3 at 6.5 cm 3124 → 3293 m³, BRAS documentation 3330.6 m³); if the one-sided
   faces form a closed surface (sum of their area vectors below 0.1 % of their area) and the divergence theorem
   agrees within 3 %, that value is shown ("from the faces"). The volume is reported only; no result uses it.
-- Lost rays: the status line gives the share of rays that left the room (found no surface, entered a space the room
-  fill did not reach, or moved behind the faces). A closed model loses none; above 0.1 % the page shows a warning,
-  and the saved config (`_provenance.rays_lost_fraction`, `valid`) and the SOFA comment carry the value.
+- Lost rays: the status line gives the share of rays that were ended early, at any of their reflections: through
+  gaps (the ray found no surface, or moved behind the faces), or in a space the room fill did not reach (one joined
+  to the room only by openings narrower than about 3 voxels, such as the cavity above slotted ceiling panels; the
+  engine does not count it as room, so it acts as an absorber). A closed model without such spaces loses none.
+  Above 0.1 % the page shows a warning that the values are not valid and names the two shares; the saved config
+  (`_provenance.rays_lost_fraction`, `rays_lost_in_unreached_spaces`, `valid`) and the SOFA comment carry them.
+  Values on 2026-11-18 (`validation/mesh_leak.md`): BRAS CR3 0.015 % (before the fix of that day 11 %), Fratoni STC
+  0.007 %; BRAS CR4 25 % (22 % of it in the space above the ceiling panels), Fratoni DUS 2.2 %, TCB 2.6 %, ULH
+  3.1 %: these four are above the limit, and their documented results stand with that reservation.
 - Page settings: up axis of the file (y up for OBJ exports of SketchUp and Blender; a `.skp` is converted to y up
   by the reader, so the setting stays at y up for it), plan turn (0 / 90 / 180 / 270°, display only:
   the page shows the depth along y), voxel size (auto: at least 5 cm and at most 2 × 10⁷ cells, for browser memory).
@@ -680,16 +686,19 @@ the Python ray tracer would take hours on these 6 000 – 10 000-face models.
 - Positions: plan figures registered to the model (scale and offset fitted to the walls of a horizontal cut; mean
   residual 7–9 px at 30–43 px/m), dots read from the figures. Heights are **assumptions**: receivers 1.2 m above the
   floor below them (stalls, box, gallery or balcony floor from the mesh), sources 1.5 m above the stage or pit floor.
-- Rays lost through gaps in the models: 17–24 % of the rays over the whole run (CR4: similar).
+- Rays lost: 17–24 % of the rays over the whole run in the runs of 2026-11-07. Most of that was the engine's own
+  error (narrow faces dropped, fixed on 2026-11-18, `validation/mesh_leak.md`), not gaps in the models. Rerun on
+  2026-11-18: DUS 1.9–2.4 %, TCB 3.1–3.9 %, still above the 0.1 % limit of the page. The table below is from the
+  rerun; against the earlier run the mean absolute errors moved by at most 0.3 JND.
 
 Results (simulated − measured, mean absolute difference in JND at 500 Hz – 1 kHz over sources and receiver zones,
 signed mean in brackets; tables and figures in `validation/fratoni_DUS.*`, `fratoni_TCB.*`):
 
 | hall | EDT | T30 | C80 | Ts |
 |---|---|---|---|---|
-| DUS (2 sources × 3 zones) | 2.7 (+2.7) | 1.2 (−0.1) | 1.2 (−0.6) | 0.9 (+0.6) |
-| TCB (2 sources × 3 zones) | 8.2 (−8.2) | 4.0 (−4.0) | 2.7 (+2.3) | 3.5 (−3.5) |
-| TCB, hall plaster as Wood (sensitivity) | 5.1 (−5.1) | 2.4 (−2.4) | 2.0 (+1.3) | 2.5 (−2.1) |
+| DUS (2 sources × 3 zones) | 2.8 (+2.8) | 1.0 (−0.1) | 1.2 (−0.6) | 0.8 (+0.7) |
+| TCB (2 sources × 3 zones) | 7.9 (−7.9) | 4.0 (−4.0) | 2.5 (+2.1) | 3.4 (−3.4) |
+| TCB, hall plaster as Wood (sensitivity; run of 2026-11-07, not rerun) | 5.1 (−5.1) | 2.4 (−2.4) | 2.0 (+1.3) | 2.5 (−2.1) |
 
 Reading:
 - DUS: T30 at mid frequencies within about 1 JND; as in ULH, T30 is short at 125–250 Hz (−3 … −4 JND) and long at

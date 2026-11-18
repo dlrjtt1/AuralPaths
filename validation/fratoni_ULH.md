@@ -1,5 +1,7 @@
 # Fratoni ULH: measured vs AuralPaths (Python engine)
 
+**Note of 2026-11-18.** This run was made before the dropped-face fix (`validation/mesh_leak.md`; 295 faces dropped) and has not been rerun. With the fix ULH still loses 3.1 % of the rays (2.9 % in spaces the room fill does not reach), above the 0.1 % limit.
+
 **Recomputed 2026-11-13 after the engine fixes of 2026-11-12** (pyroomacoustics diffuse rain off; CHANGELOG) with 8 000 rays (50 000 below): mean absolute error over all bands, 3D / 2.5D: EDT 0.8 / 0.8, T30 1.1 / 1.6, C50 0.6 / 0.4, Ts 0.6 / 0.6 JND, i.e. within 0.1 JND of the values below. The tables below are from before the fixes.
 
 Data: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic simulations*, Mendeley Data, https://doi.org/10.17632/y7xnv6xg5s.1 (CC BY 4.0). Measured values: the dataset's Room_Criteria sheet (mean over the listed receivers). Inputs: the dataset's GA absorption / scattering, unchanged.

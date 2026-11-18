@@ -4,6 +4,18 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- **3D models lost rays through faces that the engine itself dropped** (found 2026-11-18, `validation/mesh_leak.md`).
+  `buildMesh` / `build_mesh` dropped every face with no room voxel 2.5 voxels in front of or behind it; faces narrower
+  than the surface band (step risers, strips, panel sides) went with them. BRAS CR3: 285 of 2598 faces (8.1 m²),
+  11 % of the rays lost, now 0.015 %; Arni model 8.5 % → 0.007 %; Fratoni DUS 38 % → 2.2 %, TCB 10 % → 2.6 %; BRAS
+  CR4 39 % → 25 % (22 % of it in the space above the ceiling panels, which the engine does not count as room: open).
+  Effect with real materials: CR3 T30 +2 %, EDT +1.3 %, C80 −0.1 dB; CR4 T30 +2.5 … +4.1 %. Such faces are now kept
+  as two-sided faces, both sides in one plane. Results of 3D models change; documented runs made with the Python
+  engine (BRAS CR3 / CR4, STC, ULH, Arni, OperaRIR) have not been rerun and carry a note.
+  - Volume of a 3D model: 1.5 voxels of the surface band instead of 0.5 (CR3 3124 → 3293 m³; documentation 3330.6).
+  - Page: lost rays always shown for a 3D model, warning and `valid: false` in the saved config above 0.1 %;
+    material choice "Not part of the room"; the counts under the model are defined in `docs/MODEL_*`.
+  - New: `validation/check_mesh_leak.js` (regression check `mesh_leak`), `validation/check_leak_effect.py`.
 - Page: the 3D-model button also opens SketchUp files (`.skp`), read in the browser with openskp 1.5.0 (MIT,
   https://github.com/iamahsanmehmood/openskp; loaded from jsDelivr on first use) and converted to OBJ text. Surface names: front material (matched by
   colour), else tag, else colour; legacy files without materials come as one name. CR4 `.skp` and OBJ agree in size,

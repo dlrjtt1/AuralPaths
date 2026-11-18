@@ -1,5 +1,7 @@
 # BRAS CR3: measured RIRs vs AuralPaths (Python engine)
 
+**Note of 2026-11-18.** This run was made before the dropped-face fix (`validation/mesh_leak.md`): 279 faces were dropped at 5 cm voxels and rays left the room through the holes. It has not been rerun with the Python engine. With the page's engine and the same materials the fix changes T30, EDT and C80 as given in `validation/mesh_leak.md` (*Effect*); the calibration factors below include the effect of the holes.
+
 Data: Aspöck et al. (2020), *BRAS – Benchmark for Room Acoustical Simulation*, v3, https://doi.org/10.14279/depositonce-6726.3, CC BY-SA 4.0 (dodecahedron RIRs, positions, surface descriptions). Material set: fitted_estimates. This file is derived from BRAS and is CC BY-SA 4.0.
 
 ```

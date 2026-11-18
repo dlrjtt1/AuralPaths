@@ -13,8 +13,9 @@
 // scattering 0.3, automatic voxel size).
 //
 // Result on 2026-11-18 (20 000 rays, 3 seeds x 3 source positions, voxel 5 / 6.5 / 10 cm):
-//   steps model: 0 faces dropped, 24 narrow faces kept, rays lost 0 %, volume within 0.6 % of 1989.1 m3
-//   before the fix (6.5 cm): 24 faces dropped, 2.5 % of the rays lost
+//   steps model: 0 faces dropped, 20 / 24 / 24 narrow faces kept, rays lost 0 %, volume within 0.30 % of 2030.3 m3
+//   before the fix (engine of commit 1e911b9): 20 / 24 / 24 faces dropped, 44.5 / 50.6 / 50.6 % of the rays lost,
+//   volume 2.6 / 3.4 / 4.7 % too small
 const fs = require("fs"), path = require("path");
 const GEOM = eval(fs.readFileSync(path.join(__dirname, "..", "engine_geom.js"), "utf8") + ";GEOM");
 const W = 14, D = 20, H = 8, NS = 24, TR = 0.8, RI = 0.06, Y0 = 0.4;      // steps start 0.4 m from the front wall
