@@ -424,7 +424,7 @@ RS6 (finite body) and RS7 (seat dip, 15 blocks) were later checked with `validat
 ## 3D OBJ halls and conversion to a drawn hall (`obj_to_hall.py`)
 
 Both engines can run a hall given as a Wavefront OBJ mesh (`"geometry": {"mesh": {...}}`, described at the top of
-the mesh part of `geometry.py`; in the page: **Hall → Shape → 3D model (OBJ)**, see *3D models in the browser* below).
+the mesh part of `geometry.py`; in the page: **Hall → Shape → 3D model (OBJ, SKP)**, see *3D models in the browser* below).
 `obj_to_hall.py` turns a mesh hall into a drawn hall (2.5D) where image sources above order 1 and edge diffraction
 are wanted.
 
@@ -471,12 +471,24 @@ python obj_to_hall.py mesh_config.json --depth-axis y --stage-end min --stage-de
 
 ### 3D models in the browser
 
-**Hall → Shape → 3D model (OBJ)** opens an OBJ file (or **Load config…** a config with `geometry.mesh`; a config
+**Hall → Shape → 3D model (OBJ, SKP)** opens an OBJ file (or **Load config…** a config with `geometry.mesh`; a config
 saved by the page carries the OBJ as `mesh.obj_text`, a Python config asks for the OBJ file next). `engine_geom.js`
 builds the room as `geometry.build_mesh` does (voxel flood fill from the first source or seat inside, inward
 normals, hidden faces dropped, back-facing twins, 1 mm inflate). Checked on BRAS CR3 at 5 cm voxels: same 4638
 surfaces, 279 dropped faces, volume 3188 m³ and the same 37 first-order image sources as Python (largest relative
 energy difference 7 × 10⁻⁷).
+
+**SketchUp files (`.skp`).** The same button also opens a `.skp` file. The page reads it with openskp 1.5.0 (MIT
+licence, https://github.com/iamahsanmehmood/openskp; an independent, reverse-engineered reader, not from Trimble; loaded once from jsDelivr, so the first
+use needs the internet), turns the front faces into OBJ text (metres, y up) and continues as for an OBJ file; a
+saved config carries that OBJ text. Limits: a surface is named after the material of its front side when that colour
+belongs to one material only, else after its tag, else `colour_R_G_B` or `no_material`; back-side materials are not
+read; in older files the tags are not available per face, so a model without materials comes as one name (all
+surfaces one material). Checked on 2026-11-18 (openskp served from a local copy): the BRAS CR4 `.skp` and the data
+set's OBJ give the same size (33.35 × 33.13 × 14.27 m), the same area per material (5851.33 and 5851.28 m² in
+total) and the same room volume (8049 m³), with 5162 and 5174 faces; the DUS `.skp` of the calibration data set has
+0.18 % more area than that data set's OBJ (7647.8 and 7633.7 m²) and no materials (one name). A scene that is not a
+closed room (BRAS RS5) is refused, as its OBJ would be. If a file does not open, export OBJ from SketchUp.
 
 - Page settings: up axis (y up for SketchUp / Blender OBJ exports), plan turn (0 / 90 / 180 / 270°, display only:
   the page shows the depth along y), voxel size (auto: at least 5 cm and at most 2 × 10⁷ cells, for browser memory).
@@ -1093,6 +1105,7 @@ For other loudspeakers, use manufacturer data or your own measurements.
 
 - h5wasm 0.10.3 (NIST software licence; includes the HDF5 library), loaded from jsDelivr only when a
   SOFA directivity file is opened or BRIRs are exported as SOFA; not bundled. Check the licence text before distributing the viewer.
+- openskp 1.5.0 (MIT licence, https://github.com/iamahsanmehmood/openskp; not a Trimble product), loaded from jsDelivr only when a `.skp` file is opened; not bundled.
 - Directivity databases (not bundled, check each licence): TU Berlin musical instruments and a soprano
   (Ackermann, Brinkmann & Weinzierl; CC BY-SA 4.0), TH Köln voice directivity (Pörschmann & Arend; CC BY 4.0),
   IEM DirPat loudspeakers (Brandner; public domain mark).

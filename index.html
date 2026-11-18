@@ -317,7 +317,7 @@ input[type="file"]::file-selector-button:hover { background: var(--panel); }
       </div>
       <div id="meshCtl" hidden>
         <div class="row">
-          <input type="file" id="fObj" accept=".obj,text/plain" aria-label="3D model (Wavefront OBJ)">
+          <input type="file" id="fObj" accept=".obj,.skp,text/plain" aria-label="3D model (Wavefront OBJ or SketchUp SKP)">
           <label class="vol">Up axis <select id="selAxes"><option value="y-up">y up (SketchUp, Blender OBJ export)</option><option value="z-up">z up</option></select></label>
           <label class="vol">Turn plan <select id="selRot"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
           <button class="btn" id="bFront" title="Click both ends of the stage opening, then anywhere on the stage: the sources and seats are placed from that line">Mark stage front…</button>
@@ -2441,7 +2441,7 @@ let HALL = deep(INIT.hall), OBJ = deep(INIT.objs);
 let GM = null; // built mesh of the drawn hall
 const isMesh = () => !!HALL.mesh;
 // 3D models: image sources to order 1 or 2 (order 2: about 7 s per source in CR3, 2600 faces; order 3 would be ~2300 times more)
-function meshOrder() { return Math.max(1, Math.min(2, HALL.order || 2)); }                  // 3D model (OBJ): engine_geom.js buildMesh, as geometry.build_mesh
+function meshOrder() { return Math.max(1, Math.min(2, HALL.order || 2)); }                  // 3D model (OBJ, SKP): engine_geom.js buildMesh, as geometry.build_mesh
 const isDrawn = () => !!HALL.geom || isMesh();     // both use the image-source + ray-tracing engine in the worker
 const MESHC = { key: "", G: null, err: "" };       // the voxelised model, rebuilt only when the model or its settings change
 // 3D models: the engine works in the model's own frame (the page frame of plan turn 0), so that turning the plan
@@ -3375,11 +3375,43 @@ function meshNote() {
 function meshRebuild() { buildGeom(); meshNote(); if (GM) { clampAll(); work(rebuildAll); } }
 // items of a shoebox / drawn hall into a model: the layout keeps its shape around the model centre (then clampAll)
 function placeInMesh(m, from) { const c = m.dims.map((v) => v / 2); for (const o of OBJ) o.pos = [c[0] + (o.pos[0] - from[0] / 2) * 0.5, c[1] + (o.pos[1] - from[1] / 2) * 0.5, o.pos[2]]; }
-function loadObjFile(f) {
-  const r = new FileReader();
-  r.onload = () => {
-    if (S.pendingCfg) { const { c, name } = S.pendingCfg; S.pendingCfg = null; c.geometry.mesh.obj_text = String(r.result); c.geometry.mesh.obj = f.name; applyConfig(c, name); return; }
-    let m; try { m = meshState({ axes: $("selAxes").value, rotate_deg: +$("selRot").value, voxel_m: +$("selVox").value }, String(r.result), f.name); } catch (e) { $("meshNote").textContent = `${f.name}: ${e.message || e}. Nothing changed.`; return; }
+// ---- SketchUp files (.skp): read in the browser with openskp (MIT, github.com/iamahsanmehmood/openskp; not from Trimble,
+// reverse-engineered) and turned into OBJ text (metres, y up), which then goes the way of an OBJ file. One surface per
+// face with its front material; names: the material with the face's colour (if only one material has that colour),
+// else the tag (layer), else the colour. The converted OBJ is what the config stores (obj_text).
+const SKPURL = "https://cdn.jsdelivr.net/npm/openskp@1.5.0/+esm";
+let skpLib = null;
+function ensureSkp() { if (!skpLib) skpLib = import(SKPURL).catch((e) => { skpLib = null; throw new Error("could not load the SketchUp reader (needs the internet once)"); }); return skpLib; }
+function skpToObj(lib, ab) {
+  const sc = lib.buildScene(ab, { frontSideOnly: true }), model = lib.parseSkp(ab), byCol = new Map();
+  for (const m of model.materials || []) { if (!m.color) continue; const k = [m.color.r, m.color.g, m.color.b].join("_"); byCol.set(k, byCol.has(k) ? null : m.name); }   // null: several materials with this colour
+  const out = ["# from SketchUp " + String(model.version || "").replace(/[{}]/g, "") + " by openskp: metres, y up"], names = new Set(); let base = 1, nTri = 0;
+  for (const p of sc.glbPrimitives || []) {
+    const c = /_(\d+)_(\d+)_(\d+)_[a-z]+$/.exec(p.geomName || ""), k = c ? c.slice(1, 4).join("_") : "", info = sc.meshIndex && (sc.meshIndex.get ? sc.meshIndex.get(p.geomName) : sc.meshIndex[p.geomName]), lay = info && info.layer && !/^Layer ?0$|^Untagged$/i.test(info.layer) ? info.layer : "";
+    const nm = String(byCol.get(k) || lay || (k ? "colour_" + k : "no_material")).trim().replace(/\s+/g, "_");
+    names.add(nm); out.push("usemtl " + nm);
+    for (let i = 0; i < p.positions.length; i += 3) out.push(`v ${+p.positions[i].toFixed(6)} ${+p.positions[i + 1].toFixed(6)} ${+p.positions[i + 2].toFixed(6)}`);
+    for (let i = 0; i < p.indices.length; i += 3) out.push(`f ${base + p.indices[i]} ${base + p.indices[i + 1]} ${base + p.indices[i + 2]}`);
+    base += p.positions.length / 3; nTri += p.indices.length / 3;
+  }
+  if (!nTri) throw new Error("no faces found in this SketchUp file");
+  return { text: out.join("\n") + "\n", nTri, names: names.size };
+}
+async function loadObjFile(f) {
+  if (/\.skp$/i.test(f.name)) {
+    $("meshNote").textContent = `Reading ${f.name}…`;
+    try { const [lib, ab] = await Promise.all([ensureSkp(), f.arrayBuffer()]), r = skpToObj(lib, ab);
+      $("selAxes").value = "y-up";
+      useObjText(r.text, f.name, `${f.name}: SketchUp file read by openskp (${r.nTri} triangles, ${r.names} surface names; front materials only). Check the plan and the section against the model.`); }
+    catch (e) { $("meshNote").textContent = `${f.name}: ${e.message || e}. Nothing changed. Exporting OBJ from SketchUp (File, Export, 3D Model) is the other way.`; }
+    return;
+  }
+  const r = new FileReader(); r.onload = () => useObjText(String(r.result), f.name, ""); r.readAsText(f);
+}
+function useObjText(text, fname, note) {
+  {
+    if (S.pendingCfg) { const { c, name } = S.pendingCfg; S.pendingCfg = null; c.geometry.mesh.obj_text = text; c.geometry.mesh.obj = fname; if (note) c.geometry.mesh.axes = "y-up"; applyConfig(c, name); return; }
+    let m; try { m = meshState({ axes: $("selAxes").value, rotate_deg: +$("selRot").value, voxel_m: +$("selVox").value }, text, fname); } catch (e) { $("meshNote").textContent = `${fname}: ${e.message || e}. Nothing changed.`; return; }
     stop();
     const old = HALL.mesh; if (!isMesh()) { HALL.geomStash = HALL.geom || HALL.geomStash; HALL.boxStash = { dims: HALL.dims.slice(), stage: HALL.stage, order: HALL.order, diff: HALL.diff }; }
     const same = !!old && old.text === m.text;   // the same model again (other settings): keep positions in the model frame
@@ -3395,8 +3427,8 @@ function loadObjFile(f) {
     if (!GM) { meshNote(); return; }
     initHeights(OBJ); clampAll(); work(rebuildAll);
     if (place) $("posNote").textContent = "The page does not know where the stage of a 3D model is: use Mark stage front… (Hall, 3D model) to place the sources and seats.";
-  };
-  r.readAsText(f);
+    if (note) $("posNote").textContent = note + " " + $("posNote").textContent;
+  }
 }
 $("fObj").onchange = (e) => { if (e.target.files[0]) loadObjFile(e.target.files[0]); e.target.value = ""; };
 // ---- 3D models: the stage front (the stage opening, e.g. the proscenium line), marked with three clicks on the plan:
@@ -3494,7 +3526,7 @@ function shapeUI() {
     : d
     ? `Model: drawn hall (plan outline, floor and ceiling lines). First 100 ms: image sources to order ${HALL.order}, checked for visibility, rendered with KU100 HRIRs${HALL.diff ? ", plus first-order edge diffraction (UTD)" : ""}. Diffuse energy from ray tracing (${HALL.rays.toLocaleString("en")} rays) fills the early window and shapes the late noise. Hall values are placeholders until you enter real ones.`
     : "Model: shoebox with uniform absorption. First 100 ms: image sources to order 12 with KU100 HRIRs. After that: noise shaped by the image-source energy envelope (order 60). Hall values are placeholders until you enter real ones.";
-  $("hallSub").textContent = mm ? "3D model (OBJ): each name in the model mapped to a material." : d ? "Drawn hall: plan outline, floor and ceiling lines, four surface materials." : "Shoebox, uniform absorption on all surfaces.";
+  $("hallSub").textContent = mm ? "3D model (OBJ, SKP): each name in the model mapped to a material." : d ? "Drawn hall: plan outline, floor and ceiling lines, four surface materials." : "Shoebox, uniform absorption on all surfaces.";
   syncSeg($("segShape"), ["box", "drawn", "mesh"], () => (mm ? "mesh" : d ? "drawn" : "box"));
   if (d) { buildMatTable(); $("selOrder").value = String(mm ? meshOrder() : HALL.order); $("selRays").value = String(HALL.rays); $("selDiff").value = HALL.diff ? "1" : "0"; seatDipUI(); }
 }
@@ -3548,7 +3580,7 @@ seg($("segShape"), ["box", "drawn", "mesh"], () => (isMesh() ? "mesh" : isDrawn(
     if (!HALL.matsSet) HALL.mats = defaultMats(HALL.alpha, HALL.mats?.aud?.s ?? 0.1);
   } else { HALL.geomStash = HALL.geom; HALL.geom = null; }
   shapeUI(); buildGeom(); initHeights(OBJ); clampAll(); work(rebuildAll);
-}, (v) => ({ box: "Shoebox", drawn: "Drawn hall", mesh: "3D model (OBJ)" })[v]);
+}, (v) => ({ box: "Shoebox", drawn: "Drawn hall", mesh: "3D model (OBJ, SKP)" })[v]);
 $("selOrder").onchange = (e) => { HALL.order = isMesh() ? Math.min(2, +e.target.value) : +e.target.value; if (isDrawn()) work(rebuildAll); };
 $("selRays").onchange = (e) => { HALL.rays = +e.target.value; if (isDrawn()) work(rebuildAll); };
 $("selDiff").onchange = (e) => { HALL.diff = e.target.value === "1"; shapeUI(); if (isDrawn()) work(rebuildAll); };
@@ -5214,7 +5246,7 @@ atSample().then((s) => { if (s) $("bAuto").hidden = false; }).catch(() => {});
 const GUIDE = {
   en: { title: "Quick guide", sub: "A research and teaching tool for the precedence effect in sound reinforcement: vary hall, loudspeaker and seat positions, delay and level, then compute, listen to and export binaural room responses. Five steps:",
     steps: [
-      ["Choose the hall", "In <b>Hall</b>: Shoebox, Drawn hall (plan outline and section, can be traced from PDF drawings) or 3D model (OBJ). Enter sizes and materials, then <b>Apply</b>."],
+      ["Choose the hall", "In <b>Hall</b>: Shoebox, Drawn hall (plan outline and section, can be traced from PDF drawings) or 3D model (OBJ, SKP). Enter sizes and materials, then <b>Apply</b>."],
       ["Place sources and seats", "In <b>Plan</b> and <b>Section</b>, drag the amplified source (Amp), the PAs and the seats, or type positions in <b>Layout</b>. The plan colour shows the effective ITDG at every point."],
       ["Set the condition", "In the top bar: <b>Seat</b>, <b>Nominal ITDG</b> (PA delay re the direct sound) and <b>Level ratio PA / direct</b>."],
       ["Read the results", "<b>Echogram</b>, <b>Arrivals</b> and <b>Current condition</b> (timing, level, room-acoustic parameters and how far they have been checked against measured halls); <b>Level-ratio trend</b> across conditions."],

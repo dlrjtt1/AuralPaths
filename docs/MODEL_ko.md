@@ -383,7 +383,7 @@ RS6(유한 물체)와 RS7(좌석 dip, 블록 15개)은 나중에 `validation/bra
 ## 3D OBJ 홀과 그린 홀로의 변환 (`obj_to_hall.py`)
 
 두 엔진 모두 Wavefront OBJ 메시로 주어진 홀을 계산할 수 있다(`"geometry": {"mesh": {...}}`, 설명은 `geometry.py`의
-메시 부분 첫머리. 페이지에서는 **Hall → Shape → 3D model (OBJ)**, 아래 *브라우저의 3D 모델* 참조). 2차 이상의 허상과
+메시 부분 첫머리. 페이지에서는 **Hall → Shape → 3D model (OBJ, SKP)**, 아래 *브라우저의 3D 모델* 참조). 2차 이상의 허상과
 모서리 회절이 필요하면 `obj_to_hall.py`로 메시 홀을 그린 홀(2.5D)로 바꾼다.
 
 - 메시: 면의 감김 방향을 믿을 수 없으므로 음원 위치에서 시작하는 복셀 채우기(5 cm)로 실내를 찾는다. 각 면의 안쪽
@@ -424,11 +424,21 @@ python obj_to_hall.py mesh_config.json --depth-axis y --stage-end min --stage-de
 
 ### 브라우저의 3D 모델
 
-**Hall → Shape → 3D model (OBJ)**로 OBJ 파일을 연다(또는 `geometry.mesh`가 있는 config를 **Load config…**로 연다.
+**Hall → Shape → 3D model (OBJ, SKP)**로 OBJ 파일을 연다(또는 `geometry.mesh`가 있는 config를 **Load config…**로 연다.
 페이지가 저장한 config에는 OBJ가 `mesh.obj_text`로 들어 있고, Python config이면 이어서 OBJ 파일을 요청한다).
 `engine_geom.js`는 `geometry.build_mesh`와 같은 방법으로 실내를 만든다(실내에 있는 첫 음원 또는 좌석에서 시작하는 복셀
 채우기, 안쪽 법선, 가려진 면 제거, 뒷면 쌍둥이 면, 1 mm 확장). BRAS CR3, 복셀 5 cm에서 확인: Python과 같은 4638개 면,
 제거된 면 279개, 체적 3188 m³, 같은 1차 허상 37개(에너지 최대 상대 차 7 × 10⁻⁷).
+
+**SketchUp 파일(`.skp`).** 같은 버튼으로 `.skp` 파일도 연다. 페이지는 openskp 1.5.0(MIT 라이선스, https://github.com/iamahsanmehmood/openskp.
+Trimble 제품이 아닌 독립적인 역공학 리더. jsDelivr에서 한 번 불러오므로 처음 쓸 때 인터넷이 필요하다)으로 파일을 읽어
+앞면을 OBJ 텍스트(미터, y 위)로 바꾼 뒤 OBJ 파일과 같은 경로로 처리한다. 저장한 config에는 이 OBJ 텍스트가 들어간다.
+한계: 면의 이름은 앞면 재질의 이름(그 색을 가진 재질이 하나뿐일 때), 아니면 태그, 아니면 `colour_R_G_B` 또는
+`no_material`이다. 뒷면 재질은 읽지 않는다. 오래된 형식의 파일에서는 면별 태그를 얻을 수 없어, 재질이 없는 모델은 이름
+하나(모든 면이 한 재질)로 들어온다. 2026-11-18 확인(openskp는 로컬 사본으로 제공): BRAS CR4의 `.skp`와 데이터셋의 OBJ는
+크기(33.35 × 33.13 × 14.27 m), 재질별 면적(합계 5851.33과 5851.28 m²), 실 체적(8049 m³)이 같고 면 수는 5162와
+5174이다. 보정 데이터셋 DUS의 `.skp`는 그 데이터셋의 OBJ보다 면적이 0.18 % 크고(7647.8과 7633.7 m²) 재질이 없다(이름
+하나). 닫힌 실이 아닌 장면(BRAS RS5)은 OBJ일 때와 같이 거부된다. 파일이 열리지 않으면 SketchUp에서 OBJ로 내보낸다.
 
 - 페이지 설정: 위쪽 축(SketchUp / Blender OBJ 내보내기는 y up), 평면 회전(0 / 90 / 180 / 270°, 표시용. 페이지는
   깊이를 y 방향으로 보여 준다), 복셀 크기(auto: 5 cm 이상, 브라우저 메모리를 위해 셀 2 × 10⁷개 이하). 모델의 각 이름
@@ -947,6 +957,7 @@ C80 / D50 / EDT / T30 / IACC가 일반 모델과 0.04 dB / 0.005 / 0.003 s / 0.0
 - fast-simplification(Python, MIT 라이선스, 선택): 큰 OBJ 홀의 메시 간략화.
 - h5wasm 0.10.3(NIST 소프트웨어 라이선스, HDF5 라이브러리 포함): SOFA 지향성 파일을 열거나 BRIR을 SOFA로 내보낼 때만 jsDelivr에서 불러오며
   포함되지 않는다. 뷰어를 배포하기 전에 라이선스 문구를 확인할 것.
+- openskp 1.5.0(MIT 라이선스, https://github.com/iamahsanmehmood/openskp. Trimble 제품이 아님): `.skp` 파일을 열 때만 jsDelivr에서 불러오며 포함되지 않는다.
 - 지향성 데이터베이스(포함되지 않음, 각 라이선스 확인): TU Berlin 악기와 소프라노(Ackermann, Brinkmann & Weinzierl;
   CC BY-SA 4.0), TH Köln 음성 지향성(Pörschmann & Arend; CC BY 4.0), IEM DirPat 스피커(Brandner; public domain mark).
 - pdf.js 3.11.174(Mozilla, Apache License 2.0): PDF 도면을 열 때만 cdnjs에서 불러오며 포함되지 않는다. 처음에는 인터넷

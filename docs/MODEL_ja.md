@@ -394,7 +394,7 @@ RS6(有限物体)と RS7(座席ディップ、ブロック 15 個)は、その�
 ## 3D OBJ ホールと描画ホールへの変換(`obj_to_hall.py`)
 
 両エンジンとも Wavefront OBJ メッシュで与えたホールを計算できる(`"geometry": {"mesh": {...}}`、説明は `geometry.py`
-のメッシュ部分の冒頭。ページでは **Hall → Shape → 3D model (OBJ)**、下記 *ブラウザの 3D モデル* を参照)。2 次以上の虚像と
+のメッシュ部分の冒頭。ページでは **Hall → Shape → 3D model (OBJ, SKP)**、下記 *ブラウザの 3D モデル* を参照)。2 次以上の虚像と
 エッジ回折が必要な場合は、`obj_to_hall.py` でメッシュホールを描画ホール(2.5D)に変換する。
 
 - メッシュ: 面の巻き方向は信頼できないため、音源位置から始めるボクセル塗りつぶし(5 cm)で室内を求める。各面の内向き
@@ -436,11 +436,22 @@ python obj_to_hall.py mesh_config.json --depth-axis y --stage-end min --stage-de
 
 ### ブラウザの 3D モデル
 
-**Hall → Shape → 3D model (OBJ)** で OBJ ファイルを開く(または `geometry.mesh` を含む config を **Load config…** で開く。
+**Hall → Shape → 3D model (OBJ, SKP)** で OBJ ファイルを開く(または `geometry.mesh` を含む config を **Load config…** で開く。
 ページが保存した config には OBJ が `mesh.obj_text` として入っており、Python の config の場合は続けて OBJ ファイルを求める)。
 `engine_geom.js` は `geometry.build_mesh` と同じ方法で室内を作る(室内にある最初の音源または座席から始めるボクセル塗りつぶし、
 内向き法線、隠れた面の除去、裏向きの双子面、1 mm の拡張)。BRAS CR3、ボクセル 5 cm で確認: Python と同じ 4638 面、除去面
 279、体積 3188 m³、同じ 1 次虚像 37 個(エネルギーの最大相対差 7 × 10⁻⁷)。
+
+**SketchUp ファイル(`.skp`)。** 同じボタンで `.skp` ファイルも開ける。ページは openskp 1.5.0(MIT ライセンス、https://github.com/iamahsanmehmood/openskp。
+Trimble 製ではない独立したリバースエンジニアリングによるリーダー。jsDelivr から一度読み込むため、初回はインターネットが
+必要)でファイルを読み、表面を OBJ テキスト(メートル、y 上)に変換して OBJ ファイルと同じ経路で処理する。保存した config
+にはこの OBJ テキストが入る。制限: 面の名前は表面の材質名(その色を持つ材質が一つだけの場合)、なければタグ、なければ
+`colour_R_G_B` または `no_material` とする。裏面の材質は読まない。古い形式のファイルでは面ごとのタグが得られないため、
+材質のないモデルは一つの名前(全面が同じ材質)になる。2026-11-18 の確認(openskp はローカルの複製から提供): BRAS CR4 の
+`.skp` とデータセットの OBJ は寸法(33.35 × 33.13 × 14.27 m)、材質別面積(合計 5851.33 と 5851.28 m²)、室容積
+(8049 m³)が一致し、面数は 5162 と 5174 である。校正データセット DUS の `.skp` は同データセットの OBJ より面積が 0.18 %
+大きく(7647.8 と 7633.7 m²)、材質を持たない(名前一つ)。閉じた室でない場面(BRAS RS5)は OBJ の場合と同様に拒否される。
+ファイルが開けない場合は SketchUp から OBJ を書き出す。
 
 - ページの設定: 上方向の軸(SketchUp / Blender の OBJ 書き出しは y up)、平面の回転(0 / 90 / 180 / 270°、表示用。ページは
   奥行きを y 方向に表示する)、ボクセルサイズ(auto: 5 cm 以上、ブラウザのメモリのためセル 2 × 10⁷ 個以下)。モデル内の各名前
@@ -973,6 +984,7 @@ CSV の列 `band_hz, plane, angle_deg, level_db`: plane `h` = 水平極座標(+ 
 - fast-simplification(Python、MIT ライセンス、任意): 大きな OBJ ホールのメッシュ簡略化。
 - h5wasm 0.10.3(NIST ソフトウェアライセンス、HDF5 ライブラリを含む): SOFA 指向性ファイルを開く際、または BRIR を SOFA で保存する際にのみ jsDelivr から
   読み込み、同梱しない。ビューアを配布する前にライセンス文を確認すること。
+- openskp 1.5.0(MIT ライセンス、https://github.com/iamahsanmehmood/openskp。Trimble 製ではない): `.skp` ファイルを開く際にのみ jsDelivr から読み込み、同梱しない。
 - 指向性データベース(同梱しない、各ライセンスを確認すること): TU Berlin の楽器とソプラノ(Ackermann, Brinkmann &
   Weinzierl; CC BY-SA 4.0)、TH Köln の音声指向性(Pörschmann & Arend; CC BY 4.0)、IEM DirPat のスピーカー(Brandner;
   public domain mark)。

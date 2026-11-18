@@ -48,6 +48,7 @@ loaded and keeps its own licence.
 ## Loaded at run time (not included)
 - pdf.js 3.11.174 (Mozilla, Apache License 2.0), from cdnjs, only when a PDF drawing is opened.
 - h5wasm 0.10.3 (NIST software licence; includes HDF5), from jsDelivr, only when a SOFA directivity file is opened or BRIRs are exported as SOFA.
+- openskp 1.5.0 (MIT licence, https://github.com/iamahsanmehmood/openskp; an independent reader of the SketchUp file format, not a Trimble product), from jsDelivr, only when a `.skp` file is opened. SketchUp is a trademark of Trimble Inc.; its use here only identifies the file format.
 - IBM Plex Sans (SIL Open Font License 1.1), from Google Fonts.
 
 ## Not included (download separately)

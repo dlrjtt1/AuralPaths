@@ -4,6 +4,10 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- Page: the 3D-model button also opens SketchUp files (`.skp`), read in the browser with openskp 1.5.0 (MIT,
+  https://github.com/iamahsanmehmood/openskp; loaded from jsDelivr on first use) and converted to OBJ text. Surface names: front material (matched by
+  colour), else tag, else colour; legacy files without materials come as one name. CR4 `.skp` and OBJ agree in size,
+  area per material and room volume (`docs/MODEL_*`, *3D models in the browser*).
 - Audit of 2026-11-18 (page), found by saving a config and loading it again, and by computing one set-up two ways:
   - Saved configs now give the same BRIRs again. Before: positions were saved in centimetres while the page computed
     with finer values; `geometry.rays` is at least 50000 (for `run.py`), so a page session with 10000 / 30000 /
