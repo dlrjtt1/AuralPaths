@@ -429,9 +429,15 @@ the mesh part of `geometry.py`; in the page: **Hall → Shape → 3D model (OBJ,
 are wanted.
 
 - Mesh: faces have no reliable winding, so the room is found by a voxel flood fill (5 cm) from a source position;
-  each face's inward normal is the side where the room is, faces with no room on either side are dropped, and
-  every kept face also gets a back-facing twin 2 mm behind it (a ray that slips behind a face is reflected instead
-  of lost). A space joined to the source's room only by a gap narrower than the voxel band (a door ajar between
+  each face's inward normal is the side where the room is (room voxels 2.5 voxels in front of or behind points
+  spread over the face), and every kept face also gets a back-facing twin 2 mm behind it (a ray that slips behind a
+  face is reflected instead of lost). A face with no room voxel at that distance on either side is looked at again:
+  if room voxels lie within 3 voxels of its own points it is a face narrower than the surface band of its neighbours
+  (a step riser, a narrow strip) and is kept as a two-sided face, both sides in one plane; only a face with none
+  (inside a solid, outside the hall) is left out. Until 2026-11-18 all such faces were dropped ("hidden faces"),
+  which opened holes in closed models: see *Lost rays* under *3D models in the browser* and
+  `validation/mesh_leak.md`. `"mesh": {"keep_all": true}` (Python) / `keepAll` (JavaScript) keeps every face.
+  A name mapped to `"__none"` in `groups` is not part of the room (markers of a measurement set-up). A space joined to the source's room only by a gap narrower than the voxel band (a door ajar between
   coupled rooms) is not reached by the fill; mark it with `"mesh": {"seeds": [[x, y, z]]}`. OBJ group names select the materials (case-insensitive substring match, so the SketchUp tags that
   Blender writes into the group names work). Large meshes are decimated (`max_faces`, fast-simplification, MIT).
   Image sources to order 1 only (pyroomacoustics enumerates N^order images), no diffraction (a tessellated curved
@@ -474,9 +480,11 @@ python obj_to_hall.py mesh_config.json --depth-axis y --stage-end min --stage-de
 **Hall → Shape → 3D model (OBJ, SKP)** opens an OBJ file (or **Load config…** a config with `geometry.mesh`; a config
 saved by the page carries the OBJ as `mesh.obj_text`, a Python config asks for the OBJ file next). `engine_geom.js`
 builds the room as `geometry.build_mesh` does (voxel flood fill from the first source or seat inside, inward
-normals, hidden faces dropped, back-facing twins, 1 mm inflate). Checked on BRAS CR3 at 5 cm voxels: same 4638
-surfaces, 279 dropped faces, volume 3188 m³ and the same 37 first-order image sources as Python (largest relative
-energy difference 7 × 10⁻⁷).
+normals, narrow faces kept two-sided, back-facing twins, 1 mm inflate). Checked on BRAS CR3 on 2026-11-18: both
+give 5196 one-sided surfaces (2598 room faces), 279 narrow faces kept, none left out and a volume of 3319 m³ at 5 cm
+voxels (293 narrow faces and 3310 m³ at 6.53 cm). Before that date both gave 4638 surfaces, 279 dropped faces,
+3188 m³ and the same 37 first-order image sources (largest relative energy difference 7 × 10⁻⁷); the image sources
+have not been compared again.
 
 **SketchUp files (`.skp`).** The same button also opens a `.skp` file. The page reads it with openskp 1.5.0 (MIT
 licence, https://github.com/iamahsanmehmood/openskp; an independent, reverse-engineered reader, not from Trimble; loaded once from jsDelivr, so the first
@@ -490,7 +498,25 @@ total) and the same room volume (8049 m³), with 5162 and 5174 faces; the DUS `.
 0.18 % more area than that data set's OBJ (7647.8 and 7633.7 m²) and no materials (one name). A scene that is not a
 closed room (BRAS RS5) is refused, as its OBJ would be. If a file does not open, export OBJ from SketchUp.
 
-- Page settings: up axis (y up for SketchUp / Blender OBJ exports), plan turn (0 / 90 / 180 / 270°, display only:
+- Counts shown under the model (**Hall**), all for the model as the engine uses it:
+  *faces in the file*: polygons read from the OBJ, or triangles made from the `.skp` (the same surface can give a
+  different number: BRAS CR3 is 2598 triangles in a Blender OBJ and 2596 from the `.skp`, with the same area per
+  material to 0.01 m²; the two files cut the same polygons into triangles differently). *Room faces*: the faces that
+  bound the room and reflect sound. *Narrow ones kept two-sided*: see the mesh rule above. *Not at the room, left
+  out*: no room voxel within 3 voxels (inside solids, outside the hall). *Set to "not part of the room"*: names
+  given that choice in the material table (for a file that also holds loudspeakers, microphones or furniture as
+  geometry, e.g. BRAS `CR3_RIR_Genelec8020c.skp`: 9256 such faces; with them left out the room has the same area
+  per material as `CR3.skp`). *Without area*: degenerate triangles. The engine itself holds two one-sided surfaces
+  per room face (front and back), which is the number the status line showed as "surfaces" before 2026-11-18.
+  *Volume*: free voxels plus 1.5 voxels of the surface band next to them (before 2026-11-18: 0.5, too small by
+  about surface area × voxel size; CR3 at 6.5 cm 3124 → 3293 m³, BRAS documentation 3330.6 m³); if the one-sided
+  faces form a closed surface (sum of their area vectors below 0.1 % of their area) and the divergence theorem
+  agrees within 3 %, that value is shown ("from the faces"). The volume is reported only; no result uses it.
+- Lost rays: the status line gives the share of rays that left the room (found no surface, entered a space the room
+  fill did not reach, or moved behind the faces). A closed model loses none; above 0.1 % the page shows a warning,
+  and the saved config (`_provenance.rays_lost_fraction`, `valid`) and the SOFA comment carry the value.
+- Page settings: up axis of the file (y up for OBJ exports of SketchUp and Blender; a `.skp` is converted to y up
+  by the reader, so the setting stays at y up for it), plan turn (0 / 90 / 180 / 270°, display only:
   the page shows the depth along y), voxel size (auto: at least 5 cm and at most 2 × 10⁷ cells, for browser memory).
   Each name in the model (its OBJ material, else its group) is mapped to the audience floor, stage floor, walls,
   ceiling, or a material of its own. Plan and section show the room projected from the voxels (outline = x range

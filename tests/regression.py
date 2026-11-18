@@ -20,6 +20,8 @@ Checks (name: what it guards):
   seatdip      the seat-dip transfer function (2-D BEM over the rows), Python vs browser, every pair of the fan hall
   rays_split   the browser ray tracer gives the same histogram whether rays are traced in one run or split in parts
                (worker pool)
+  mesh_leak    a closed 3D model with risers narrower than the voxel band loses no rays, drops no face and has the
+               right volume (validation/check_mesh_leak.js)
   box_js       browser ray tracer T30 on a tiled shoebox, against its baseline and its free-path prediction
                (validation/check_box_lambert.js)
   box_py       Python (pyroomacoustics) ray tracer T30 in a shoebox, against its baseline (catches changes of the
@@ -150,6 +152,10 @@ def c_box_js():
     return r
 
 
+def c_mesh_leak():
+    return json.loads(run(["node", "validation/check_mesh_leak.js", "--json"], timeout=600).strip().splitlines()[-1])
+
+
 def c_box_py():
     code = r"""
 import sys; sys.path.insert(0, '.'); import numpy as np, pyroomacoustics as pra, brir_proto as bp
@@ -199,7 +205,7 @@ def c_calibrate():
 CHECKS = {"page": c_page, "page_load": c_page_load, "specular": c_specular, "diffraction": c_diffraction,
           "diffraction_plate": c_diffraction_plate,
           "diffraction_order2": c_diffraction_order2, "seatdip": c_seatdip,
-          "rays_split": c_rays_split, "box_js": c_box_js, "box_py": c_box_py, "rays_energy": c_rays_energy,
+          "rays_split": c_rays_split, "box_js": c_box_js, "mesh_leak": c_mesh_leak, "box_py": c_box_py, "rays_energy": c_rays_energy,
           "engine_js": c_engine_js, "engine_js_dir": c_engine_js_dir, "calibrate": c_calibrate}
 SLOW = {"calibrate"}
 

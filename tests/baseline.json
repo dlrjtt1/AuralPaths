@@ -93,6 +93,20 @@
    "max": 1e-09
   }
  },
+ "mesh_leak": {
+  "dropped_max": {
+   "max": 0
+  },
+  "lost_max_pct": {
+   "max": 0.1
+  },
+  "narrow_min": {
+   "min": 20
+  },
+  "volume_err_max_pct": {
+   "max": 2.0
+  }
+ },
  "page": {
   "up_to_date": {
    "min": 1

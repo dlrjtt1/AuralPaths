@@ -733,7 +733,7 @@ const GEOM = (() => {
     let st = seed >>> 0 || 1; const rnd = () => { st ^= st << 13; st >>>= 0; st ^= st >>> 17; st ^= st << 5; st >>>= 0; return st / 4294967296; };
     const Vs = 4 / 3 * Math.PI * radius ** 3, r2 = radius * radius, Lmax = c * tMax, e0 = 4 * Math.PI / n;
     const Rpow = {}; for (const m in mats) Rpow[m] = mats[m].R.map((r) => r * r);
-    let escaped = 0, hits = 0, leaked = 0;
+    let escaped = 0, hits = 0, leaked = 0, voided = 0;   // voided: the part of leaked that entered a space the room fill did not reach
     const tHit = new Float64Array(G.S.length), PL = planes(G), nS = G.S.length;
     // opt.face = [fx, fy]: horizontal direction the listeners face (default +y); direction bins are in the head frame
     const FACE = opts.face && (opts.face[0] !== 0 || opts.face[1] !== 1) ? opts.face : null;
@@ -770,7 +770,7 @@ const GEOM = (() => {
         if (G.mesh && G.S[bi].solo) { if (twinPrev) { leaked++; break; } twinPrev = true; } else twinPrev = false;
         if (G.mesh && best > 3 * G.vox.h) { let lk = false;
           for (const f of [0.25, 0.5, 0.75]) if (voxVoid(G.vox, [ox + f * best * dx, oy + f * best * dy, oz + f * best * dz])) { lk = true; break; }
-          if (lk) { leaked++; break; } }
+          if (lk) { leaked++; voided++; break; } }
         // receivers along this segment
         for (let m = 0; m < recs.length; m++) {
           const r = recs[m], wx = r[0] - ox, wy = r[1] - oy, wz = r[2] - oz, tc = wx * dx + wy * dy + wz * dz;
@@ -829,7 +829,7 @@ const GEOM = (() => {
         last = bi; if (firstS < 0) firstS = bi;
       }
     }
-    const out = { H, W, WE, escaped, hits, n, leaked };
+    const out = { H, W, WE, escaped, hits, n, leaked, voided };
     if (HS) Object.assign(out, { HS, sect: SD, nSb });
     if (LOG) out.LOG = LOG;
     return out;

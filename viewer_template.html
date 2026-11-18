@@ -1097,7 +1097,7 @@ function provenance() {
   return { page: "AuralPaths web " + "v" + D.version, engine_geom_sha256: ENGINE_SHA, saved: new Date().toISOString(),
     model: mm ? "3D mesh (OBJ)" : d ? "drawn 2.5D hall" : "shoebox",
     ...(mm ? { obj_sha256: HALL.mesh.sha || (HALL.mesh.sha = sha256(HALL.mesh.text)), voxel_m: GM ? +GM.vox.h.toFixed(4) : null } : {}),
-    ...(d ? { ...(mm ? { rays_lost_fraction: +LOST.toFixed(5), rays_lost_limit: LEAK_MAX, valid: LOST <= LEAK_MAX, room_faces: GM ? GM.S.filter((q) => q.kind === "mesh").length : null, volume_m3: GM ? +GM.V.toFixed(1) : null } : {}), page_rays_per_source: HALL.rays, page_ism_order: mm ? meshOrder() : HALL.order, page_diffraction: !mm && !!HALL.diff,
+    ...(d ? { ...(mm ? { rays_lost_fraction: +LOST.toFixed(5), rays_lost_in_unreached_spaces: +LOSTV.toFixed(5), rays_lost_limit: LEAK_MAX, valid: LOST <= LEAK_MAX, room_faces: GM ? GM.S.filter((q) => q.kind === "mesh").length : null, volume_m3: GM ? +GM.V.toFixed(1) : null } : {}), page_rays_per_source: HALL.rays, page_ism_order: mm ? meshOrder() : HALL.order, page_diffraction: !mm && !!HALL.diff,
       ray_seed: "1000 + 7919 x path index (amplified 0, PA L 1, PA R 2, unamplified 3...), the same every run" } : {}),
     materials: d ? (HALL.matsSet ? "edited or loaded" : "page defaults (placeholders)") : undefined,
     hrir: S.hrir ? S.hrir : KU100_NAME,
@@ -1128,7 +1128,7 @@ self.onmessage = (e) => {
   for (const t of m.tasks) {
     const src = m.srcs[t.i], ism = t.ism ? GEOM.withDiffraction(G, E, src, m, GEOM.ism(G, src, m.recs, m.order, m.tWin, m.c, m.mats, m.air, m.bands, m.spec)).map((L) => L.map(slim)) : null;
     const RT = GEOM.rays(G, src, m.recs, { n: m.rays, c: m.c, seed: 1000 + 7919 * m.seeds[t.i], tLate: tLateOf(src, m), tEarly: tEarlyOf(src, m), k0: t.k0, k1: t.k1, nSect: m.nSect, face: m.face }, m.mats, m.air);
-    self.postMessage({ job: m.job, i: t.i, ism, H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped + (RT.leaked || 0), n: RT.n }, RT.H.flat().map((a) => a.buffer).concat(RT.W ? RT.W.map((a) => a.buffer) : [], RT.WE ? RT.WE.map((a) => a.buffer) : [], RT.HS ? RT.HS.map((a) => a.buffer) : []));
+    self.postMessage({ job: m.job, i: t.i, ism, H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped + (RT.leaked || 0), voided: RT.voided || 0, n: RT.n }, RT.H.flat().map((a) => a.buffer).concat(RT.W ? RT.W.map((a) => a.buffer) : [], RT.WE ? RT.WE.map((a) => a.buffer) : [], RT.HS ? RT.HS.map((a) => a.buffer) : []));
   }
   self.postMessage({ job: m.job, done: true });
 };`;
@@ -1137,12 +1137,15 @@ self.onmessage = (e) => {
 let POOL_N = 0;   // > 0: fixed pool size (tests)
 const POOL = () => POOL_N || Math.max(1, Math.min((navigator.hardwareConcurrency || 2) - 1, 8));
 let pool = [];
-let worker = null, jobId = 0, workerOK = true, LOST = 0;
-// LOST: share of the rays that left the room (found no surface, entered a space the room fill did not reach, or moved
-// behind the faces). A closed model loses none; above LEAK_MAX the room-acoustic values are marked as not valid.
+let worker = null, jobId = 0, workerOK = true, LOST = 0, LOSTV = 0;
+// LOST: share of the rays that were ended early: through gaps (found no surface, or moved behind the faces), or in a
+// space that the room fill did not reach (LOSTV, part of LOST: a cavity or side room behind openings narrower than
+// about 3 voxels, which the model treats as not part of the room, so it acts as an absorber). A closed model without
+// such spaces loses none; above LEAK_MAX the room-acoustic values are marked as not valid.
 const LEAK_MAX = 0.001;
 function leakNote() { const bad = isMesh() && LOST > LEAK_MAX, el = $("leakNote"); el.hidden = !bad;
-  if (bad) el.textContent = `Not valid: ${(LOST * 100).toFixed(2)} % of the rays left the room through gaps in the model (limit ${(LEAK_MAX * 100).toFixed(1)} %). T30, EDT, C80 and the BRIRs of this model are too short / too weak in the late part by an unknown amount. Close the gaps in the model, or try a smaller voxel size.`; }
+  if (bad) { const g = LOST - LOSTV, f = (v) => (v * 100).toFixed(2) + " %";
+    el.textContent = `Not valid: ${f(LOST)} of the rays were lost (limit ${(LEAK_MAX * 100).toFixed(1)} %)` + (g > LEAK_MAX / 2 ? `; ${f(g)} left the room through gaps in the model` : "") + (LOSTV > LEAK_MAX / 2 ? `; ${f(LOSTV)} entered a space that is not counted as part of the room (behind openings narrower than about ${(3 * (GM ? GM.vox.h : 0.07) * 100).toFixed(0)} cm: a ceiling cavity, a side room) and were ended there` : "") + `. The late part of the response is too weak by an unknown amount (T30 and EDT too short). Close the gaps in the model, try a smaller voxel size, or map names that are not room surfaces to "Not part of the room".`; } }
 function workerMats() {
   const out = {};
   for (const [g] of matGroups()) { const a = HALL.mats[g].alpha, a8 = D.praBands.map((_, i) => (i < a.length ? a[i] : a[a.length - 1])); out[g] = { R: a8.map((v) => Math.sqrt(Math.max(1e-6, 1 - v))), s: HALL.mats[g].s }; }
@@ -1166,12 +1169,12 @@ function geomCompute(srcs, seats, seedOff = 0) {
       const nTask = srcs.length * P; let nDone = 0;
       $("busy").textContent = `Computing hall 0/${srcs.length}` + (P > 1 ? ` (${P} workers)` : "");
       return new Promise((ok, no) => {
-        const res = srcs.map(() => ({ ism: null, H: null, W: null, escaped: 0, n: msg.rays, parts: 0 })); let finished = 0;
+        const res = srcs.map(() => ({ ism: null, H: null, W: null, escaped: 0, voided: 0, n: msg.rays, parts: 0 })); let finished = 0;
         pool.forEach((w, p) => {
           const tasks = srcs.map((_, i) => ({ i, k0: Math.floor(msg.rays * p / P), k1: Math.floor(msg.rays * (p + 1) / P), ism: i % P === p }));
           w.onmessage = (e) => { const m = e.data; if (m.job !== msg.job) return;
             if (m.done) { if (++finished === P) { URL.revokeObjectURL(url); ok(faceTurn(res, face)); } return; }
-            const r = res[m.i]; if (m.ism) r.ism = m.ism; r.escaped += m.escaped; r.parts++;
+            const r = res[m.i]; if (m.ism) r.ism = m.ism; r.escaped += m.escaped; r.voided += m.voided || 0; r.parts++;
             if (!r.H) { r.H = m.H; r.W = m.W; r.WE = m.WE; r.HS = m.HS; r.sect = m.sect; r.nSb = m.nSb; } else { m.H.forEach((bs, k) => bs.forEach((a, b) => { const t = r.H[k][b]; for (let j = 0; j < a.length; j++) t[j] += a[j]; }));
               if (m.W) m.W.forEach((a, k) => { const t = r.W[k]; for (let j = 0; j < a.length; j++) t[j] += a[j]; });
               if (m.WE) m.WE.forEach((a, k) => { const t = r.WE[k]; for (let j = 0; j < a.length; j++) t[j] += a[j]; });
@@ -1197,7 +1200,7 @@ function inline(msg, progress) { // fallback without a worker: same engine on th
     const step = () => {
       const src = msg.srcs[i], I = GEOM.withDiffraction(G, E, src, msg, GEOM.ism(G, src, msg.recs, msg.order, msg.tWin, msg.c, msg.mats, msg.air, msg.bands, msg.spec));
       const RT = GEOM.rays(G, src, msg.recs, { n: msg.rays, c: msg.c, seed: 1000 + 7919 * msg.seeds[i], tLate: tLateOf(src, msg), tEarly: tEarlyOf(src, msg), nSect: msg.nSect, face: msg.face }, msg.mats, msg.air);
-      res[i] = { ism: I.map((L) => L.map(slim)), H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped + (RT.leaked || 0), n: RT.n };
+      res[i] = { ism: I.map((L) => L.map(slim)), H: RT.H, W: RT.W, WE: RT.WE, HS: RT.HS, sect: RT.sect, nSb: RT.nSb, escaped: RT.escaped + (RT.leaked || 0), voided: RT.voided || 0, n: RT.n };
       progress(++i); if (i < msg.srcs.length) setTimeout(step, 0); else ok(faceTurn(res, msg.face));
     };
     setTimeout(step, 0);
@@ -1207,12 +1210,12 @@ const smooth10 = (a) => { const n = a.length, o = new Float64Array(n); let s = 0
 async function geomRebuild(srcs, seats) {
   const job = jobId + 1, res = await geomCompute(srcs, seats);
   if (job !== jobId) return;       // a newer computation replaced this one
-  let lost = 0, total = 0; const todo = [];
+  let lost = 0, lostV = 0, total = 0; const todo = [];
   srcs.forEach((o, i) => {
-    const r = res[i]; lost += r.escaped; total += r.n;
+    const r = res[i]; lost += r.escaped; lostV += r.voided || 0; total += r.n;
     seats.forEach((s, k) => { GC[s.id + "|" + o.id] = { list: r.ism[k], H: r.H[k], W: r.W ? r.W[k] : null, WE: r.WE ? r.WE[k] : null, HS: r.HS ? r.HS[k] : null, sect: r.sect, nSb: r.nSb, pos: o.pos.slice(), seat: s.pos.slice() }; todo.push([o, s]); });
   });
-  LOST = total ? lost / total : 0; leakNote();
+  LOST = total ? lost / total : 0; LOSTV = total ? lostV / total : 0; leakNote();
   if (ENG.hasLateDir && ldOK && typeof Worker !== "undefined") {
     $("busy").textContent = `Rendering ${todo.length} path${todo.length > 1 ? "s" : ""}…`;
     try { await Promise.all(todo.map(([o, s]) => prepLate(s.id + "|" + o.id))); } catch (e) { ldOK = false; }
