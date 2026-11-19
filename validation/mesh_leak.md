@@ -171,12 +171,12 @@ other across the slots between neighbouring panels; rays that entered a slot wer
 now; since 2026-11-19 they are not counted in the surface (352 m², as before the fix; 442 m² in the runs of
 2026-11-18 / 19 before that change), because they have no free line to the room.
 
-Not rerun: `validation/bras_CR3.md`, `bras_CR4.md`, the BRIR checks of CR3 / CR4, `fratoni_ULH.md`
+Not rerun: the BRIR checks of CR3 / CR4, `fratoni_ULH.md`
 (Python engine, hours of run time), `arni_check.md`, `opera_check.md`, the Arvedi records (excluded from use) and the
 calibrations built on them. Their numbers are from the engine with the dropped faces. Detmold and the Fratoni 2.5D
 runs use drawn halls, which have no voxel step, and are not affected.
 
-Rerun 2026-11-19 with the final rules: `fratoni_STC.md` (note at its top).
+Rerun 2026-11-19 with the final rules: `fratoni_STC.md`, `bras_CR3.md`, `bras_CR4.md` (notes at their tops; the BRAS tables in `docs/MODEL_*` still show the runs before).
 
 ## The `.skp` reader
 
