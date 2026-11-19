@@ -459,15 +459,15 @@ are wanted.
   surface has thousands of shallow edges that are not wedges), isotropic late field above 3000 surfaces.
 - Conversion to 2.5D: plan outline = outline of the room's voxels; for each 0.25 m slice along the depth axis,
   floor = plan-area mean of the lowest room voxel per column (seat blocks count as raised floor) and ceiling =
-  floor + slice volume / slice area, so the volume is kept (ULH 742 → 719 m³, STC 842 → 805 m³). A dome becomes a
+  floor + slice volume / slice area, so the volume is kept (ULH 780 → 719 m³, STC 842 → 805 m³). A dome becomes a
   vault extruded across the width; balconies and overhangs are lost; an object covering part of the width (a
   lectern) becomes a raised strip across the whole width.
 - Materials: faces go to the four 2.5D groups by their inward normal (floor / stage, ceiling, wall). The 2.5D hall
-  has less surface than the mesh (ULH 942 → 622 m²: no seat risers, no small faces), so keeping each group's
+  has less surface than the mesh (ULH 945 → 622 m²: no seat risers, no small faces), so keeping each group's
   absorption area A_g (`--preserve sabine`) raises the mean α, and the 2.5D hall then decays faster than the mesh.
   The default (`--preserve eyring`) sets α_g = 1 − exp(−A_g / S_g,2.5D): the 2.5D group's Eyring exponent equals the
   mesh group's Sabine absorption area. The ray-traced T30 of both 3D meshes is close to Sabine (STC 1 kHz 1.51 s vs
-  1.47 s; ULH 1 kHz 1.93 vs 1.95 s); the choice of mapping is empirical: in ULH the 2.5D T30 is 0.04–0.12 s below
+  1.47 s; ULH 1 kHz 1.92 vs 2.05 s); the choice of mapping is empirical: in ULH the 2.5D T30 is 0.04–0.12 s below
   the mesh at 125 Hz–4 kHz with `eyring`, 0.14–0.25 s with `sabine` (keeping A), and 0.11–0.21 s with one factor per
   band that keeps the room's Eyring exponent (`room-eyring`) (`validation/fratoni_ULH_preserve.md`). A per-material
   Eyring sum (Millington's form) was also tried and was worse (it weights the absorbing seat faces up). (Until
@@ -654,8 +654,8 @@ Results (simulated − measured, in JND; full tables and figures in `validation/
 
 | hall, source | model | T30 125 / 250 / 500 / 1k / 2k / 4k Hz | EDT 500–4k | C50 / C80 500–4k | Ts 500–4k |
 |---|---|---|---|---|---|
-| ULH, S1 (26 receivers) | 3D mesh | −2.4 / −1.3 / +0.5 / +0.9 / −0.0 / −0.9 | −0.1 … +0.7 | −0.3 … +0.1 | −0.1 … +0.5 |
-| | 2.5D | −3.8 / −2.0 / −0.5 / +0.4 / −0.9 / −2.4 | −1.2 … +1.0 | −0.8 … +0.1 | −0.5 … +0.8 |
+| ULH, S1 (26 receivers) | 3D mesh | −2.6 / −1.4 / +0.2 / +0.8 / −0.2 / −1.1 | +0.0 … +0.9 | −0.2 … +0.3 | −0.3 … +0.4 |
+| | 2.5D | −3.8 / −2.0 / −0.5 / +0.4 / −0.9 / −2.4 | −1.2 … +0.9 | −0.7 … +0.2 | −0.6 … +0.8 |
 | STC, S1 (10) | 3D mesh | +7.3 / +4.7 / +4.6 / +2.9 / +4.2 / +4.0 | +4.0 … +5.4 | −1.7 … −1.2 | +2.2 … +3.2 |
 | | 2.5D | +7.5 / +4.6 / +4.2 / +2.2 / +3.4 / +3.4 | +4.8 … +6.6 | −1.9 … −1.3 | +2.1 … +3.2 |
 | STC, S2 (4) | 3D mesh | +9.3 / +3.1 / +2.6 / +2.5 / +4.2 / +4.0 | +3.2 … +5.9 | −1.7 … −0.6 | +1.6 … +2.6 |
@@ -664,7 +664,7 @@ Results (simulated − measured, in JND; full tables and figures in `validation/
 Reading:
 - ULH: from 500 Hz to 4 kHz all criteria of the 3D mesh are within about 1 JND of the measurement; at 125–250 Hz
   T30 and EDT are 1–2 JND short and C50 about 1.3 dB high. A Sabine estimate from the same inputs is also short there
-  (1.15 s vs 1.56 s measured at 125 Hz, mesh volume 742 m³), so the low-frequency gap is in the inputs (volume and
+  (1.21 s vs 1.56 s measured at 125 Hz, mesh volume 780 m³), so the low-frequency gap is in the inputs (volume and
   coefficients as used here), not in the ray tracing. The 2.5D hall is within 0.15 s of the mesh from 250 Hz to
   2 kHz.
 - STC: both models are about 15 % long (1 kHz: 1.51 s vs 1.32 s measured), the 3D mesh and the 2.5D hall agree
@@ -690,8 +690,8 @@ python validate_fratoni.py "<dataset folder>" STC --obj STC_model.obj --no-3d --
 The converted halls (`validation/fratoni_*_2p5d_config.json`, CC BY 4.0 with the dataset's attribution) open in the
 page with **Load config…**. Run 2026-11-05, re-run 2026-11-06 with the specular reflection factors (changes ≤ 0.2 JND)
 and again with the ray-tracing energy floor fixed (changes ≤ 0.4 JND; ULH 3D mesh about 77 min, STC 38 min on 2 CPU
-cores). STC rerun 2026-11-19 with the mesh rules of that day (`validation/mesh_leak.md`; 3D mesh 82 min): T30 of the
-3D mesh 0 – 0.04 s longer, mean absolute errors changed by at most 0.8 JND.
+cores). ULH and STC rerun 2026-11-19 with the mesh rules of that day (`validation/mesh_leak.md`; STC 3D mesh 82 min, ULH 199 min in three receiver groups):
+STC T30 of the 3D mesh 0 – 0.04 s longer, mean absolute errors changed by at most 0.8 JND; ULH within 0.03 s and 0.2 JND.
 
 ### The two opera houses with the browser engine (TCB, DUS; `validation/check_fratoni_js.py`, 2026-11-07)
 

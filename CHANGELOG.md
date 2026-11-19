@@ -15,7 +15,7 @@ files.
     surface bands, and free spaces that probe rays enter and that are not joined to the outside (CR4: 16 m³ between
     the ceiling panels and the ceiling). A ray between the backs of one-sided faces is followed instead of ended
     (CR4: the 4 cm slot inside the double-skin ceiling panels). Results of 3D models change; documented runs made with the Python
-  engine (ULH, Arni, OperaRIR, the BRAS BRIR checks) have not been rerun and carry a note; STC and BRAS CR3 / CR4 were rerun 2026-11-19.
+  engine (Arni, OperaRIR, the BRAS BRIR checks) have not been rerun and carry a note; ULH, STC and BRAS CR3 / CR4 were rerun 2026-11-19.
   - Faces behind the room's faces (2026-11-19): the fix above also kept faces that do not bound the room (the outer
     skin of a thin wall, the slab under a flight of steps, touching panel sides), and counted them: Fratoni ULH 252
     of 1197 m², Arni 89 m², DUS 437 m², TCB 799 m²; BRAS CR4 had 122 m² of this kind since before the fix. A face
