@@ -175,7 +175,7 @@ Not rerun: the BRIR checks of CR3 / CR4 (Python engine), `arni_check.md`, `opera
 calibrations built on them. Their numbers are from the engine with the dropped faces. Detmold and the Fratoni 2.5D
 runs use drawn halls, which have no voxel step, and are not affected.
 
-Rerun 2026-11-19 with the final rules: `fratoni_STC.md`, `fratoni_ULH.md`, `bras_CR3.md`, `bras_CR4.md` (notes at their tops; the BRAS runs with 16 000 rays and the positions combined by the median, because single-pair T30 and EDT depended on the ray seed at 4 000 rays; `docs/MODEL_*` updated). Not rerun: the round-robin comparisons that use the mesh engine (`rr_complex.py`, `rr_coupled.py`, `rr_lateral.py`, `rr_tonecolor.py`) and the I-Simpa comparison.
+Rerun 2026-11-19 with the final rules: `fratoni_STC.md`, `fratoni_ULH.md`, `bras_CR3.md`, `bras_CR4.md` (notes at their tops; the BRAS runs with 16 000 rays and the positions combined by the median, because single-pair T30 and EDT depended on the ray seed at 4 000 rays; `docs/MODEL_*` updated). Rerun 2026-11-20 with 16 000 rays (before: 6000): the round-robin room scores (`rr_complex.py`; initial data CR2 4.1 → 3.7, CR3 2.8 → 2.9, CR4 2.2 → 2.3 JND; fitted data CR2 2.4 → 1.1, CR3 1.2 → 1.3) and the coupled rooms (`rr_coupled.py`; 30.4 deg 7.6 / 1.7 → 7.2 / 1.0 dB, 4.1 deg 8.2 / 6.6 → 7.2 / 6.5 dB, initial / fitted data); model fix and ray count changed together (`docs/BENCHMARK_*` sections 2.2, 2.3). Not rerun yet: `rr_lateral.py`, `rr_tonecolor.py` (they read the BRIR checks) and the I-Simpa comparison.
 
 ## The `.skp` reader
 
