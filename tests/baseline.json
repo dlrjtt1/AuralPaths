@@ -105,6 +105,12 @@
   },
   "volume_err_max_pct": {
    "max": 2.0
+  },
+  "hidden_min": {
+   "min": 6
+  },
+  "shell_area_err_max_pct": {
+   "max": 0.1
   }
  },
  "page": {

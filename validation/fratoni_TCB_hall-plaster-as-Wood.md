@@ -1,15 +1,15 @@
 # Fratoni TCB: measured vs AuralPaths (browser engine)
 
-**Rerun on 2026-11-19 with the engine after the fixes of 2026-11-18** (`validation/mesh_leak.md`); 55 - 63 of 20 000 rays lost per source. Mean absolute error at 500 Hz - 1 kHz, run of 2026-11-07 → now: EDT 5.1 → 4.6, T30 2.4 → 2.5, C80 2.0 → 1.8, Ts 2.5 → 2.4 JND.
+**Rerun on 2026-11-19 with the engine after the fixes of 2026-11-18 and 2026-11-19** (`validation/mesh_leak.md`); 55 - 63 of 20 000 rays lost per source (0.28 - 0.32 %, above the 0.1 % limit). Mean absolute error at 500 Hz - 1 kHz, run of 2026-11-07 → now: EDT 5.1 → 4.6, T30 2.4 → 2.5, C80 2.0 → 1.8, Ts 2.5 → 2.4 JND. The 708 faces behind the room's faces (815 m²) are not counted in the surface; the tables are the same with and without them.
 
 Data: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic simulations*, Mendeley Data, https://doi.org/10.17632/y7xnv6xg5s.1 (CC BY 4.0). Measured values: the dataset's Room_Criteria sheet (mean over the listed receivers). Inputs: the dataset's GA absorption / scattering, unchanged. Positions and tag-to-material assignments: validate_fratoni.py (VENUES); heights are assumptions (see there).
 
 ```
-TCB: OBJ 5997 faces (1126 narrow faces kept two-sided, 4 not at the room and 0 untagged ones in the surface band left out), voxel 0.120 m, room volume (voxels) 27149 m3; model built in 12 s
-surface areas (m2): Carpet 827, Marble 98, Plaster (boxes) 292, Seats 259, Stage grid 477, Stage house 4357, Velvet drapes 526, Wood 5148; total 11984
-Sabine T (s), no air: 125 Hz 1.40, 250 Hz 1.36, 500 Hz 1.47, 1000 Hz 1.55, 2000 Hz 1.69, 4000 Hz 1.96
+TCB: OBJ 5997 faces (435 narrow faces kept two-sided; 708 behind the room's faces, 815 m2, kept but not counted; 4 not at the room and 0 untagged ones in the surface band left out), voxel 0.120 m, room volume (voxels) 27149 m3; model built in 17 s
+surface areas (m2): Carpet 790, Marble 97, Plaster (boxes) 292, Seats 259, Stage grid 477, Stage house 4221, Velvet drapes 476, Wood 4556; total 11169
+Sabine T (s), no air: 125 Hz 1.51, 250 Hz 1.46, 500 Hz 1.57, 1000 Hz 1.64, 2000 Hz 1.79, 4000 Hz 2.06
 tags -> materials: Plaster_(hall) -> Wood, Plaster_(gallery) -> Plaster (boxes), Plaster_(fly_tower) -> Stage house, Floor_(boxes) -> Carpet, Floor_(gallery) -> Carpet, Carpet -> Carpet, Marble -> Marble, Wood -> Wood, Seats -> Seats, Stage_grid -> Stage grid, Curtains -> Velvet drapes, Velvet_(fly_tower) -> Velvet drapes, PVC -> Stage house
-browser engine: image sources to order 2, 20000 rays per source; S2 35 s (55 rays lost), S3 36 s (63 rays lost); total 85 s
+browser engine: image sources to order 2, 20000 rays per source; S2 48 s (55 rays lost), S3 55 s (63 rays lost); total 121 s
 ```
 
 ## S2, STALLS (R3,R5,R7,R8,R10,R11) (6)

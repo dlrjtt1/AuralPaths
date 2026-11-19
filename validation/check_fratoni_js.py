@@ -31,7 +31,7 @@ import validate_fratoni as vf                                              # noq
 
 JS = """const fs=require('fs');const GEOM=eval(fs.readFileSync('engine_geom.js','utf8')+';GEOM');const j=JSON.parse(fs.readFileSync(0,'utf8'));
 let t=Date.now();const G=GEOM.buildMesh({obj:GEOM.loadObj(j.obj),groups:j.groups,voxel:j.voxel},Object.values(j.srcs)[0]);
-const out={info:{volume:G.V,area:G.areaByMat,dropped:G.nDropped,narrow:G.nNarrow,nomat:G.nNoMat,faces:G.nFaces,h:G.h,build_s:(Date.now()-t)/1000,
+const out={info:{volume:G.V,area:G.areaByMat,dropped:G.nDropped,narrow:G.nNarrow,hidden:G.nHidden,ahidden:G.aHidden,nomat:G.nNoMat,faces:G.nFaces,h:G.h,build_s:(Date.now()-t)/1000,
   outside:Object.entries(Object.assign({},j.srcs,j.recs)).filter(([k,p])=>!GEOM.inside(G,p)).map(([k])=>k)},res:{}};
 const R=Object.values(j.recs);
 for(const [name,s] of Object.entries(j.srcs)){t=Date.now();const I=GEOM.ism(G,s,R,j.order,j.order>1?0.16:10,j.c,j.mats,j.air,j.bands);
@@ -90,7 +90,7 @@ def main():
     area, A = info["area"], {}
     for i, b in enumerate(vf.BANDS):
         A[b] = sum(mats[k]["alpha"][i] * v for k, v in area.items())
-    lines = [f"{a.hall}: OBJ {info['faces']} faces ({info['narrow']} narrow faces kept two-sided, {info['dropped']} not at the room and {info['nomat']} untagged ones in the surface band left out), voxel {info['h']:.3f} m, room volume "
+    lines = [f"{a.hall}: OBJ {info['faces']} faces ({info['narrow']} narrow faces kept two-sided; {info['hidden']} behind the room's faces, {info['ahidden']:.0f} m2, kept but not counted; {info['dropped']} not at the room and {info['nomat']} untagged ones in the surface band left out), voxel {info['h']:.3f} m, room volume "
              f"(voxels) {info['volume']:.0f} m3; model built in {info['build_s']:.0f} s",
              "surface areas (m2): " + ", ".join(f"{k} {v:.0f}" for k, v in sorted(area.items())) + f"; total {sum(area.values()):.0f}",
              "Sabine T (s), no air: " + ", ".join(f"{b} Hz {0.161 * info['volume'] / A[b]:.2f}" for b in vf.BANDS),

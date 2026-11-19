@@ -16,6 +16,8 @@
 //   steps model: 0 faces dropped, 20 / 24 / 24 narrow faces kept, rays lost 0 %, volume within 0.30 % of 2030.3 m3
 //   before the fix (engine of commit 1e911b9): 20 / 24 / 24 faces dropped, 44.5 / 50.6 / 50.6 % of the rays lost,
 //   volume 2.6 / 3.4 / 4.7 % too small
+// 2026-11-19, double shell model: 6 outer faces behind the room's faces (312.2 m2) kept and not counted, area 304.0 m2,
+//   rays lost 0 %
 const fs = require("fs"), path = require("path");
 const GEOM = eval(fs.readFileSync(path.join(__dirname, "..", "engine_geom.js"), "utf8") + ";GEOM");
 const W = 14, D = 20, H = 8, NS = 24, TR = 0.8, RI = 0.06, Y0 = 0.4;      // steps start 0.4 m from the front wall
@@ -42,11 +44,28 @@ for (const voxel of [0.05, 0.065, 0.1]) {
   out.lost_max_pct = Math.max(out.lost_max_pct, 100 * lost / tot); out.dropped_max = Math.max(out.dropped_max, G.nDropped); out.volume_err_max_pct = Math.max(out.volume_err_max_pct, ev); out.narrow_min = Math.min(out.narrow_min, G.nNarrow);
   lines.push(`steps model, voxel ${(voxel * 100).toFixed(1)} cm: ${G.nFaces} faces, ${G.nNarrow} narrow kept, ${G.nDropped} dropped, rays lost ${(100 * lost / tot).toFixed(3)} %, volume ${G.V.toFixed(1)} m3 (${G.volFrom}; exact ${M.vol.toFixed(1)}, ${ev.toFixed(2)} % off)`);
 }
+// Second built-in model: a box 10 x 8 x 4 m with a second skin 6 cm outside it (a thin wall drawn with both sides). The
+// outer faces have room voxels within 3 voxels but cannot see them: they stay in the model and must not be counted
+// (2026-11-19; before, the surface area came out as 2 x the room's: Fratoni ULH 1197 instead of 945 m2).
+function shellObj() {
+  const V = [], F = [], box = (x0, y0, z0, x1, y1, z1) => { const k = V.length, c = [[x0, y0, z0], [x1, y0, z0], [x1, y1, z0], [x0, y1, z0], [x0, y0, z1], [x1, y0, z1], [x1, y1, z1], [x0, y1, z1]]; V.push(...c);
+    for (const q of [[1, 2, 3, 4], [5, 6, 7, 8], [1, 2, 6, 5], [2, 3, 7, 6], [3, 4, 8, 7], [4, 1, 5, 8]]) F.push(q.map((i) => i + k)); };
+  box(0, 0, 0, 10, 4, 8); box(-0.06, -0.06, -0.06, 10.06, 4.06, 8.06);
+  return V.map((v) => "v " + v.join(" ")).join("\n") + "\n" + F.map((f) => "f " + f.join(" ")).join("\n") + "\n";
+}
+out.hidden_min = 1e9; out.shell_area_err_max_pct = 0;
+for (const voxel of [0.05, 0.065, 0.1]) {
+  const G = GEOM.buildMesh({ obj: GEOM.loadObj(shellObj()), groups: {}, default: "wall", axes: "y-up", voxel }, [5, -4, 2]); let lost = 0;
+  for (const seed of [1, 2, 3]) { const R = GEOM.rays(G, [5, -4, 2], [[3, -3, 1.5]], { n: N, seed }, mats, air); lost += R.escaped + R.leaked; }
+  const ea = 100 * Math.abs(G.area / 304 - 1);
+  out.hidden_min = Math.min(out.hidden_min, G.nHidden); out.shell_area_err_max_pct = Math.max(out.shell_area_err_max_pct, ea); out.lost_max_pct = Math.max(out.lost_max_pct, 100 * lost / (3 * N));
+  lines.push(`double shell, voxel ${(voxel * 100).toFixed(1)} cm: ${G.nFaces} faces, ${G.nHidden} behind the room's faces (${G.aHidden.toFixed(1)} m2, not counted), ${G.nDropped} dropped, area ${G.area.toFixed(1)} m2 (exact 304), rays lost ${(100 * lost / (3 * N)).toFixed(3)} %`);
+}
 for (const f of process.argv.slice(2).filter((a) => a !== "--json")) {
   const obj = GEOM.loadObj(fs.readFileSync(f, "utf8")), lo = [0, 1, 2].map((k) => Math.min(...obj.V.map((v) => v[k]))), hi = [0, 1, 2].map((k) => Math.max(...obj.V.map((v) => v[k])));
   const c = [(lo[0] + hi[0]) / 2, -(lo[2] + hi[2]) / 2, (lo[1] + hi[1]) / 2], G = GEOM.buildMesh({ obj, groups: {}, default: "wall", axes: "y-up" }, c); let lost = 0, tot = 0;
   let vd = 0, bh = 0;
   for (const seed of [1, 2, 3]) { const R = GEOM.rays(G, c, [c], { n: N, seed }, mats, air); lost += R.escaped + R.leaked; vd += R.voided; bh += R.behind; tot += N; }
-  lines.push(`${path.basename(f)}: ${G.nFaces} faces, ${G.nNarrow} narrow kept, ${G.nDropped} dropped, voxel ${(G.h * 100).toFixed(1)} cm, volume ${G.V.toFixed(0)} m3, rays lost ${(100 * lost / tot).toFixed(3)} % (through gaps ${(100 * (lost - vd) / tot).toFixed(3)} %, into spaces the room fill did not reach ${(100 * vd / tot).toFixed(3)} %); ${G.nSpaces} spaces behind narrow openings added (${G.vSpaces.toFixed(1)} m3); rays that went behind faces and were followed ${(100 * bh / tot).toFixed(2)} %`);
+  lines.push(`${path.basename(f)}: ${G.nFaces} faces, ${G.nNarrow} narrow kept, ${G.nHidden} behind the room's faces (${G.aHidden.toFixed(1)} m2, not counted), ${G.nDropped} dropped, area ${G.area.toFixed(0)} m2, voxel ${(G.h * 100).toFixed(1)} cm, volume ${G.V.toFixed(0)} m3, rays lost ${(100 * lost / tot).toFixed(3)} % (through gaps ${(100 * (lost - vd) / tot).toFixed(3)} %, into spaces the room fill did not reach ${(100 * vd / tot).toFixed(3)} %); ${G.nSpaces} spaces behind narrow openings added (${G.vSpaces.toFixed(1)} m3); rays that went behind faces and were followed ${(100 * bh / tot).toFixed(2)} %`);
 }
 if (process.argv.includes("--json")) console.log(JSON.stringify(out)); else console.log(lines.join("\n"));

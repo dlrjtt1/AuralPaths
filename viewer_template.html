@@ -1097,7 +1097,7 @@ function provenance() {
   return { page: "AuralPaths web " + "v" + D.version, engine_geom_sha256: ENGINE_SHA, saved: new Date().toISOString(),
     model: mm ? "3D mesh (OBJ)" : d ? "drawn 2.5D hall" : "shoebox",
     ...(mm ? { obj_sha256: HALL.mesh.sha || (HALL.mesh.sha = sha256(HALL.mesh.text)), voxel_m: GM ? +GM.vox.h.toFixed(4) : null } : {}),
-    ...(d ? { ...(mm ? { rays_lost_fraction: +LOST.toFixed(5), rays_lost_in_unreached_spaces: +LOSTV.toFixed(5), rays_lost_limit: LEAK_MAX, valid: LOST <= LEAK_MAX, room_faces: GM ? GM.S.filter((q) => q.kind === "mesh").length : null, volume_m3: GM ? +GM.V.toFixed(1) : null } : {}), page_rays_per_source: HALL.rays, page_ism_order: mm ? meshOrder() : HALL.order, page_diffraction: !mm && !!HALL.diff,
+    ...(d ? { ...(mm ? { rays_lost_fraction: +LOST.toFixed(5), rays_lost_in_unreached_spaces: +LOSTV.toFixed(5), rays_lost_limit: LEAK_MAX, valid: LOST <= LEAK_MAX, room_faces: GM ? GM.S.filter((q) => q.kind === "mesh" && !q.hidden).length : null, volume_m3: GM ? +GM.V.toFixed(1) : null } : {}), page_rays_per_source: HALL.rays, page_ism_order: mm ? meshOrder() : HALL.order, page_diffraction: !mm && !!HALL.diff,
       ray_seed: "1000 + 7919 x path index (amplified 0, PA L 1, PA R 2, unamplified 3...), the same every run" } : {}),
     materials: d ? (HALL.matsSet ? "edited or loaded" : "page defaults (placeholders)") : undefined,
     hrir: S.hrir ? S.hrir : KU100_NAME,
@@ -1871,7 +1871,7 @@ function meshTable() {
 }
 function meshNote() {
   const m = HALL.mesh; if (!m) return;
-  $("meshNote").textContent = GM ? `${m.name}: ${GM.nFaces} faces in the file, ${GM.S.filter((q) => q.kind === "mesh").length} used as room faces` + (() => { const t = []; if (GM.nNarrow) t.push(`${GM.nNarrow} narrow ones kept two-sided`); if (GM.nDropped) t.push(`${GM.nDropped} not at the room (inside solids or outside), left out`); if (GM.nSkipped) t.push(`${GM.nSkipped} set to "not part of the room"`); if (GM.nTiny) t.push(`${GM.nTiny} without area`); if (GM.vSpaces > 0.05) t.push(`${GM.vSpaces.toFixed(1)} m³ behind narrow openings counted as room`); return t.length ? ` (${t.join("; ")})` : ""; })() + `, voxel ${(GM.vox.h * 100).toFixed(1)} cm, volume ${GM.V.toFixed(0)} m³ (${GM.volFrom === "mesh" ? "from the faces" : "voxel count"}), ${m.dims.join(" × ")} m. Heights are above the lowest floor under each point.`
+  $("meshNote").textContent = GM ? `${m.name}: ${GM.nFaces} faces in the file, ${GM.S.filter((q) => q.kind === "mesh" && !q.hidden).length} used as room faces` + (() => { const t = []; if (GM.nNarrow) t.push(`${GM.nNarrow} narrow ones kept two-sided`); if (GM.nHidden) t.push(`${GM.nHidden} behind the room's faces (${GM.aHidden.toFixed(1)} m²) kept but not counted`); if (GM.nDropped) t.push(`${GM.nDropped} not at the room (inside solids or outside), left out`); if (GM.nSkipped) t.push(`${GM.nSkipped} set to "not part of the room"`); if (GM.nTiny) t.push(`${GM.nTiny} without area`); if (GM.vSpaces > 0.05) t.push(`${GM.vSpaces.toFixed(1)} m³ behind narrow openings counted as room`); return t.length ? ` (${t.join("; ")})` : ""; })() + `, voxel ${(GM.vox.h * 100).toFixed(1)} cm, volume ${GM.V.toFixed(0)} m³ (${GM.volFrom === "mesh" ? "from the faces" : "voxel count"}), ${m.dims.join(" × ")} m. Heights are above the lowest floor under each point.`
     : `${m.name}: ${MESHC.err || "could not be built"}. Check the up axis, or place a source inside the hall.`;
 }
 // rebuild the voxel room after a model setting changed (main thread), then the BRIRs (worker)
@@ -2092,7 +2092,7 @@ function fillHall() {
   HALL.alpha.forEach((a, i) => (alphaInputs[i].value = a));
   shapeUI();
   const h = HIST[D.ref + "|" + AMP().id];
-  if (h) { const t = [2, 3].map((b) => t30(h[b])), f = (v) => (Number.isFinite(v) ? v.toFixed(2) + " s" : "longer than the window"); $("rtNote").textContent = `Simulated T30, amplified → seat ${D.ref}: ${f(t[0])} (500 Hz) / ${f(t[1])} (1 kHz)` + (isDrawn() && GM ? (GM.mesh ? ` · ${GM.S.filter((q) => q.kind === "mesh").length} room faces, ${GM.V.toFixed(0)} m³ · rays lost ${(LOST * 100).toFixed(2)} %` : ` · ${GM.S.length} surfaces, ${GM.V.toFixed(0)} m³` + (LOST > LEAK_MAX ? ` · ${(LOST * 100).toFixed(1)} % of rays leaked through gaps` : "")) : ""); leakNote(); }
+  if (h) { const t = [2, 3].map((b) => t30(h[b])), f = (v) => (Number.isFinite(v) ? v.toFixed(2) + " s" : "longer than the window"); $("rtNote").textContent = `Simulated T30, amplified → seat ${D.ref}: ${f(t[0])} (500 Hz) / ${f(t[1])} (1 kHz)` + (isDrawn() && GM ? (GM.mesh ? ` · ${GM.S.filter((q) => q.kind === "mesh" && !q.hidden).length} room faces, ${GM.V.toFixed(0)} m³ · rays lost ${(LOST * 100).toFixed(2)} %` : ` · ${GM.S.length} surfaces, ${GM.V.toFixed(0)} m³` + (LOST > LEAK_MAX ? ` · ${(LOST * 100).toFixed(1)} % of rays leaked through gaps` : "")) : ""); leakNote(); }
 }
 $("bApplyHall").onclick = () => {
   const dims = ["hW", "hD", "hH"].map((id) => +$(id).value), stage = +$("hS").value, alpha = alphaInputs.map((i) => +i.value);

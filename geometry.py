@@ -382,6 +382,103 @@ def _room_near(vr, C, n, r):
     return fwd, bwd
 
 
+def _pt_tri_dist(p, A, B, C):
+    """Distance from the point p to each of the triangles A[i], B[i], C[i]."""
+    def seg(P0, P1):
+        d = P1 - P0
+        t = np.clip(((p - P0) * d).sum(1) / np.maximum((d * d).sum(1), 1e-30), 0, 1)
+        return np.linalg.norm(P0 + t[:, None] * d - p, axis=1)
+    e1, e2 = B - A, C - A
+    nn = np.cross(e1, e2)
+    l0 = np.linalg.norm(nn, axis=1)
+    ln = np.maximum(l0, 1e-30)
+    w = p - A
+    dist = (w * nn).sum(1) / ln
+    d11, d12, d22 = (e1 * e1).sum(1), (e1 * e2).sum(1), (e2 * e2).sum(1)
+    w1, w2 = (w * e1).sum(1), (w * e2).sum(1)
+    den = np.where(np.abs(d11 * d22 - d12 * d12) < 1e-30, 1e-30, d11 * d22 - d12 * d12)
+    u, v = (d22 * w1 - d12 * w2) / den, (d11 * w2 - d12 * w1) / den
+    inside = (u >= 0) & (v >= 0) & (u + v <= 1) & (l0 > 1e-12)       # a triangle without area has edges only
+    edge = np.minimum(np.minimum(seg(A, B), seg(B, C)), seg(C, A))
+    return np.where(inside, np.abs(dist), edge)
+
+
+def _seg_tris(p, q, A, B, C):
+    """Does the segment p - q cross each of the triangles (ends excluded)?"""
+    d = q - p
+    e1, e2 = B - A, C - A
+    pv = np.cross(d, e2)
+    det = (e1 * pv).sum(1)
+    ok = np.abs(det) >= 1e-14
+    det = np.where(ok, det, 1.0)
+    tv = p - A
+    u = (tv * pv).sum(1) / det
+    qv = np.cross(tv, e1)
+    v = (qv * d).sum(1) / det
+    t = (e2 * qv).sum(1) / det
+    return ok & (u >= -1e-9) & (u <= 1 + 1e-9) & (v >= -1e-9) & (u + v <= 1 + 1e-9) & (t > 1e-6) & (t < 1 - 1e-6)
+
+
+def _near_tris(VT, t_lo, t_hi, owner, k, P, n, m):
+    """Triangles of other faces within m of face k (corners P, normal n) that are not in its plane."""
+    sel = (owner != k) & np.all(t_lo <= P.max(0) + m, axis=1) & np.all(t_hi >= P.min(0) - m, axis=1)
+    A, B, C = VT[sel, 0], VT[sel, 1], VT[sel, 2]
+    if len(A):
+        q = np.cross(B - A, C - A)
+        ln = np.maximum(np.linalg.norm(q, axis=1), 1e-30)
+        cop = (np.abs(q @ n) / ln > 0.999) & (np.abs((A - P[0]) @ n) < 1e-3)
+        A, B, C = A[~cop], B[~cop], C[~cop]
+    return A, B, C
+
+
+def _first_look_clear(vr, C, n, off, A, B, Cc):
+    """Is one of the room voxels 2.5 h in front of or behind the points C reached by a free line (as engine_geom.js)?
+
+    If every one lies behind another face (a second skin a few centimetres behind a wall), the face goes on to the
+    second look. Points within 1 mm of another face are not used; if no point can be tested, the count stands."""
+    if not len(A):
+        return True
+    Pf, Pb = C + off * n, C - off * n
+    f, b = _in_room(vr, Pf), _in_room(vr, Pb)
+    tested = 0
+    for i in np.flatnonzero(f | b):
+        p = C[i]
+        if (_pt_tri_dist(p, A, B, Cc) < 1e-3).any():
+            continue
+        tested += 1
+        if (f[i] and not _seg_tris(p, Pf[i], A, B, Cc).any()) or (b[i] and not _seg_tris(p, Pb[i], A, B, Cc).any()):
+            return True
+    return tested == 0
+
+
+def _face_exposed(vr, C, A, B, Cc, r=3):
+    """Can a face with room voxels within r voxels see one of them (as engine_geom.js faceExposed)?
+
+    From each of the face's points C with room voxels within r voxels, a straight line to the 8 nearest of them is
+    tested against the triangles A, B, Cc of the other faces near it (_near_tris). A point within 1 mm of another
+    face is not used. One free line is enough."""
+    ins, h, lo = vr["inside"], vr["h"], vr["origin"]
+    sh = np.array(ins.shape)
+    if "near" not in vr:                                # voxels with a room voxel within r voxels (computed once)
+        from scipy import ndimage
+        vr["near"] = ndimage.maximum_filter(ins.astype(np.uint8), size=2 * r + 1, mode="constant").astype(bool)
+    ijk = np.floor((C - lo) / h).astype(int)
+    ok = np.all((ijk >= 0) & (ijk < sh), axis=1)
+    ok[ok] = vr["near"][ijk[ok, 0], ijk[ok, 1], ijk[ok, 2]]
+    for p, c in zip(C[ok], ijk[ok]):
+        a, b = np.maximum(c - r, 0), np.minimum(c + r, sh - 1)
+        idx = np.argwhere(ins[a[0]:b[0] + 1, a[1]:b[1] + 1, a[2]:b[2] + 1])
+        if not len(idx):
+            continue
+        if len(A) and (_pt_tri_dist(p, A, B, Cc) < 1e-3).any():
+            continue
+        q = lo + (idx + a + 0.5) * h
+        for qq in q[np.argsort(((q - p) ** 2).sum(1), kind="stable")[:8]]:
+            if not len(A) or not _seg_tris(p, qq, A, B, Cc).any():
+                return True
+    return False
+
+
 def _in_room(vr, P):
     ijk = np.floor((P - vr["origin"]) / vr["h"]).astype(int)
     sh = np.array(vr["inside"].shape)
@@ -415,7 +512,9 @@ def build_mesh(geom, seed):
     off = 2.5 * h                                       # beyond the dilated surface band (1.5 h half-width)
     two_sided = bool(spec.get("two_sided", True))
     inflate = float(spec.get("inflate_mm", 1.0)) / 1000
-    S, dropped, narrow, no_mat, unmatched = [], 0, 0, 0, set()
+    S, dropped, narrow, hidden, a_hidden, no_mat, unmatched = [], 0, 0, 0, 0.0, 0, set()
+    VT = V[T]                                           # triangle corners and bounds (exposure test of the second look)
+    t_lo, t_hi = VT.min(1), VT.max(1)
     for k, f in enumerate(F):
         P = V[f]
         n = _newell_np(P)
@@ -428,7 +527,12 @@ def build_mesh(geom, seed):
         # another solid (a wall behind a seat block) still has room on its exposed part
         C = np.vstack([V[tri].mean(1), _sample_tris(V, tri, 0.2)])
         fwd, bwd = _in_room(vr, C + off * n).sum(), _in_room(vr, C - off * n).sum()
-        near = nar = False
+        near = nar = hid = False
+        use = None
+        if (fwd or bwd) and spec.get("exposure", True):
+            use = _near_tris(VT, t_lo, t_hi, owner, k, P, n, 4 * h)
+            if not _first_look_clear(vr, C, n, off, *use):
+                fwd = bwd = 0
         if fwd == 0 and bwd == 0:
             # A face narrower than the surface band of its neighbours (a step riser, a narrow strip) has no room voxel
             # at 2.5 h on either side although it bounds the room; dropping such faces opened holes (BRAS CR3 at
@@ -442,8 +546,19 @@ def build_mesh(geom, seed):
                 if not spec.get("keep_all"):
                     continue
             else:
-                narrow += 1
-                nar = True
+                # A kept face that cannot see any of those room voxels (the outer skin of a thin wall, the slab under
+                # a flight of steps, the touching sides of two panels) stays in the model, so that no ray passes where
+                # it closes a slit, but it is marked hidden and not counted in the areas and the room faces
+                # (2026-11-19; counted before, Fratoni ULH: 252 m2 of 1197 m2). spec["exposure"] = False skips it
+                # and the test of the first look above (a second skin close behind a wall: BRAS CR4, 122 m2).
+                if spec.get("exposure", True):
+                    use = use or _near_tris(VT, t_lo, t_hi, owner, k, P, n, 4 * h)
+                    hid = not _face_exposed(vr, C, *use)
+                if hid:
+                    hidden += 1
+                else:
+                    narrow += 1
+                    nar = True
         both = near or min(fwd, bwd) > 0.2 * max(fwd, bwd)  # room on both sides (free-standing panel, reflector)
         nn = n if fwd >= bwd else -n
         key = next((v for g, v in groups.items() if g in names[k].lower()), default)
@@ -453,23 +568,25 @@ def build_mesh(geom, seed):
             if near:                                        # untagged face in the band of other faces: left out
                 no_mat += 1
                 narrow -= int(nar)
+                hidden -= int(hid)
                 continue
             unmatched.add(names[k])
             continue
         if inflate > 0:
             P = _inflate(P, nn, inflate)
-        S.append(dict(verts=P, n=nn, mat=key, kind="mesh", area=A))
+        S.append(dict(verts=P, n=nn, mat=key, kind="mesh", area=A, hidden=hid))
+        a_hidden += A * hid
         if both or two_sided:
             # a pyroomacoustics wall is one-sided (the image test and the scattering hemisphere use its normal), so a
             # face with room on both sides gets a twin facing the other way, 2 mm behind it. With two_sided (default)
             # every face gets one: a ray that ends up behind a face (in a slot thinner than the voxel test, inside
             # a solid through a crack) is then reflected instead of being scattered through it or lost
-            S.append(dict(verts=P - 0.002 * nn, n=-nn, mat=key, kind="mesh-twin", area=A))
+            S.append(dict(verts=P - 0.002 * nn, n=-nn, mat=key, kind="mesh-twin", area=A, hidden=hid))
     if unmatched:
         raise ValueError("mesh faces without a material (add them to mesh.groups or set mesh.default): "
                          + "; ".join(sorted(unmatched)[:8]))
-    return dict(S=S, mesh=True, volume=vr["volume"], voxel=vr, n_dropped=dropped, n_narrow=narrow, n_no_mat=no_mat, n_skipped=n_skipped, n_input=n_in, n_faces=len(F),
-                area={k: sum(x["area"] for x in S if x["mat"] == k and x["kind"] == "mesh") for k in {x["mat"] for x in S}},
+    return dict(S=S, mesh=True, volume=vr["volume"], voxel=vr, n_dropped=dropped, n_narrow=narrow, n_hidden=hidden, a_hidden=a_hidden, n_no_mat=no_mat, n_skipped=n_skipped, n_input=n_in, n_faces=len(F),
+                area={k: sum(x["area"] for x in S if x["mat"] == k and x["kind"] == "mesh" and not x["hidden"]) for k in {x["mat"] for x in S if not x["hidden"]}},
                 bbox=(V.min(0), V.max(0)))
 
 

@@ -21,7 +21,8 @@ Checks (name: what it guards):
   rays_split   the browser ray tracer gives the same histogram whether rays are traced in one run or split in parts
                (worker pool)
   mesh_leak    a closed 3D model with risers narrower than the voxel band loses no rays, drops no face and has the
-               right volume (validation/check_mesh_leak.js)
+               right volume; the outer skin of a double-walled box is not counted in the area
+               (validation/check_mesh_leak.js)
   box_js       browser ray tracer T30 on a tiled shoebox, against its baseline and its free-path prediction
                (validation/check_box_lambert.js)
   box_py       Python (pyroomacoustics) ray tracer T30 in a shoebox, against its baseline (catches changes of the

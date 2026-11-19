@@ -138,7 +138,7 @@ def convert(cfg, depth_axis="y", stage_end="min", stage_depth=0.0, slice_m=0.25,
     stage_y = yd - stage_depth
     acc = {g: [np.zeros(nb), 0.0, 0.0] for g in geometry.GROUPS}     # sum alpha*S, sum S, sum s*S
     for s in G["S"]:
-        if s["kind"] != "mesh":
+        if s["kind"] != "mesh" or s.get("hidden"):      # hidden: behind the faces of the room, not part of its area
             continue
         nz_ = s["n"][2]
         c = s["verts"].mean(0)

@@ -296,8 +296,9 @@ def main():
            "geometry": {"mesh": {"obj": a.obj, "groups": groups, "max_faces": a.max_faces},
                         "materials": mats, "ism_order": a.ism_order, "rays": a.rays, "diffraction": False}}
     G = bp._geom(cfg)
-    log(f"{a.hall}: OBJ {G['n_input']} faces -> {G['n_faces']} after decimation -> {sum(1 for s in G['S'] if s['kind'] == 'mesh')} "
-        f"room faces ({G['n_narrow']} narrow ones kept two-sided, {G['n_dropped']} not at the room dropped), {len(G['S'])} walls incl. back faces; "
+    log(f"{a.hall}: OBJ {G['n_input']} faces -> {G['n_faces']} after decimation -> {sum(1 for s in G['S'] if s['kind'] == 'mesh' and not s['hidden'])} "
+        f"room faces ({G['n_narrow']} narrow ones kept two-sided; {G['n_hidden']} behind the room's faces, {G['a_hidden']:.1f} m2, kept but not counted; "
+        f"{G['n_dropped']} not at the room dropped), {len(G['S'])} walls incl. back faces; "
         f"room volume (voxels) {G['volume']:.0f} m3")
     area = G["area"]
     S_tot = sum(area.values())
