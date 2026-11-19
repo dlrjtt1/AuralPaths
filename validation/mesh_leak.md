@@ -104,7 +104,7 @@ wall, 122 m²).
 
 | model | faces behind the room's faces | their area | surface counted, before → now | rays lost, before → now | relative change of the summed ray energy |
 |---|---|---|---|---|---|
-| double shell (built in the script: a box with a second skin 6 cm outside; 5, 6.5, 10 cm voxels) | 6 | 314.6 m² | 461 - 619 → 304.0 m² (exact 304) | 0 → 0 % | not read |
+| double shell (built in the script: a box with a second skin 6 cm outside; 5, 6.5, 10 cm voxels) | 6 | 314.6 m² | 618.6 → 304.0 m² (exact 304) | 0 → 0 % | not read |
 | BRAS CR3 | 24 | 0.7 m² | 2763.0 → 2762.3 m² | 0 → 0 % | 4 × 10⁻⁷ |
 | BRAS CR4 | 140 | 126.7 m² | 5851.3 → 5724.6 m² | 0 → 0 % | 1 × 10⁻⁶ |
 | Fratoni ULH | 241 | 249.7 m² | 1197.4 → 947.7 m² | 0 → 0 % | 3 × 10⁻¹⁰ |
