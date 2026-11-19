@@ -825,7 +825,7 @@
     "s": 0.212
    }
   },
-  "rays": 4000,
+  "rays": 16000,
   "diffraction": false,
   "ism_order": 2
  }

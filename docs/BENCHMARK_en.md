@@ -35,7 +35,7 @@ and was scored with the same measures after seeing the measurements (post hoc, s
 
 | use | evidence (this page) | verdict |
 |---|---|---|
-| reverberation time, after calibration to a measured or target reverberation | T20 within 3 % (Arvedi), T30 within 3.2 % (Detmold); 0.8 JND at positions not used for the calibration (BRAS CR3, CR4) | usable |
+| reverberation time, after calibration to a measured or target reverberation | T20 within 3 % (Arvedi), T30 within 3.2 % (Detmold); within 1.0 JND at positions not used for the calibration (BRAS CR3, CR4) | usable |
 | reverberation time, predicted from material data only | CR3 and CR4 near the top of the round robin; CR2 30 - 35 % short | conditional: calibrate where possible |
 | clarity C80, D50, omnidirectional source | Arvedi C80 within 1 dB at 250 Hz - 4 kHz; CR3 C80 0.5 JND; Detmold C80 0.4 - 1.6 dB high | mostly usable (about 1 JND) |
 | how much C80, D50, Ts change when the source changes | 500 Hz - 1 kHz within 0.5 dB on average; at 2 - 4 kHz the change comes out 1 - 2 dB too small (Arvedi, change of source type and position; a change of delay is not checked) | usable at mid frequencies, underestimated at high frequencies |

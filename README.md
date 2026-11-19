@@ -58,8 +58,8 @@ By LABO 1557 (Dong-Gyun You).
   first in such halls). Receiver means only: early arrivals and PA paths are not tested by it.
   Details: `validation/fratoni_*`, `docs/MODEL_en.md`.
 - Position-by-position check against measured RIRs of two real halls (BRAS CR3 chamber music hall, CR4 auditorium;
-  3D models): with the BRAS coefficients T30 is 7–18 % too long (calibrate with measured T30 first), C80 / C50 / Ts
-  within about 0.9–1.6 JND. First-order reflections: right in time and level in CR3 (+1.6 dB median); in CR4 +2.7 dB
+  3D models): with the BRAS coefficients T30 is 5–12 % too long at 500 Hz–2 kHz (median over the positions, 16 000 rays;
+  calibrate with measured T30 first), C80 / C50 / Ts within about 0.6–1.8 JND. First-order reflections: right in time and level in CR3 (+1.6 dB median); in CR4 +2.7 dB
   median after the finite-panel correction (+6.5 dB before), with poor reflection-by-reflection agreement. A drawn 2.5D version of a hall with balconies keeps reverberation and clarity roughly but **not its
   individual early reflections**, so check ITDG-related results of such halls against a measurement.
 - Loudspeaker directivity files are approximations (see `NOTICE.md`).

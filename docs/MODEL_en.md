@@ -750,32 +750,39 @@ tested too. Not bundled: download the two scene folders and `3_surface_descripti
 with the SketchUp materials as group names (the groups then carry the BRAS material names, `mat_CRn_…`).
 
 Inputs:
-- Geometry: the BRAS model as exported. The mesh reproduces the documented surface areas (CR3 2759 vs 2763 m²; CR4,
-  decimated to 3000 faces, 5750 vs 5851 m²) and volumes (voxel estimate CR3 3188 vs 3331 m³, CR4 8175 vs 8657 m³;
-  the voxel band shaves 4–6 %). CR4 needs 8 cm voxels (`--voxel 0.08`): at 5 cm the flood fill used more than 6 GB.
+- Geometry: the BRAS model as exported. The mesh reproduces the documented surface areas (CR3 2763 vs 2763 m²; CR4,
+  decimated to 3000 faces, 5619 vs 5851 m²) and volumes (voxel estimate CR3 3319 vs 3331 m³, CR4 8567 vs 8657 m³;
+  mesh rules of 2026-11-19, before 3188 and 8175 m³). CR4 needs 8 cm voxels (`--voxel 0.08`): at 5 cm the flood fill used more than 6 GB.
 - Materials: BRAS `fitted_estimates` (absorption adjusted by the BRAS authors so that Eyring's formula gives the
   measured reverberation time), third-octave values averaged to octaves; scattering from the same files.
 - Direct sound: the measured onset is within −0.67 … +0.07 ms of distance / c at all 20 pairs, so the SOFA
   positions and the OBJ share one coordinate frame.
 
 Three model runs: (a) 3D mesh, BRAS coefficients unchanged; (b) 3D mesh after a one-step calibration of this engine
-on the LS1 positions (each material's −ln(1 − α) scaled per band by mean T30 simulated / measured), judged on the
+on the LS1 positions (each material's −ln(1 − α) scaled per band by the median over the LS1 positions of T30 simulated / measured), judged on the
 LS2 positions it did not see; (c) the 2.5D hall from `obj_to_hall.py` (balconies lost; image sources order 2, no
-diffraction). 4000 rays. With 500 rays T30 came out 13–33 % long in CR3 (noisy late tail); use thousands of rays for
-reverberation criteria.
+diffraction). 16 000 rays. With 500 rays T30 came out 13–33 % long in CR3 (noisy late tail), and at 4000 rays the T30
+and EDT of single source–receiver pairs still depended on the seed of the ray tracing (two seeds: CR3 1 kHz T30
+simulated / measured 1.30 and 1.06 at LS1-MP1; CR4 1 kHz EDT +8.2 and −0.3 JND at LS2-MP1), which moved the one-step
+calibration with it (CR3 factors at 500 Hz–2 kHz 1.27–1.31 with one seed, 1.11–1.14 with the other). At 16 000 rays the
+factors of two seeds are 1.07–1.09 and 1.05–1.07 (CR3), 1.09–1.12 and 1.07–1.11 (CR4). One pair is still unstable at
+16 000 rays (CR3 LS2-MP3, 1 kHz T30 simulated / measured 1.04 and 1.58), so the positions are combined by the median
+and T30 or EDT of a single pair should not be read from one run.
 
-Room criteria (simulated − measured in JND, mean absolute over the positions, 500 Hz–2 kHz; signed values and all
-bands in `validation/bras_CR3.md`, `bras_CR4.md`). Current model (specular reflection factors, ray-tracing energy
-floor fixed); in brackets the previous run with the old energy floor (see *3D OBJ halls*):
+Room criteria (simulated − measured in JND, median absolute over the positions, mean of 500 Hz–2 kHz; signed values
+and all bands in `validation/bras_CR3.md`, `bras_CR4.md`). Run of 2026-11-19 (mesh rules of that day, 16 000 rays,
+median); in brackets the same run with a second seed of the ray tracing. The table before (4000 rays, mean over the
+positions, mesh rules before 2026-11-19) is not comparable one to one; its 3D mesh rows were EDT 3.0 / T30 1.8 / C80
+0.8 / C50 1.0 / Ts 1.0 (CR3) and 3.7 / 2.1 / 1.6 / 1.8 / 2.3 (CR4):
 
 | hall | model | EDT | T30 | C80 | C50 | Ts |
 |---|---|---|---|---|---|---|
-| CR3 | 3D mesh | 3.0 (2.6) | 1.8 (2.7), all long, +8 % | 0.8 (1.0) | 1.0 (1.6) | 1.0 (1.2) |
-| | 3D calibrated, held-out LS2 | 1.8 (1.7) | 0.8 (1.6) | 0.7 (0.9) | 0.9 (1.3) | 0.7 (1.0) |
-| | 2.5D | 4.4 (4.4) | 3.2 (2.9) | 2.3 (1.7) | 2.6 (2.3) | 2.4 (2.1) |
-| CR4 | 3D mesh | 3.7 (2.3) | 2.1 (2.2), all long, +10–11 % | 1.6 (0.9) | 1.8 (1.2) | 2.3 (1.2) |
-| | 3D calibrated, held-out LS2 | 2.2 (2.7) | 0.8 (0.8) | 1.3 (0.9) | 1.2 (1.3) | 2.2 (1.3) |
-| | 2.5D | 2.1 (1.9) | 1.3 (1.1) | 1.5 (0.8) | 1.4 (1.4) | 1.9 (1.1) |
+| CR3 | 3D mesh | 2.5 (2.1) | 1.5 (1.1), long, +5–8 % | 0.9 (0.8) | 0.8 (0.7) | 1.0 (0.8) |
+| | 3D calibrated, held-out LS2 | 1.1 (1.4) | 1.0 (0.8) | 0.4 (0.7) | 0.7 (0.6) | 0.5 (0.5) |
+| | 2.5D | 3.2 (3.3) | 3.2 (3.2) | 1.4 (1.3) | 1.8 (1.6) | 1.5 (1.3) |
+| CR4 | 3D mesh | 2.4 (2.2) | 2.2 (2.0), long, +8–12 % | 0.7 (0.9) | 0.8 (0.6) | 1.6 (1.8) |
+| | 3D calibrated, held-out LS2 | 2.3 (2.1) | 0.6 (0.5) | 1.1 (1.1) | 0.7 (1.0) | 1.5 (1.7) |
+| | 2.5D | 1.4 (1.8) | 1.1 (0.9) | 1.1 (1.0) | 0.8 (0.8) | 1.4 (1.5) |
 
 Early reflections (500 Hz–2 kHz): every first-order image source the engine predicts at ≥ −15 dB re direct, ≥ 2 ms
 after the direct sound and 1.5 ms away from other predicted ones, against the measured energy in a 1 ms window at
@@ -793,14 +800,16 @@ on the same set as the first run, see *Specular reflection factors*: CR3 +1.2 �
 | CR4 | 3D mesh | 35 | −6.7 | −13.7 | −14.3 | −21.0 | +6.5 (+2.6 … +8.9) | 0.30 |
 
 Reading:
-- Reverberation: with Eyring-fitted coefficients the ray tracer gives T30 8–11 % too long in both halls (band means
-  500 Hz–2 kHz; 1.6–2.3 JND). A ray tracer decays slower than Eyring even in a diffuse box (7–12 % at scattering 0.7,
+- Reverberation: with Eyring-fitted coefficients the ray tracer gives T30 5–12 % too long in both halls (median over
+  the positions per band, 500 Hz–2 kHz, two seeds; 1.1–2.2 JND). A ray tracer decays slower than Eyring even in a diffuse box (7–12 % at scattering 0.7,
   `validation/check_rt_eyring.py`, `validation/check_mesh_box.py`), so coefficients fitted with Eyring are too low
   for it. Calibrating this engine on measured T30 is therefore needed (`calibrate.py`). Calibrated on LS1, the
-  held-out LS2 positions came within 0.8 JND in T30 in both halls; EDT, C80 / C50 and Ts within 0.7–2.2 JND.
-- Clarity and Ts are within 0.8–2.3 JND (mean absolute) in the 3D runs before calibration. In CR4 the fixed energy
+  held-out LS2 positions came within 1.0 JND in T30 in both halls (median absolute); EDT, C80 / C50 and Ts within
+  0.4–2.3 JND.
+- Clarity and Ts are within 0.6–1.8 JND (median absolute) in the 3D runs before calibration. In CR4 the fixed energy
   floor made EDT 10–12 % longer and C80 0.3–0.4 dB lower (more late scattered energy), which moved EDT, C80 and Ts
-  away from the measurement (EDT 2.3 → 3.7 JND).
+  away from the measurement (EDT 2.3 → 3.7 JND; both at 4000 rays and one seed — at 16 000 rays the CR4 EDT error is
+  2.2–2.4 JND, so this step is within the ray noise found on 2026-11-19).
 - Effect of the specular reflection factors on the room criteria (runs with the old energy floor): EDT better (CR3 3.3 → 2.6, CR4 2.7 → 2.3 JND), T30
   of the held-out CR3 positions after calibration better (3.7 → 1.6), C50 worse (CR3 1.0 → 1.6, CR4 1.0 → 1.2), the
   rest within ±0.2 JND, except EDT of the held-out CR4 positions after calibration (1.4 → 2.7). The cause of the
@@ -834,11 +843,12 @@ Reading:
   one self-intersecting outline (CR4). Fixed (largest piece kept); the ULH, STC and CR3 conversions are unchanged.
 
 ```bash
-python validate_bras_cr.py "CR3 medium room (chamber music hall)" "3 Surface descriptions" --obj CR3.obj --rays 4000 --out validation/bras_CR3
-python validate_bras_cr.py "CR4 large room (auditorium)" "3 Surface descriptions" --obj CR4.obj --rays 4000 --voxel 0.08 --out validation/bras_CR4
+python validate_bras_cr.py "CR3 medium room (chamber music hall)" "3 Surface descriptions" --obj CR3.obj --rays 16000 --out validation/bras_CR3
+python validate_bras_cr.py "CR4 large room (auditorium)" "3 Surface descriptions" --obj CR4.obj --rays 16000 --voxel 0.08 --out validation/bras_CR4
 ```
 Run 2026-11-05, re-run 2026-11-06 with the specular reflection factors and again with the energy floor fixed (CR3
-about 25 min, CR4 about 40 min on 2 CPU cores). The 2.5D halls
+about 25 min, CR4 about 40 min on 2 CPU cores); rerun 2026-11-19 with 16 000 rays and the median (CR3 about 2.6 h,
+CR4 about 3.5 h per seed on one core). The 2.5D halls
 (`validation/bras_CR*_2p5d_config.json`, CC BY-SA 4.0) open in the page with **Load config…**. `calibrate.py` now
 traces once per source for mesh halls (all receivers of that source together).
 
@@ -853,7 +863,8 @@ one source fix in SPPS was needed (`abs()` on doubles truncated to integers, so 
 see the script's docstring).
 
 Results (simulated − measured or SPPS − AuralPaths, mean absolute difference in JND at 500 Hz – 2 kHz over the 10
-position pairs, signed mean in brackets; `validation/isimpa_check.md`):
+position pairs, signed mean in brackets; `validation/isimpa_check.md`; the AuralPaths values are those of the run of
+2026-11-06 with 4000 rays, not rerun):
 
 | | T30 | EDT | C80 | Ts |
 |---|---|---|---|---|
@@ -1126,7 +1137,7 @@ For other loudspeakers, use manufacturer data or your own measurements.
 - Room-criteria check against measured halls: within about 1 JND at 500 Hz–4 kHz in a raked lecture hall (ULH),
   about 15 % too long in an elliptical domed hall (STC) with the dataset's Odeon-calibrated inputs (see *Room
   criteria against measured halls*)
-- Position-by-position check against two real halls (BRAS CR3 / CR4): T30 8–11 % long with Eyring-fitted
+- Position-by-position check against two real halls (BRAS CR3 / CR4): T30 5–12 % long with Eyring-fitted
   coefficients (calibrate first); first-order reflection levels +1.6 dB (CR3) and +2.7 dB (CR4) median, reflection by
   reflection poor in CR4; a 2.5D
   version of a hall with balconies does not reproduce its individual early reflections (see *Position-by-position

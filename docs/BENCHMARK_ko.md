@@ -31,7 +31,7 @@ AuralPaths는 실 8곳(BRAS CR1 – CR4, Detmold Konzerthaus, Arvedi Auditorium,
 
 | 용도 | 근거(이 페이지) | 판단 |
 |---|---|---|
-| 잔향 시간, 실측이나 목표 잔향으로 교정한 뒤 | T20 3 % 이내(Arvedi), T30 3.2 % 이내(Detmold); 교정에 쓰지 않은 위치에서 0.8 JND(BRAS CR3, CR4) | 쓸 수 있음 |
+| 잔향 시간, 실측이나 목표 잔향으로 교정한 뒤 | T20 3 % 이내(Arvedi), T30 3.2 % 이내(Detmold); 교정에 쓰지 않은 위치에서 1.0 JND 이내(BRAS CR3, CR4) | 쓸 수 있음 |
 | 잔향 시간, 재료 데이터만으로 예측 | CR3·CR4는 라운드 로빈 상위권; CR2는 30 – 35 % 짧음 | 조건부: 가능하면 교정 |
 | 명료도 C80, D50, 무지향 음원 | Arvedi 250 Hz – 4 kHz C80 1 dB 이내; CR3 C80 0.5 JND; Detmold C80 0.4 – 1.6 dB 높음 | 대체로 쓸 수 있음(약 1 JND) |
 | 음원을 바꿨을 때 C80, D50, Ts가 얼마나 변하는지 | 500 Hz – 1 kHz 평균 0.5 dB 이내; 2 – 4 kHz는 변화를 1 – 2 dB 작게 냄(Arvedi, 음원의 종류와 위치 변경; 지연 변경은 미검증) | 중역은 쓸 수 있음, 고역은 과소 추정 |
