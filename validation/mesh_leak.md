@@ -30,8 +30,9 @@ repository): 235 vertical and 50 horizontal; seating 172, structuredPlaster 66, 
 
 Voxel size (before the fix): 6.53 cm 285 faces dropped, 8.0 - 8.5 % found no surface; 4 cm 218 faces, 4.6 - 5.0 %;
 3 cm 97 faces, 0.5 - 0.7 %. Welding the vertices (0.1 mm, 1230 → 1211) changed nothing (285 faces, same rays).
-Python (`geometry.build_mesh`) and JavaScript (`buildMesh`) give the same counts before and after (now, 5 cm: 2598
-room faces, 279 narrow, 0 dropped, 3319.3 m³ in both; 6.53 cm: 293 narrow, 3310.2 m³ in both). `engine_js.py` runs
+Python (`geometry.build_mesh`) and JavaScript (`buildMesh`) give the same counts before and after (2026-11-19, 5 cm:
+2576 room faces, 258 of them narrow, 22 behind the room's faces, 0 dropped, 3319.3 m³ in both; 6.53 cm: 2574 / 270 /
+24, 3310.2 m³ in both; see *Faces behind the room's faces* below). `engine_js.py` runs
 the JavaScript engine itself, so the page and the Python tools share the ray tracer.
 
 ## Fix
@@ -79,6 +80,50 @@ below).
 the border of the voxel grid, i.e. to the outside, and 0.35 % of the rays find no surface at all: the model has
 openings to the outside at 10 cm voxels. Where they are has not been determined. TCB: the same kind, smaller.
 
+## Faces behind the room's faces (2026-11-19)
+
+Found while rerunning the validations: the second look of fix 1 also kept faces that do not bound the room, because
+"room voxels within 3 voxels" does not ask whether another face lies in between. Fratoni ULH: the slab under the
+raked floor (it touches the steps along their inner edges), the outer sides of the walls and the walls below the
+rake, 252 m², so the surface was 1197 m² instead of 945 m². No ray reaches such a face, so the ray-traced results
+were not affected, but the surface areas, the Sabine estimates printed with the checks and the 2.5D conversion
+(`obj_to_hall.py` takes the absorption area per group from the mesh) were. The first look had the same weakness,
+since before 2026-11-18, for a second skin a few centimetres behind a wall (BRAS CR4: the layers behind the stage
+wall, 122 m²).
+
+7. A face must have a free line to a room voxel. First look: from a point of the face to the room voxel 2.5 voxels
+   in front of or behind it. Second look: from the points with room voxels within 3 voxels to the 8 nearest of
+   them. The lines are tested against the triangles of the other faces within 4 voxels; a point within 1 mm of
+   another face is not used (a slab touching the steps), and faces in the plane of the face do not block (two
+   copies of one face). A face with no free line stays in the model as a two-sided face, so that no ray passes where
+   it closes a slit, and is marked hidden: it is not counted in the areas, the room faces and the volume
+   (`nHidden`, `aHidden` / `n_hidden`, `a_hidden`; `exposure: false` skips the test). If no point of a face can be
+   tested in the first look, its count stands.
+
+`node validation/check_mesh_leak.js <files>` as above, engine of commit `be5bc48` (before) and now:
+
+| model | faces behind the room's faces | their area | surface counted, before → now | rays lost, before → now | relative change of the summed ray energy |
+|---|---|---|---|---|---|
+| double shell (built in the script: a box with a second skin 6 cm outside; 5, 6.5, 10 cm voxels) | 6 | 314.6 m² | 461 - 619 → 304.0 m² (exact 304) | 0 → 0 % | not read |
+| BRAS CR3 | 24 | 0.7 m² | 2763.0 → 2762.3 m² | 0 → 0 % | 4 × 10⁻⁷ |
+| BRAS CR4 | 140 | 126.7 m² | 5851.3 → 5724.6 m² | 0 → 0 % | 1 × 10⁻⁶ |
+| Fratoni ULH | 241 | 249.7 m² | 1197.4 → 947.7 m² | 0 → 0 % | 3 × 10⁻¹⁰ |
+| Fratoni STC | 176 | 18.6 m² | 631.1 → 612.4 m² | 0 → 0 % | 0 |
+| Arni model | 105 | 89.4 m² | 441.7 → 352.4 m² | 0 → 0 % | 0 |
+| OperaRIR model without / with seat rows | 1 / 1 | 0.0 m² | 6531.4 / 6915.2 m², unchanged | 0 → 0 % | 0 |
+| Fratoni DUS | 1627 | 437.1 m² | 7626.6 → 7189.5 m² | 1.40 → 1.42 % | 5 × 10⁻⁷ |
+| Fratoni TCB | 711 | 798.8 m² | 11995.4 → 11196.6 m² | 0.29 → 0.29 % | 0 |
+
+(Single material and automatic voxel size, so the areas differ slightly from those of the validation runs.) The
+ray energy changes where a face that was one-sided became a two-sided narrow face (its back moves from 2 mm behind
+it into its plane). Python and JavaScript give the same counts on CR3, CR4, ULH and STC (`docs/MODEL_*`, *3D models
+in the browser*). In the Arni model the faces behind are the panel sides, which face each other across the slots
+between neighbouring panels: they keep the rays that enter a slot in the room and are not surface of the room.
+
+Limits: a face seen from the room only through a slit narrower than about a voxel counts as behind the room's
+faces (its area is not counted, the rays still reflect from it); a face smaller than 2 mm across has no point that
+can be tested and is treated the same way.
+
 ## Effect on the results
 
 Same rays and seeds, engine before (`1e911b9`) and now (`validation/check_leak_effect.py`; page set-up: the script
@@ -122,7 +167,9 @@ about 100 - 180 reflections in 2.5 s (mean free path 4V/S = 4.8 m), so 10 % lost
 reflection, against a mean absorption of 10 - 30 % per reflection. The dropped faces of CR3 were 8.1 m² of 2763 m².
 
 In the Arni model the 106 dropped faces were the side faces of the panels (90.3 m² of 351 m²), which face each
-other across the slots between neighbouring panels; rays that entered a slot were lost. They are now kept.
+other across the slots between neighbouring panels; rays that entered a slot were lost. They are kept in the model
+now; since 2026-11-19 they are not counted in the surface (352 m², as before the fix; 442 m² in the runs of
+2026-11-18 / 19 before that change), because they have no free line to the room.
 
 Not rerun: `validation/bras_CR3.md`, `bras_CR4.md`, the BRIR checks of CR3 / CR4, `fratoni_STC.md`, `fratoni_ULH.md`
 (Python engine, hours of run time), `arni_check.md`, `opera_check.md`, the Arvedi records (excluded from use) and the

@@ -434,7 +434,13 @@ are wanted.
   face is reflected instead of lost). A face with no room voxel at that distance on either side is looked at again:
   if room voxels lie within 3 voxels of its own points it is a face narrower than the surface band of its neighbours
   (a step riser, a narrow strip) and is kept as a two-sided face, both sides in one plane; only a face with none
-  (inside a solid, outside the hall) is left out. Until 2026-11-18 all such faces were dropped ("hidden faces"),
+  (inside a solid, outside the hall) is left out. A face that has room voxels near it but no free line to any of
+  them lies behind the faces of the room (the outer skin of a thin wall, the slab under a flight of steps, the
+  touching sides of two panels, a second skin a few centimetres behind a wall). It stays in the model as a two-sided
+  face, so that no ray passes where it closes a slit, but it is not counted in the areas, the room faces and the
+  volume (since 2026-11-19; before, these faces were counted: Fratoni ULH 252 m² of 1197 m², BRAS CR4 122 m²; the
+  lines run from the face's points to the room voxels found, points within 1 mm of another face are not used, and
+  faces in the same plane do not block; `"exposure": false` skips the test). Until 2026-11-18 all such faces were dropped ("hidden faces"),
   which opened holes in closed models: see *Lost rays* under *3D models in the browser* and
   `validation/mesh_leak.md`. `"mesh": {"keep_all": true}` (Python) / `keepAll` (JavaScript) keeps every face.
   A name mapped to `"__none"` in `groups` is not part of the room (markers of a measurement set-up).
@@ -489,9 +495,11 @@ python obj_to_hall.py mesh_config.json --depth-axis y --stage-end min --stage-de
 **Hall → Shape → 3D model (OBJ, SKP)** opens an OBJ file (or **Load config…** a config with `geometry.mesh`; a config
 saved by the page carries the OBJ as `mesh.obj_text`, a Python config asks for the OBJ file next). `engine_geom.js`
 builds the room as `geometry.build_mesh` does (voxel flood fill from the first source or seat inside, inward
-normals, narrow faces kept two-sided, back-facing twins, 1 mm inflate). Checked on BRAS CR3 on 2026-11-18: both
-give 5196 one-sided surfaces (2598 room faces), 279 narrow faces kept, none left out and a volume of 3319 m³ at 5 cm
-voxels (293 narrow faces and 3310 m³ at 6.53 cm). Before that date both gave 4638 surfaces, 279 dropped faces,
+normals, narrow faces kept two-sided, back-facing twins, 1 mm inflate). Checked on 2026-11-19: both give the same
+counts for BRAS CR3 (5 cm voxels: 5196 one-sided surfaces, 2576 room faces of which 258 narrow ones kept two-sided,
+22 faces of 0.4 m² behind the room's faces, none left out, 3319 m³; 6.53 cm: 2574 room faces, 270 narrow, 24 behind,
+3310 m³), BRAS CR4 (8 cm, without the spaces step: 4983 room faces, 181 behind with 196 m²), Fratoni ULH (800 room
+faces, 251 behind with 253 m²) and STC (18 820 room faces, 176 behind with 19 m²). Before 2026-11-18 both gave 4638 surfaces, 279 dropped faces,
 3188 m³ and the same 37 first-order image sources (largest relative energy difference 7 × 10⁻⁷); the image sources
 have not been compared again.
 
@@ -511,7 +519,9 @@ closed room (BRAS RS5) is refused, as its OBJ would be. If a file does not open,
   *faces in the file*: polygons read from the OBJ, or triangles made from the `.skp` (the same surface can give a
   different number: BRAS CR3 is 2598 triangles in a Blender OBJ and 2596 from the `.skp`, with the same area per
   material to 0.01 m²; the two files cut the same polygons into triangles differently). *Room faces*: the faces that
-  bound the room and reflect sound. *Narrow ones kept two-sided*: see the mesh rule above. *Not at the room, left
+  bound the room and reflect sound. *Narrow ones kept two-sided*: see the mesh rule above. *Behind the room's
+  faces, kept but not counted*: faces with room voxels near them but no free line to any (mesh rule above); they
+  reflect a ray that reaches them through a slit and are left out of the areas. *Not at the room, left
   out*: no room voxel within 3 voxels (inside solids, outside the hall). *Set to "not part of the room"*: names
   given that choice in the material table (for a file that also holds loudspeakers, microphones or furniture as
   geometry, e.g. BRAS `CR3_RIR_Genelec8020c.skp`: 9256 such faces; with them left out the room has the same area
@@ -697,15 +707,15 @@ the Python ray tracer would take hours on these 6 000 – 10 000-face models.
   floor below them (stalls, box, gallery or balcony floor from the mesh), sources 1.5 m above the stage or pit floor.
 - Rays lost: 17–24 % of the rays over the whole run in the runs of 2026-11-07. Most of that was the engine's own
   error (narrow faces dropped, fixed on 2026-11-18, `validation/mesh_leak.md`), not gaps in the models. Rerun on
-  2026-11-18: DUS 1.9–2.4 %, TCB 3.1–3.9 %, still above the 0.1 % limit of the page. The table below is from the
-  rerun; against the earlier run the mean absolute errors moved by at most 0.3 JND.
+  2026-11-19 with the engine as it is now: DUS 1.3–1.7 %, TCB 0.27–0.28 %, still above the 0.1 % limit of the page.
+  The table below is from the rerun; against the run of 2026-11-07 the mean absolute errors moved by at most 0.3 JND.
 
 Results (simulated − measured, mean absolute difference in JND at 500 Hz – 1 kHz over sources and receiver zones,
 signed mean in brackets; tables and figures in `validation/fratoni_DUS.*`, `fratoni_TCB.*`):
 
 | hall | EDT | T30 | C80 | Ts |
 |---|---|---|---|---|
-| DUS (2 sources × 3 zones) | 2.8 (+2.8) | 1.0 (−0.1) | 1.2 (−0.6) | 0.8 (+0.7) |
+| DUS (2 sources × 3 zones) | 2.7 (+2.7) | 1.0 (−0.1) | 1.2 (−0.6) | 0.8 (+0.6) |
 | TCB (2 sources × 3 zones) | 7.9 (−7.9) | 4.0 (−4.0) | 2.5 (+2.1) | 3.4 (−3.4) |
 | TCB, hall plaster as Wood (sensitivity; rerun 2026-11-19) | 4.6 (−4.6) | 2.5 (−2.5) | 1.8 (+1.0) | 2.4 (−1.9) |
 
@@ -713,7 +723,8 @@ Reading:
 - DUS: T30 at mid frequencies within about 1 JND; as in ULH, T30 is short at 125–250 Hz (−3 … −4 JND) and long at
   4 kHz (+3 … +4 JND); EDT up to 20 % long (mean about 14 %).
 - TCB: everything decays too fast (T30 about 20 % short, EDT about 40 % short, C80 mostly 2–4 dB high). A Sabine estimate
-  from the same inputs is already 8 % below the measured T30 (1.37 s vs about 1.5 s at 500–1000 Hz), so with this
+  from the same inputs is already about 8 % below the measured T30 (1.43 s vs 1.56 s, the mean over sources and
+  zones at 500–1000 Hz; the estimate was 1.37 s in the run of 2026-11-07, whose volume was too small), so with this
   material assignment the model holds too much absorption; giving the hall plaster the Wood coefficients instead
   halves the T30 gap but leaves EDT 25 % short. The cause is not determined: the undocumented tag-to-material
   assignment (the GA coefficients were tuned in Odeon on the authors' own assignment), the coupling of the boxes

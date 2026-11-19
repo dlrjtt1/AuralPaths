@@ -16,6 +16,12 @@ files.
     the ceiling panels and the ceiling). A ray between the backs of one-sided faces is followed instead of ended
     (CR4: the 4 cm slot inside the double-skin ceiling panels). Results of 3D models change; documented runs made with the Python
   engine (BRAS CR3 / CR4, STC, ULH, Arni, OperaRIR) have not been rerun and carry a note.
+  - Faces behind the room's faces (2026-11-19): the fix above also kept faces that do not bound the room (the outer
+    skin of a thin wall, the slab under a flight of steps, touching panel sides), and counted them: Fratoni ULH 252
+    of 1197 m², Arni 89 m², DUS 437 m², TCB 799 m²; BRAS CR4 had 122 m² of this kind since before the fix. A face
+    with no free line to a room voxel now stays in the model (rays lost unchanged) but is not counted in the areas,
+    the room faces and the volume. Ray-traced results are unchanged (summed energy within 10⁻⁶); surface areas,
+    Sabine estimates and the 2.5D conversion of 3D models change. Both engines give the same counts.
   - Volume of a 3D model: 1.5 voxels of the surface band instead of 0.5 (CR3 3124 → 3293 m³; documentation 3330.6).
   - Page: lost rays always shown for a 3D model, warning and `valid: false` in the saved config above 0.1 %;
     material choice "Not part of the room"; the counts under the model are defined in `docs/MODEL_*`.
