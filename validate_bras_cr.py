@@ -24,7 +24,7 @@ reflection and are weighted for finite reflector size, reflections.py). "initial
 engine (geometry, image sources, ray tracing).
 
 Runs: (a) 3D mesh with the BRAS coefficients unchanged; (b) the same after a one-step calibration of this engine on
-the LS1 positions (every material's -ln(1 - alpha) scaled per band by mean T30 simulated / measured), judged on the
+the LS1 positions (every material's -ln(1 - alpha) scaled per band by the median over the positions of T30 simulated / measured), judged on the
 held-out LS2 positions; (c) the 2.5D hall made from the mesh by obj_to_hall.py (what the browser page can run;
 balconies are lost).
 
@@ -165,6 +165,9 @@ def reflection_check(pred, y, on, fs, t_min=0.002, floor_db=-15.0, iso=0.0015, r
 
 
 # ---------------------------------------------------------------- main
+AVG, AVG_NAME = np.nanmedian, "median"   # how positions are combined (--combine)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("scene")
@@ -180,8 +183,13 @@ def main():
     ap.add_argument("--only-2p5d", action="store_true", help="skip the 3D runs (quick check of the 2.5D conversion)")
     ap.add_argument("--no-calibrate", action="store_true",
                     help="skip the second 3D run with absorption calibrated on the LS1 positions")
+    ap.add_argument("--combine", default="median", choices=["median", "mean"],
+                    help="how the positions are combined, in the tables and in the one-step calibration (median: one pair "
+                         "with a noisy late tail does not set the result; mean: as until 2026-11-19)")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
+    global AVG, AVG_NAME
+    AVG, AVG_NAME = (np.nanmedian, "median") if a.combine == "median" else (np.nanmean, "mean")
     ir, fs, E, R, eid, rid, sofa_path = read_rirs(a.scene)
     hall = re.search(r"(CR\d)", os.path.basename(sofa_path)).group(1)
     out = a.out or os.path.join("validation", f"bras_{hall}")
@@ -250,14 +258,14 @@ def main():
     simc = reflc = None
     if not a.no_calibrate and not a.only_2p5d:
         # one-step calibration of this engine, as calibrate.py would do with measured T30: per band, scale every
-        # material's absorption exponent -ln(1 - alpha) by f = mean(T30 sim / T30 measured) over the LS1 positions,
+        # material's absorption exponent -ln(1 - alpha) by f = median (--combine) of T30 sim / T30 measured over the LS1 positions,
         # then run again and judge on the LS2 positions, which the calibration did not see
         cal = [k for k in meas if k[0] == "LS1"]
-        f = np.nanmean([np.asarray(sim3[k]["T30"]) / np.asarray(meas[k]["T30"]) for k in cal], axis=0)
+        f = AVG([np.asarray(sim3[k]["T30"]) / np.asarray(meas[k]["T30"]) for k in cal], axis=0)
         cfgc = json.loads(json.dumps(cfg))
         for m in cfgc["geometry"]["materials"].values():
             m["alpha"] = [float(1 - (1 - al) ** fb) for al, fb in zip(m["alpha"], f)]
-        log("calibration on LS1 (T30 sim / measured per band): " + ", ".join(f"{b} Hz {v:.3f}" for b, v in zip(BANDS, f)))
+        log(f"calibration on LS1 ({AVG_NAME} over the positions of T30 sim / measured, per band): " + ", ".join(f"{b} Hz {v:.3f}" for b, v in zip(BANDS, f)))
         bp._GEOM_CACHE.clear()
         simc, reflc = run(cfgc, "3D mesh calibrated")
     sim25 = refl25 = rep25 = None
@@ -301,23 +309,23 @@ def main():
                     "", "```", *lines, "```", ""]
     models = ([("3D mesh", sim3, refl3)] if sim3 else []) + ([("3D mesh calibrated", simc, reflc)] if simc else []) + \
              ([("2.5D", sim25, refl25)] if sim25 else [])
-    md += ["## Room criteria, mean over the 10 positions (simulated − measured, mean signed / mean absolute, in JND)", "",
-           "| criterion | model | " + " | ".join(f"{b} Hz" for b in BANDS) + " | mean abs 500–2k |", "|---|---|" + "---|" * 7]
+    md += [f"## Room criteria, {AVG_NAME} over the 10 positions (simulated − measured, {AVG_NAME} signed / {AVG_NAME} absolute, in JND)", "",
+           "| criterion | model | " + " | ".join(f"{b} Hz" for b in BANDS) + f" | {AVG_NAME} abs, mean of 500–2k |", "|---|---|" + "---|" * 7]
     for name in ("EDT", "T30", "C80", "C50", "Ts"):
         mv = np.array([[meas[k][name][i] for i in range(6)] for k in sorted(meas)])
-        md.append(f"| {name} | measured (mean) | " + " | ".join(
-            (f"{v:.2f}" if name != "Ts" else f"{v:.0f}") for v in np.nanmean(mv, 0)) + " | |")
+        md.append(f"| {name} | measured ({AVG_NAME}) | " + " | ".join(
+            (f"{v:.2f}" if name != "Ts" else f"{v:.0f}") for v in AVG(mv, 0)) + " | |")
         for label, sim, _ in models:
             J = np.array([jnd_units(name, sim[k][name], np.asarray(meas[k][name])) if k in sim else np.full(6, np.nan)
                           for k in sorted(meas)])
-            md.append(f"| | {label} | " + " | ".join(f"{np.nanmean(J[:, i]):+.1f} / {np.nanmean(np.abs(J[:, i])):.1f}"
-                                                     for i in range(6)) + f" | {np.nanmean(np.abs(J[:, 2:5])):.1f} |")
+            md.append(f"| | {label} | " + " | ".join(f"{AVG(J[:, i]):+.1f} / {AVG(np.abs(J[:, i])):.1f}"
+                                                     for i in range(6)) + f" | {np.mean(AVG(np.abs(J[:, 2:5]), 0)):.1f} |")
             if label == "3D mesh calibrated":
                 h = np.array([k[0] == "LS2" for k in sorted(meas)])
                 Jh = J[h]
                 md.append(f"| | ↳ LS2 only (held out) | " + " | ".join(
-                    f"{np.nanmean(Jh[:, i]):+.1f} / {np.nanmean(np.abs(Jh[:, i])):.1f}" for i in range(6))
-                    + f" | {np.nanmean(np.abs(Jh[:, 2:5])):.1f} |")
+                    f"{AVG(Jh[:, i]):+.1f} / {AVG(np.abs(Jh[:, i])):.1f}" for i in range(6))
+                    + f" | {np.mean(AVG(np.abs(Jh[:, 2:5]), 0)):.1f} |")
             for k, jr in zip(sorted(meas), J):
                 if k not in sim:
                     continue
@@ -375,14 +383,14 @@ def plot(meas, models, hall, coeffs, path):
     for ax, n in zip(axs, names):
         mv = np.array([meas[k][n] for k in keys])
         kind, jv = JND[n]
-        m = np.nanmean(mv, 0)
+        m = AVG(mv, 0)
         band = jv * m if kind == "rel" else np.full(6, jv)
-        ax.fill_between(range(6), m - band, m + band, color="0.88", label="measured mean ± 1 JND")
+        ax.fill_between(range(6), m - band, m + band, color="0.88", label=f"measured {AVG_NAME} ± 1 JND")
         for row in mv:
             ax.plot(range(6), row, "-", color="0.6", lw=0.6)
-        ax.plot(range(6), m, "k-o", ms=3, lw=1.5, label="measured (mean; thin: each position)")
+        ax.plot(range(6), m, "k-o", ms=3, lw=1.5, label=f"measured ({AVG_NAME}; thin: each position)")
         for (label, sim, _), col, st in zip(models, ("#c2571a", "#7a3e9d", "#2a6fb0"), ("-s", "-D", "--^")):
-            ax.plot(range(6), np.nanmean([sim[k][n] for k in keys if k in sim], 0), st, color=col, ms=3, lw=1.3,
+            ax.plot(range(6), AVG([sim[k][n] for k in keys if k in sim], 0), st, color=col, ms=3, lw=1.3,
                     label=label)
         ax.set_xticks(range(6)); ax.set_xticklabels(["125", "250", "500", "1k", "2k", "4k"], fontsize=8)
         ax.set_title(f"{n} ({'s' if n in ('EDT', 'T30') else 'dB' if n.startswith('C') else 'ms'})", fontsize=9)
