@@ -1,4 +1,4 @@
-# What AuralPaths has been checked for (version 0.8.1)
+# What AuralPaths has been checked for (version 0.9.0)
 
 A short summary of the checks in `docs/MODEL_en.md`, written for someone deciding whether AuralPaths BRIRs can be
 used for a given purpose, for example stimuli for a listening test on the precedence effect with delayed loudspeaker

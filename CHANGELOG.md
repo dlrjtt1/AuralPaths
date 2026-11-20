@@ -3,7 +3,10 @@
 Dates are those of the commits on GitHub. The version is shown on the page and recorded in saved configs and exported
 files.
 
-## Unreleased
+## 0.9.0 (2026-11-20)
+Results of 3D models change against 0.8.1 (rays were lost through faces the engine dropped), and the validation now
+runs on the page's own engine. Recompute anything made with a 3D model in 0.8.1 or earlier; shoebox and drawn halls
+are not affected by the 3D-model fixes.
 - **Fratoni halls and the benchmark page on the page's engine.** `validate_fratoni.py --engine js` (default): ULH
   EDT / C50 / Ts within about 1 JND and T30 within 1.7 JND at 500 Hz–4 kHz, STC T30 18–27 % long (Python engine:
   about 1 JND, about 15 %). `docs/BENCHMARK_*`: header, summary and the hall table now give the page's values first

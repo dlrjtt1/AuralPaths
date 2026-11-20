@@ -23,7 +23,7 @@ import numpy as np
 import brir_proto as bp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-VERSION = "0.8.1"
+VERSION = "0.9.0"
 LATE_SECONDS = 1.6
 
 
