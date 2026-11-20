@@ -155,7 +155,18 @@
   - Fratoni, G., D'Orazio, D., & Garai, M. (2023). Uncertainty of input data for wave-based room acoustic simulations in large non-trivial environments. *Forum Acusticum 2023*, Turin. [doi:10.61782/fa.2023.1114](https://doi.org/10.61782/fa.2023.1114). CC BY 3.0. Odeon에서 GA 계수를 실측에 맞춘 절차와, 보정된 GA의 잔차(오페라 극장 4곳, 500–1000 Hz T30 −0.06 … +0.12 s)를 비교 기준으로 인용했다. 이 논문의 홀 4곳은 오페라 극장(그림 1(a)의 25,400 m³는 TCB와 같다)이며 ULH·STC는 포함되지 않는다.
   - Christensen, C. L., & Rindel, J. H. (2005). A new scattering method that combines roughness and diffraction effects. *Forum Acusticum 2005*, Budapest. [DTU Orbit](https://orbit.dtu.dk/en/publications/a-new-scattering-method-that-combines-roughness-and-diffraction-e/). Odeon이 산란 계수에 면 크기·경로 길이에 따른 회절 산란을 더한다는 근거(STC 차이의 해석에 사용).
 - **어디:** `validate_fratoni.py`(ULH, STC), `obj_to_hall.py`. TCB와 DUS는 박스석·발코니가 있어 2.5D 범위 밖이다.
-- **상태 (2026-11-05 실행):** ULH는 3D 메시 기준 500 Hz–4 kHz에서 EDT·T30·C50·Ts가 약 1 JND 이내, 125–250 Hz에서 T30이 1–2 JND 짧다. STC는 3D 메시·2.5D 모두 T30이 약 15% 길다(입력이 Odeon용으로 보정된 영향으로 해석, 엔진 오류는 슈박스 확인에서 보이지 않음). 2026-11-06 에너지 하한 수정 후 재계산해도 변화는 0.4 JND 이하. 위치는 시트 그림에서 읽었고(±0.3 m), STC 재료 대응 일부는 판단이다. 결과 파일: `validation/fratoni_*`. 2026-11-19에 3D 모델 규칙을 고친 뒤 ULH, STC, DUS, TCB를 다시 계산했다. 현재 값은 `validation/fratoni_*.md`에 있고, 이 문단의 수치는 2026-11-05 – 06의 것이다.
+- **상태 (2026-11-05 실행):** ULH는 3D 메시 기준 500 Hz–4 kHz에서 EDT·T30·C50·Ts가 약 1 JND 이내, 125–250 Hz에서 T30이 1–2 JND 짧다. STC는 3D 메시·2.5D 모두 T30이 약 15% 길다(입력이 Odeon용으로 보정된 영향으로 해석, 엔진 오류는 슈박스 확인에서 보이지 않음). 2026-11-06 에너지 하한 수정 후 재계산해도 변화는 0.4 JND 이하. 위치는 시트 그림에서 읽었고(±0.3 m), STC 재료 대응 일부는 판단이다. 결과 파일: `validation/fratoni_*`. 2026-11-19에 3D 모델 규칙을 고친 뒤 다시 계산했다(Python 엔진). ULH는 3D 메시의 모든 값이 이전과 0.03 s(EDT, T30), 0.2 dB(C50) 이내로 같아 위 서술이 그대로 유효하다. STC는 3D 메시의 T30이 0–0.04 s, EDT가 0.02–0.07 s 길어지고 C80이 0.2–0.6 dB 높아졌으며, 평균 절대 오차의 변화는 최대 0.8 JND다(`validation/fratoni_ULH.md`, `fratoni_STC.md`의 머리말). 오페라 하우스 두 곳(DUS, TCB)은 2026-11-07에 브라우저 엔진으로 따로 대조했고(`validation/check_fratoni_js.py`), DUS는 중음역 T30이 약 1 JND 이내, TCB는 감쇠가 너무 빨라 성공한 검증으로 세지 않는다(`docs/VALIDITY_ko.md`). 이 두 모델에는 바깥으로 뚫린 개구부가 있어 광선의 1.1 %(DUS), 0.29 %(TCB)를 잃는다(`validation/mesh_leak.md`).
+
+---
+
+### 5.5 2026-11-07 이후 추가한 검증 데이터와 비교 대상
+각 항목의 결과와 한계는 `docs/BENCHMARK_ko.md`, `docs/VALIDITY_ko.md`에 있다. 라이선스는 각 저장소 페이지의 표기를 옮긴 것이다. 이 데이터에서 만든 결과물은 저장소에 넣지 않는다(BRAS에서 만든 `validation/bras_*` 요약 파일은 예외, CC BY-SA 4.0).
+- **BRAS CR1·CR2와 기준 장면 RS1–RS7, FABIAN HRIR, QSC K8 지향성:** 5.1의 BRAS와 같은 데이터셋([doi:10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3), CC BY-SA 4.0). 결합실(CR1), 세미나실(CR2), 반사·회절 기준 장면, 실측 BRIR(FABIAN 머리), 스피커 지향성을 라운드 로빈 비교와 바이노럴 대조에 쓴다.
+- **Detmold Konzerthaus SRIR database:** [zenodo.org/records/4116247](https://zenodo.org/records/4116247), CC BY 4.0. 무대 음원 4 × 좌석 34의 KU100 BRIR과의 대조(그린 홀 모델). 데이터셋의 저자·논문 서지는 이 문서에서 확인하지 않았다 — 신뢰할 수 있는 출처를 찾을 수 없습니다(저장소 페이지에서 확인할 것).
+- **Arni 가변 음향실 데이터셋 (Aalto):** [doi:10.5281/zenodo.6985104](https://doi.org/10.5281/zenodo.6985104), CC BY 4.0. 패널 상태 37가지 × 마이크 5개. 닫힌 상태로만 보정하고 나머지 36가지를 예측했다.
+- **OperaRIR (핀란드 국립 오페라 대극장):** [doi:10.5281/zenodo.8096639](https://doi.org/10.5281/zenodo.8096639), CC BY-NC 4.0. Genelec 8331A 지향성: [zenodo.org/records/10255555](https://zenodo.org/records/10255555). 비상업 라이선스이므로 연구용 대조에만 쓴다.
+- **Auditorium Giovanni Arvedi (Politecnico di Milano):** [doi:10.5281/zenodo.20098848](https://doi.org/10.5281/zenodo.20098848), CC BY 4.0. 맹검 실행이 무효가 되어 사후 실행만 있고, 2026-11-15부터 이후 대조에서 제외했다(기록만 유지).
+- **I-Simpa (SPPS):** Université Gustave Eiffel, GPL-3.0, [github.com/Universite-Gustave-Eiffel/I-Simpa](https://github.com/Universite-Gustave-Eiffel/I-Simpa). 같은 BRAS 홀을 독립된 프로그램으로 계산해 비교했다. AuralPaths에 그 코드를 넣지 않았다. 문서의 AuralPaths 쪽 값은 2026-11-06의 Python 엔진·광선 4000개 값이며 다시 계산하지 않았다.
 
 ---
 
@@ -196,5 +207,12 @@
 | 2026-11-05 | OBJ 3D 홀(Python), OBJ → 2.5D 변환(체적 보존, 흡음은 메시 Sabine 면적 → 2.5D Eyring 지수), 실측 홀 2곳 지표 대조 | Fratoni 데이터셋, Fratoni 2022, Fratoni et al. 2023, Christensen & Rindel 2005, ISO 3382-1 Annex A |
 | 2026-11-05 | BRAS CR3·CR4 위치별 검증(지표·1차 반사), `obj_to_hall.py` 외곽선 버그 수정, `calibrate.py` 메시 홀 가속 | Aspöck et al. 2020 (BRAS v3) |
 | 2026-11-05 | 허상 반사에 유한 반사판 계수(Kirchhoff–Fresnel)와 산란 손실, 대역별 산란 계수 | Rindel 2005, Rindel 1992, BRAS CR3·CR4 대조 |
+| 2026-11-06 | 광선추적 에너지 하한 수정(산란 기여가 0.5 s 이후 버려지던 문제), 브라우저 3D 모델의 허상음원 2차, 페이지의 보정 버튼과 HRIR 세트 불러오기, 재료별 1차 반사 대조(BRAS CR3·CR4) | pyroomacoustics 0.10.1 소스, ISO 3382-1 Annex A, Aspöck et al. 2020 |
+| 2026-11-07 | I-Simpa(SPPS)와의 비교, 오페라 하우스 TCB·DUS의 브라우저 엔진 대조, 회귀 검사, 버전 0.6.0 | I-Simpa(GPL-3.0, 비교 실행에만 사용), Fratoni 데이터셋 |
+| 2026-11-08 – 10 | 실측 BRIR과의 바이노럴 대조(BRAS CR3·CR4, FABIAN 머리, K8 실측 지향성), 16 kHz까지의 보정과 공기흡음(ISO 9613-1 경향), 3D 모델의 광선 유도 고차 정반사 경로, CR4 후기 IACC 진단, 버전 0.7.0 | Aspöck et al. 2020, ISO 9613-1 |
+| 2026-11-10 | BRAS 기준 장면 RS1–RS7과 라운드 로빈 비교(`docs/BENCHMARK_*`), 얇은 판의 회절과 2차 모서리 회절(선택), Detmold Konzerthaus 대조(KU100 BRIR) | Brinkmann et al. 2019, Detmold SRIR database, Kouyoumjian & Pathak 1974 |
+| 2026-11-11 – 12 | 좌석 dip의 2차원 BEM 모델(선택), Arvedi Auditorium 대조(맹검 실행은 무효, 사후 실행), pyroomacoustics의 diffuse rain 끄기(산란 에너지 이중 계산), 지향성 음원의 광선을 패턴 에너지로 발사 | Davies & Cox 2000, Meyer et al. 2023, Politecnico di Milano 데이터(Arvedi; 이후 사용 제외) |
+| 2026-11-13 – 14 | Arni 가변 음향실 대조, 초기 잔여 에너지의 방향 의존 양귀 상관(브라우저 기본값), OperaRIR 대조와 C80 편향 진단, 산란 계수 민감도 | Arni 데이터셋, OperaRIR, Habets et al. 2008 |
+| 2026-11-15 – 17 | Python 도구가 사이트 엔진으로 계산하는 다리(`engine_js.py`)와 사이트 엔진으로 한 홀 대조, `calibrate.py` 기본 엔진을 사이트 엔진으로, 위치 결합을 중앙값으로, 3D 모델에서 무대 표시·청취 방향·광선 50 000개 기본, 계산 속도 개선 | (자체 구현), `validation/engine_js_halls.md` |
 | 2026-11-18 – 19 | 3D 모델: 표면 띠보다 좁은 면(계단 챌판 등)이 버려져 광선이 새던 문제 수정, 방의 면 뒤에 있는 면은 남기되 면적에서 제외, 좁은 틈 뒤 공간을 방에 포함(사이트 엔진), 부피 추정 수정. BRAS CR3·CR4와 Fratoni 홀 재계산(광선 16 000개, 중앙값) | `validation/mesh_leak.md`, Aspöck et al. 2020, Fratoni 데이터셋 |
 | 2026-11-20 | 3D 모델: 근처에 방 안 격자가 없는 면도 버리지 않음(BRAS CR2, 라디에이터 뒤 벽에서 광선 20% 손실 → 0%). 방 지표 검증을 사이트 엔진으로 전환(`--engine js`), 바이노럴 대조를 웹 페이지가 직접 계산한 BRIR로 전환(`--engine page`), 라운드 로빈 비교 재계산 | `validation/mesh_leak.md`, Brinkmann et al. 2019, Aspöck et al. 2020 |

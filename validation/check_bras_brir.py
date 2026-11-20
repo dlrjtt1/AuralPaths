@@ -215,7 +215,7 @@ def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None, mater
     return out
 
 
-def simulate_page(bras, hall, rays, hrir_path, k8=None, materials=None, work=None):
+def simulate_page(bras, hall, rays, hrir_path, k8=None, materials=None, work=None, swap=False):
     """As simulate(), but the BRIRs are computed by the web page itself (headless Chromium, tests/page_brirs.js):
     the page's engine, its binaural rendering and its defaults. Measured K8 balloon per loudspeaker (the page takes
     two directional sources per run, so three runs: LS3 + LS4, LS5 + LS6, LS7), materials in 8 octave bands
@@ -247,6 +247,8 @@ def simulate_page(bras, hall, rays, hrir_path, k8=None, materials=None, work=Non
     ks = sorted(P["LS"])
     for i in range(0, len(ks), 2):
         pair = ks[i:i + 2] if len(ks[i:i + 2]) == 2 else [ks[i], ks[i]]
+        if swap:        # the page's ray seed goes with the slot (PA L, PA R): the other slot is a second ray set
+            pair = pair[::-1]
         t = time.time()
         cfg = {"name": f"BRAS {hall} binaural check, page run LS{pair[0]} LS{pair[1]}", "fs": 48000, "c": 343.5,
                "room": {"dims_m": [10, 10, 5], "absorption_octave": {"values": [0.2] * 6}, "air_absorption": True},
@@ -268,7 +270,7 @@ def simulate_page(bras, hall, rays, hrir_path, k8=None, materials=None, work=Non
             sys.exit(f"page did not take the config as intended: {info}")
         B = json.load(open(pj))
         fs = B["fs"]
-        for key, k in (("B_L", pair[0]), ("B_R", pair[1])):
+        for key, k in ((("B_R", pair[1]), ("B_L", pair[0])) if swap else (("B_L", pair[0]), ("B_R", pair[1]))):
             x = np.array(B["brirs"][f"C|{key}"], float)
             if k8:
                 from scipy import signal as sg
@@ -293,13 +295,15 @@ def main():
     ap.add_argument("--engine", choices=("page", "python"), default="page",
                     help="page: BRIRs computed by the web page itself (headless Chromium; default since 2026-11-20; --hrir "
                          "only if given, else the page's KU100; --coverage and --early-dir do not apply); python: brir_proto")
+    ap.add_argument("--swap-slots", action="store_true", help="--engine page: the two loudspeakers of a run change slots (PA L / PA R), "
+                                                              "which gives each another ray seed: a second ray set for the same case")
     ap.add_argument("--early-dir", action="store_true", help="early residual with direction-dependent coherence (path_brir ew=)")
     a = ap.parse_args()
     out = a.out or os.path.join(HERE, f"bras_brir_{a.hall}")
     if a.engine == "page":
         if a.coverage or a.early_dir:
             sys.exit("--coverage and --early-dir need --engine python")
-        sim, fs_sim = simulate_page(a.bras, a.hall, a.rays, a.hrir, k8=a.k8_mps, materials=a.materials, work=os.path.dirname(os.path.abspath(out)))
+        sim, fs_sim = simulate_page(a.bras, a.hall, a.rays, a.hrir, k8=a.k8_mps, materials=a.materials, work=os.path.dirname(os.path.abspath(out)), swap=a.swap_slots)
     else:
         sim, fs_sim = simulate(a.bras, a.hall, a.rays, a.hrir or os.path.join(HERE, "..", "hrir", "KU100.sofa"), coverage=a.coverage,
                                k8=a.k8_mps, materials=a.materials, early_dir=a.early_dir), 44100
