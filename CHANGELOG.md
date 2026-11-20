@@ -5,6 +5,8 @@ files.
 
 ## Unreleased
 - Zenodo DOI of 0.9.0 (https://doi.org/10.5281/zenodo.24386517) in `CITATION.cff`, README and `docs/VALIDITY_*`.
+- README badge and `CITATION.cff` `doi` now give the DOI for all versions (https://doi.org/10.5281/zenodo.24053629), which always resolves to
+  the latest version, so a release's own README already carries a valid DOI; the DOI of each version is listed next to it.
 
 ## 0.9.0 (2026-11-20)
 Results of 3D models change against 0.8.1 (rays were lost through faces the engine dropped), and the validation now
