@@ -19,7 +19,7 @@ criteria averaged over receivers. That is a small sample; the results describe t
 | Octave spectrum at the binaural listener, same head and loudspeaker as the measurement | within 1.4 dB, 125 Hz–4 kHz (relative to 250 Hz–1 kHz) | Binaural check against measured BRIRs |
 | ITDG and level ratio set by the stimulus builder | equal to the nominal values at the reference seat (0.000 ms, 0.000 dB); files rebuilt independently to 1.5·10⁻⁵ | Stimuli for the listening tests |
 | Browser page vs Python | C80 / D50 / EDT / T30 within 0.007 dB / 0.001 / 0.001 s / 0.001 s; IACC_E3 within 0.035 (shoebox, 36 conditions) | Browser vs Python |
-| Reverberation after calibration on measured T30 | held-out positions within 1.0 JND in T30 (median absolute) (BRAS CR3 and CR4) | Position-by-position check |
+| Reverberation after calibration on measured T30 | held-out positions within 1.6 JND in T30 (median absolute) (BRAS CR3 and CR4) | Position-by-position check |
 | Room criteria with another program's calibrated inputs | ULH: all criteria within about 1 JND at 500 Hz–4 kHz; DUS: T30 within about 1 JND at mid frequencies | Room criteria against measured halls; The two opera houses |
 | Against an independent simulator (I-Simpa SPPS) | diffuse box within 0–4 %, CR4 within about 1–2 JND | Comparison with an independent free simulator |
 
@@ -27,7 +27,7 @@ criteria averaged over receivers. That is a small sample; the results describe t
 
 | What | Result | Section |
 |---|---|---|
-| T30 without calibration | 5–12 % long with Eyring-fitted coefficients (BRAS RIRs, median over the positions); 15–25 % long in CR4 in the binaural check | Position-by-position check; Binaural check |
+| T30 without calibration | 5–16 % long with Eyring-fitted coefficients (BRAS RIRs, median over the positions, page's engine: CR3 5–10 %, CR4 13–16 %); 15–25 % long in CR4 in the binaural check | Position-by-position check; Binaural check |
 | First-order reflection levels | median +1.6 dB (CR3) and +2.7 dB (CR4) re measured; reflection by reflection poor in CR4 | Position-by-position check |
 | Early energy and clarity at the binaural listener | C80 1–4 dB low at 500 Hz–1 kHz; in CR4 13–20 % of the 0–80 ms energy at 20–50 ms against 5–9 % measured (mainly the ceiling panels; cause not established) | Binaural check |
 | Early interaural cross-correlation, IACC_E3 | slightly low: 0.44 vs 0.52 (CR3), 0.76 vs 0.83 (CR4) with the measured loudspeaker directivity, 0.41 vs 0.45 (Detmold); before the early-direction option (2026-11-13, default) 0.40, 0.75, 0.34 | Binaural check |

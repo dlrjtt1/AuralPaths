@@ -4,6 +4,12 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- **Room-criteria validation now runs on the page's engine.** `validate_bras_cr.py`, `validation/rr_complex.py` and
+  `validation/rr_coupled.py` got `--engine js|python` (default `js`, through `engine_js.py`; `engine_js.use_in`).
+  BRAS CR3 / CR4 (`validation/bras_CR*.md`, `docs/MODEL_*`): 3D mesh before calibration T30 5–10 % long in CR3,
+  13–16 % in CR4 (Python engine: 5–8 %, 8–12 %); held-out positions after calibration within 1.6 JND in T30.
+  Round robin (`docs/BENCHMARK_*`): CR2 3.5, CR3 3.0, CR4 2.3 JND; coupled rooms 7.0 / 1.2 dB (30.4 deg) and
+  6.6 / 5.3 dB (4.1 deg). The binaural checks still use the Python tools and were not rerun.
 - **3D models: walls behind a slot thinner than the voxel band were dropped** (found 2026-11-20 in BRAS CR2: the wall
   6.5 cm behind the radiators, 12 faces, 20 % of the rays lost from the room centre). A face with no room voxel within
   3 voxels is no longer dropped; it stays in the model as a face behind the room's faces (reflects rays, not counted),

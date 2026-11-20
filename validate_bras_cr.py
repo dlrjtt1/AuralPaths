@@ -168,6 +168,8 @@ def reflection_check(pred, y, on, fs, t_min=0.002, floor_db=-15.0, iso=0.0015, r
 AVG, AVG_NAME = np.nanmedian, "median"   # how positions are combined (--combine)
 
 
+ENGINE = "Python engine"
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("scene")
@@ -175,6 +177,8 @@ def main():
     ap.add_argument("--obj", required=True)
     ap.add_argument("--coeffs", default="fitted", choices=["fitted", "initial"])
     ap.add_argument("--rays", type=int, default=6000)
+    ap.add_argument("--engine", choices=("js", "python"), default="js",
+                    help="js: the page's engine through Node (engine_js.py; default since 2026-11-20); python: pyroomacoustics")
     ap.add_argument("--max-faces", type=int, default=3000)
     ap.add_argument("--voxel", type=float, default=0.05,
                     help="voxel size (m) for finding the room inside the mesh; memory grows as 1/voxel^3 "
@@ -188,6 +192,11 @@ def main():
                          "with a noisy late tail does not set the result; mean: as until 2026-11-19)")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
+    global ENGINE
+    if a.engine == "js":
+        import engine_js
+        engine_js.use_in(bp)
+        ENGINE = "page's engine; 2.5D hall and energy histograms through engine_js.py"
     global AVG, AVG_NAME
     AVG, AVG_NAME = (np.nanmedian, "median") if a.combine == "median" else (np.nanmean, "mean")
     ir, fs, E, R, eid, rid, sofa_path = read_rirs(a.scene)
@@ -302,7 +311,7 @@ def main():
         sim25, refl25 = run(cfg25, "2.5D")
 
     # ---------------------------------------------------------------- report
-    rows, md = [], [f"# BRAS {hall}: measured RIRs vs AuralPaths (Python engine)", "",
+    rows, md = [], [f"# BRAS {hall}: measured RIRs vs AuralPaths ({ENGINE})", "",
                     "Data: Aspöck et al. (2020), *BRAS – Benchmark for Room Acoustical Simulation*, v3, "
                     "https://doi.org/10.14279/depositonce-6726.3, CC BY-SA 4.0 (dodecahedron RIRs, positions, surface "
                     f"descriptions). Material set: {a.coeffs}_estimates. This file is derived from BRAS and is CC BY-SA 4.0.",
@@ -397,7 +406,7 @@ def plot(meas, models, hall, coeffs, path):
         ax.grid(alpha=0.3)
     h, l = axs[0].get_legend_handles_labels()
     fig.legend(h, l, loc="lower center", ncol=len(l), fontsize=8, frameon=False)
-    fig.suptitle(f"BRAS {hall}: measured RIRs (10 positions) vs AuralPaths Python engine, {coeffs} material estimates",
+    fig.suptitle(f"BRAS {hall}: measured RIRs (10 positions) vs AuralPaths ({ENGINE}), {coeffs} material estimates",
                  fontsize=10)
     fig.tight_layout(rect=(0, 0.08, 1, 1))
     fig.savefig(path, dpi=110)

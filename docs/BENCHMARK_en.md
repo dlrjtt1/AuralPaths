@@ -25,18 +25,18 @@ and was scored with the same measures after seeing the measurements (post hoc, s
 | comparison | 6 participating programs | AuralPaths |
 |---|---|---|
 | median shape error of reflection spectra (15 reference cases) | 1.0 - 2.8 dB | 1.5 dB |
-| mean error of reverberation and clarity (T20, EDT, C80, D50), material data only | CR2 1.8 - 5.5, CR3 2.9 - 6.4, CR4 1.3 - 4.3 JND | CR2 3.7 (6th of 7), **CR3 2.9 (joint best of 7)**, CR4 2.3 (3rd) JND |
-| overestimate of low-frequency reverberation (T20, mean of three rooms) | 125 Hz +58 %, 250 Hz +35 % (mean) | 125 Hz +43 %, 250 Hz +13 % |
+| mean error of reverberation and clarity (T20, EDT, C80, D50), material data only | CR2 1.8 - 5.5, CR3 2.9 - 6.4, CR4 1.3 - 4.3 JND | CR2 3.5 (6th of 7), **CR3 3.0 (2nd of 7)**, CR4 2.3 (3rd) JND |
+| overestimate of low-frequency reverberation (T20, mean of three rooms) | 125 Hz +58 %, 250 Hz +35 % (mean) | 125 Hz +47 %, 250 Hz +15 % |
 | source lateralization error (three rooms) | 0.2 - 14.2 deg | **0.3 - 0.6 deg** |
 | binaural tone colour error (37 gammatone bands) | 1.3 - 3.2 dB | 1.4 dB |
-| energy decay of coupled rooms (door 30.4 / 4.1 deg) | 2.5 - 7.5 / 4.1 - 5.1 dB | 1.0 - 7.2 / 6.5 - 7.2 dB |
+| energy decay of coupled rooms (door 30.4 / 4.1 deg) | 2.5 - 7.5 / 4.1 - 5.1 dB | 1.2 - 7.0 / 5.3 - 6.6 dB |
 
 ### By use
 
 | use | evidence (this page) | verdict |
 |---|---|---|
-| reverberation time, after calibration to a measured or target reverberation | T20 within 3 % (Arvedi), T30 within 3.2 % (Detmold); within 1.0 JND at positions not used for the calibration (BRAS CR3, CR4) | usable |
-| reverberation time, predicted from material data only | CR3 and CR4 near the top of the round robin; CR2 18 - 34 % short | conditional: calibrate where possible |
+| reverberation time, after calibration to a measured or target reverberation | T20 within 3 % (Arvedi), T30 within 3.2 % (Detmold); within 1.6 JND at positions not used for the calibration (BRAS CR3, CR4; median, two ray seeds) | usable |
+| reverberation time, predicted from material data only | CR3 and CR4 near the top of the round robin; CR2 15 - 31 % short | conditional: calibrate where possible |
 | clarity C80, D50, omnidirectional source | Arvedi C80 within 1 dB at 250 Hz - 4 kHz; CR3 C80 0.5 JND; Detmold C80 0.4 - 1.6 dB high | mostly usable (about 1 JND) |
 | how much C80, D50, Ts change when the source changes | 500 Hz - 1 kHz within 0.5 dB on average; at 2 - 4 kHz the change comes out 1 - 2 dB too small (Arvedi, change of source type and position; a change of delay is not checked) | usable at mid frequencies, underestimated at high frequencies |
 | source direction, direct-sound ITD | 0.3 - 0.6 deg; direct-sound ITD within 5 us (FABIAN) | usable |
@@ -46,7 +46,7 @@ and was scored with the same measures after seeing the measurements (post hoc, s
 | early spaciousness IACC_E3 | 0.04 low (Detmold, 54 % within 0.075); 0.08 / 0.07 low (BRAS CR3 / CR4) | conditional: trends only, post hoc |
 | C80, EDT of directional loudspeakers at 2 - 4 kHz | C80 1.2 - 2.8 dB low, EDT 2 - 3 times (Arvedi); the opposite, 3.0 - 3.2 dB high, EDT 12 - 23 % short (Finnish National Opera, measured directivity; growing towards the back rows) | not supported |
 | sound grazing over the seating behind the first row | 5 - 11 dB too strong; 3.3 - 6.2 dB with the seat-dip model (RS7) | not supported: check by measurement |
-| coupled rooms through a narrow gap | late decay about 13 dB low (CR1, 4.1 deg) | not supported |
+| coupled rooms through a narrow gap | late decay 10 - 13 dB low (CR1, 4.1 deg) | not supported |
 | plausibility when listened to | no listening test | not checked |
 
 How to read this: the round-robin scores are post hoc (the participants submitted without knowing the results; here the
@@ -75,8 +75,8 @@ The numbers for the programs are quoted from the paper or read from its suppleme
 |---|---|---|
 | Spectra of the simple scenes (Figs. 1 - 3, SuppPub2) | compared by eye only; no number | no number either; our shape error in 2.1 |
 | Coupled rooms, 1 kHz EDC, door 30.4 deg (Fig. 4) | measured transition "at approximately t = 0.3 s"; most programs "only a weakly double sloped EDC"; A both decay rates but the wrong transition time | double slope with the fitted data: transition 0.37 - 0.40 s (measured 0.25 - 0.28 s; programs 0.40 - 0.55 s), late decay rate T = 2.9 - 3.0 s (measured 3.7 s; programs 1.7 - 2.1 s, A 4.4 s). With the initial data like most programs: 0.54 - 0.58 s, 2.0 - 2.2 s. (Run of 2026-11-10, 6000 rays, before the 3D-model fixes; not recomputed) |
-| Coupled rooms, door 4.1 deg (SuppPub2) | figures only | second slope about 13 dB too low: EDC -51 ... -53 dB at 1.0 s (measured -38 dB), so within the figure's range (down to -50 dB) a single decay with T = 1.1 - 1.4 s (measured late T 4.0 - 4.2 s). Rerun of 2026-11-20 (16 000 rays): EDC -49 ... -53 dB at 1.0 s; T not recomputed |
-| T20, mean of 10 source-receiver pairs, octave bands (Fig. 5, S3-1) | measured T20 "on average, overestimated by 58% (125 Hz) and 35% (250 Hz)"; at 500 Hz - 2 kHz "still above the JND in most cases" | +43 % (125 Hz), +13 % (250 Hz), -1 / -6 / -16 / -14 % (500 Hz - 4 kHz), mean over the three rooms; 15 of 18 room-bands beyond the 5 % JND (programs 14 - 17). Read from S3-1, the six programs average +58 % and +35 %, as the paper says |
+| Coupled rooms, door 4.1 deg (SuppPub2) | figures only | second slope 10 - 13 dB too low: EDC -51 ... -53 dB at 1.0 s (measured -38 dB), so within the figure's range (down to -50 dB) a single decay with T = 1.1 - 1.4 s (measured late T 4.0 - 4.2 s). Page's engine, 2026-11-20 (16 000 rays): EDC -48 ... -49 dB at 1.0 s (about 10 dB low); T not recomputed |
+| T20, mean of 10 source-receiver pairs, octave bands (Fig. 5, S3-1) | measured T20 "on average, overestimated by 58% (125 Hz) and 35% (250 Hz)"; at 500 Hz - 2 kHz "still above the JND in most cases" | +47 % (125 Hz), +15 % (250 Hz), +1 / -4 / -14 / -15 % (500 Hz - 4 kHz), mean over the three rooms; 14 of 18 room-bands beyond the 5 % JND (programs 14 - 17). Read from S3-1, the six programs average +58 % and +35 %, as the paper says |
 | Correlation of measured and simulated parameters over the 10 pairs, 1 kHz | not significant, "with the exception of C80 and D50" in the large room (r = 0.7 - 0.9) | the same pattern: large room C80 r = 0.77, D50 r = 0.85 (p < 0.05); all others not significant |
 | Tone colour: energy differences in 37 gammatone bands 80 Hz - 16 kHz, BRIRs, mean over sources and ears (Fig. 6) | mean error E 1.3 dB, B and C 2.2 dB, A 3.2 dB | CR2 1.4 dB, CR3 1.4 dB, CR4 1.4 dB (FABIAN HRIRs, fitted materials, K8 directivity) |
 | ITD of the direct sound (discussion; lateralization in SuppPub3 Fig. S3-33) | "well preserved in the simulations (except for C)"; mean absolute lateralization error A 0.2 - 0.8, B 1.0 - 1.2, E 0.6 - 0.9, C 7.2 - 14.2 deg | 0.3 - 0.6 deg (2.4) |
@@ -108,16 +108,17 @@ data they received.
 
 | room | A | B | C | D | E | F | AuralPaths |
 |---|---|---|---|---|---|---|---|
-| CR2 seminar room | 5.5 | 1.8 | 3.0 | 1.9 | 3.5 | 3.3 | **3.7** |
-| CR3 chamber music hall | 6.4 | 4.9 | 3.6 | 2.9 | 4.4 | 4.6 | **2.9** |
+| CR2 seminar room | 5.5 | 1.8 | 3.0 | 1.9 | 3.5 | 3.3 | **3.5** |
+| CR3 chamber music hall | 6.4 | 4.9 | 3.6 | 2.9 | 4.4 | 4.6 | **3.0** |
 | CR4 auditorium | 3.5 | 4.3 | 2.2 | 1.3 | 2.5 | 2.4 | **2.3** |
 
-In CR2 the reverberation is 18 - 34 % too short from 250 Hz up with the initial data. With the BRAS "fitted" data
-(absorption adjusted to the measured reverberation times, so not a prediction) the score is 1.1 (CR2) and 1.3 (CR3).
-Ray tracing with 16 000 rays and first-order image sources, flat point sources. Rerun on 2026-11-20 after the
-3D-model fixes of 2026-11-19 (`validation/mesh_leak.md`); the run of 2026-11-10 (6000 rays) gave 4.1 / 2.8 / 2.2 with
-the initial data and 2.4 / 1.2 with the fitted data. Both changed together, so the two causes are not separated;
-T20 came out 4 - 6 percentage points longer in most bands (125 Hz: mean of the three rooms +34 % before).
+In CR2 the reverberation is 15 - 31 % too short from 250 Hz up with the initial data. With the BRAS "fitted" data
+(absorption adjusted to the measured reverberation times, so not a prediction) the score is 0.8 (CR2) and 1.4 (CR3).
+Computed on 2026-11-20 with the page's engine (the engine of the web page, run through `engine_js.py`), 16 000 rays,
+flat point sources, after the 3D-model fixes of 2026-11-19 and 2026-11-20 (`validation/mesh_leak.md`). The scripts
+themselves still call the Python engine; with it the same day: 3.7 / 2.9 / 2.3 (initial data) and 1.1 / 1.3 (fitted
+data), CR2 before the fix of 2026-11-20. The run of 2026-11-10 (Python engine, 6000 rays, before the fixes) gave
+4.1 / 2.8 / 2.2 and 2.4 / 1.2.
 
 ### 2.3 Coupled rooms
 
@@ -128,13 +129,13 @@ absolute EDC difference over 0 - 1.2 s down to -50 dB, defined here. Mean of the
 
 | door | A | B | C | D | E | F | AuralPaths, initial data | AuralPaths, fitted data |
 |---|---|---|---|---|---|---|---|---|
-| 30.4 deg | 2.5 | 3.0 | 5.8 | 5.3 | 7.5 | 4.4 | **7.2** | **1.0** |
-| 4.1 deg | 4.5 | 4.5 | 5.0 | 5.1 | 4.6 | 4.1 | **7.2** | **6.5** |
+| 30.4 deg | 2.5 | 3.0 | 5.8 | 5.3 | 7.5 | 4.4 | **7.0** | **1.2** |
+| 4.1 deg | 4.5 | 4.5 | 5.0 | 5.1 | 4.6 | 4.1 | **6.6** | **5.3** |
 
-At 4.1 deg the late, slower decay from the chamber comes out about 13 dB too low (EDC at 1.0 s: -51 ... -53 dB,
-measured -38 dB; 40 000 rays, three ray sets, before the 3D-model fixes; -49 ... -53 dB in the rerun of 2026-11-20
-with 16 000 rays, when the table above was recomputed: before 7.6 / 1.7 and 8.2 / 6.6 with 6000 rays), so it only
-shows below the range of the figure. This is not ray
+At 4.1 deg the late, slower decay from the chamber comes out 10 - 13 dB too low (EDC at 1.0 s: -51 ... -53 dB,
+measured -38 dB; Python engine, 40 000 rays, three ray sets, before the 3D-model fixes; -48 ... -49 dB with the
+page's engine on 2026-11-20, 16 000 rays, from which the table above is: Python engine the same day 7.2 / 1.0 and
+7.2 / 6.5, on 2026-11-10 with 6000 rays 7.6 / 1.7 and 8.2 / 6.6), so it only shows below the range of the figure. This is not ray
 noise and not a closed gap: the chamber itself fills as expected (its level is 17 dB below the laboratory's), and the
 energy that returns agrees within a few dB with the statistical two-room estimate for the opening of the model (about
 0.2 m2). The measured coupling is stronger than the modelled gap alone gives; why (sound through the door leaf,
@@ -250,9 +251,9 @@ it is not known whether other programs show similar errors there.
   frequencies with the default finite-reflector factor (RS3) and a ceiling-aisle flutter was underestimated in CR4.
 - Diffraction from edge end points, third and higher orders, plates between 5 cm and a few tenths of a metre thick:
   not checked.
-- **Coupled rooms joined by a narrow opening** (a door ajar): the late decay from the second room is about 13 dB too low (CR1,
+- **Coupled rooms joined by a narrow opening** (a door ajar): the late decay from the second room is 10 - 13 dB too low (CR1,
   4.1 deg). Mark the second room with the mesh option `seeds`; results with a wide opening are good.
-- **Material data matter more than the engine**: with the BRAS initial data, CR2 reverberates 18 - 34 % too short;
+- **Material data matter more than the engine**: with the BRAS initial data, CR2 reverberates 15 - 31 % too short;
   calibrate to a measured reverberation time where one exists.
 - No listening test yet: these checks are physical, not perceptual.
 

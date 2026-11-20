@@ -1,12 +1,6 @@
-# BRAS CR3: measured RIRs vs AuralPaths (Python engine)
+# BRAS CR3: measured RIRs vs AuralPaths (page's engine; 2.5D hall and energy histograms through engine_js.py)
 
-**Rerun 2026-11-19, 16 000 rays, positions combined by the median.** Mesh rules of that day (`validation/mesh_leak.md`): 2576 room faces instead of 2319 (279 dropped before), volume 3319 instead of 3188 m3 (BRAS documentation 3330.6 m3). Two things changed against the tables before, so the numbers are not comparable one to one: 16 000 rays instead of 4 000, and the positions are combined by the median instead of the mean (`--combine mean` gives the mean), in the tables and in the one-step calibration on LS1.
-
-**Why.** At 4 000 rays the T30 and EDT of single source-receiver pairs depend on the seed of the ray tracing: two runs that differ in the seed only gave 1 kHz T30 simulated / measured of 1.30 and 1.06 at LS1-MP1, 1.50 and 1.16 at LS1-MP5, 0.99 and 1.33 at LS2-MP3; the calibration factors on LS1 (500 Hz - 2 kHz) were 1.27 - 1.31 with one seed and 1.11 - 1.14 with the other. At 16 000 rays the factors are 1.07 - 1.09 (this run) and 1.05 - 1.07 (second seed), and the difference between the two seeds in T30 simulated / measured, mean over the 10 pairs at 500 Hz - 2 kHz, is about 0.10 instead of 0.17. One pair is still not stable: LS2-MP3 has 1.04 in this run and 1.58 with the second seed (1 kHz; the other nine pairs differ by 0.10 at most). T30 and EDT of a single pair should therefore not be read from one run; the medians are stable.
-
-**Second seed** (same settings, ray seed `crc32("<source>|2")`), median absolute error, mean of 500 Hz - 2 kHz, this run / second seed, in JND: 3D mesh EDT 2.5 / 2.1, T30 1.5 / 1.1, C80 0.9 / 0.8, C50 0.8 / 0.7, Ts 1.0 / 0.8; held-out LS2 after calibration EDT 1.1 / 1.4, T30 1.0 / 0.8, C80 0.4 / 0.7, C50 0.7 / 0.6, Ts 0.5 / 0.5; 2.5D EDT 3.2 / 3.3, T30 3.2 / 3.2, C80 1.4 / 1.3, C50 1.8 / 1.6, Ts 1.5 / 1.3.
-
-The run was computed in pieces (2 h limit per job); the times in the log below are the ray-tracing times of the pieces.
+**Computed with the page's engine since 2026-11-20** (`validate_bras_cr.py`, default `--engine js`): the energy histograms of the 3D mesh and of the 2.5D hall come from the engine of the web page through `engine_js.py`, 16 000 rays, positions combined by the median. The face counts, areas and the early-reflection part below are from the Python tools as before. Second ray seed, median absolute error (JND, mean of 500 Hz - 2 kHz; EDT / T30 / C80 / C50 / Ts): 3D mesh 2.5 / 1.8 / 0.7 / 0.8 / 0.9, held-out LS2 after calibration 1.6 / 1.6 / 0.5 / 0.6 / 0.6, 2.5D 2.9 / 2.2 / 1.0 / 1.2 / 1.1. The run with the Python engine of 2026-11-19 (16 000 rays, median): 3D mesh 2.5 / 1.5 / 0.9 / 0.8 / 1.0, held-out LS2 1.1 / 1.0 / 0.4 / 0.7 / 0.5; it is in the history of this file (commit a3d78d5).
 
 Data: Aspöck et al. (2020), *BRAS – Benchmark for Room Acoustical Simulation*, v3, https://doi.org/10.14279/depositonce-6726.3, CC BY-SA 4.0 (dodecahedron RIRs, positions, surface descriptions). Material set: fitted_estimates. This file is derived from BRAS and is CC BY-SA 4.0.
 
@@ -15,14 +9,14 @@ CR3: OBJ 2598 faces -> 2598 after decimation -> 2576 room faces (258 narrow ones
 surface areas (m2): ceiling 168.5, floor 342.5, plaster 450.3, seating 178.9, stagePanels 425.2, structuredPlaster 1171.9, windows 25.4; total 2763
 Sabine / Eyring T (s), no air: 125 Hz 1.75 / 1.66, 250 Hz 1.61 / 1.51, 500 Hz 1.41 / 1.31, 1000 Hz 1.49 / 1.39, 2000 Hz 1.54 / 1.44, 4000 Hz 1.41 / 1.31
 absorption: BRAS fitted_estimates; scattering per octave band (shown: 1 kHz): ceiling 0.12, floor 0.07, plaster 0.07, seating 0.61, stagePanels 0.05, structuredPlaster 0.19, windows 0.05
-[3D mesh] LS1: 5 receivers, 2364 s
-[3D mesh] LS2: 5 receivers, 2270 s
-calibration on LS1 (median over the positions of T30 sim / measured, per band): 125 Hz 1.091, 250 Hz 1.024, 500 Hz 1.067, 1000 Hz 1.075, 2000 Hz 1.086, 4000 Hz 1.061
-[3D mesh calibrated] LS1: 5 receivers, 2396 s
-[3D mesh calibrated] LS2: 5 receivers, 2353 s
+[3D mesh] LS1: 5 receivers, 64 s
+[3D mesh] LS2: 5 receivers, 60 s
+calibration on LS1 (median over the positions of T30 sim / measured, per band): 125 Hz 1.136, 250 Hz 1.057, 500 Hz 1.095, 1000 Hz 1.097, 2000 Hz 1.135, 4000 Hz 1.084
+[3D mesh calibrated] LS1: 5 receivers, 76 s
+[3D mesh calibrated] LS2: 5 receivers, 61 s
 2.5D hall (depth axis = x, stage at small x; image sources order 2, no diffraction): 35 plan vertices, 166 surfaces, volume 3135.1 m3; positions moved into the 2.5D room: LS2 1.96->3.37; outside the 2.5D plan (left out of its statistics): none
-[2.5D] LS1: 5 receivers, 49 s
-[2.5D] LS2: 5 receivers, 48 s
+[2.5D] LS1: 5 receivers, 4 s
+[2.5D] LS2: 5 receivers, 4 s
 ```
 
 ## Room criteria, median over the 10 positions (simulated − measured, median signed / median absolute, in JND)
@@ -30,30 +24,30 @@ calibration on LS1 (median over the positions of T30 sim / measured, per band): 
 | criterion | model | 125 Hz | 250 Hz | 500 Hz | 1000 Hz | 2000 Hz | 4000 Hz | median abs, mean of 500–2k |
 |---|---|---|---|---|---|---|---|---|
 | EDT | measured (median) | 1.61 | 1.39 | 1.33 | 1.31 | 1.23 | 1.03 | |
-| | 3D mesh | +2.2 / 2.7 | +1.9 / 1.9 | +1.6 / 1.8 | +2.4 / 2.4 | +3.4 / 3.4 | +2.2 / 2.2 | 2.5 |
-| | 3D mesh calibrated | +0.4 / 1.9 | +0.7 / 1.0 | -0.6 / 1.4 | +0.4 / 0.4 | +1.2 / 1.4 | -0.0 / 0.7 | 1.0 |
-| | ↳ LS2 only (held out) | -0.3 / 1.2 | +0.6 / 0.8 | -1.4 / 1.4 | +0.4 / 0.7 | +1.1 / 1.1 | +0.1 / 0.5 | 1.1 |
-| | 2.5D | +2.2 / 2.2 | +6.1 / 6.1 | +2.1 / 2.2 | +3.1 / 3.1 | +4.4 / 4.4 | +3.1 / 3.1 | 3.2 |
+| | 3D mesh | +2.1 / 2.7 | +1.5 / 1.6 | +0.9 / 1.8 | +1.8 / 1.8 | +3.7 / 3.7 | +1.5 / 1.5 | 2.4 |
+| | 3D mesh calibrated | +0.0 / 1.8 | +0.4 / 1.4 | -0.6 / 1.7 | +0.2 / 0.5 | +1.4 / 1.7 | +0.4 / 0.8 | 1.3 |
+| | ↳ LS2 only (held out) | -0.1 / 1.8 | +0.6 / 1.2 | -0.9 / 0.9 | +0.4 / 0.8 | +1.2 / 1.2 | +0.7 / 0.9 | 1.0 |
+| | 2.5D | +2.1 / 2.1 | +4.3 / 4.3 | +2.7 / 2.7 | +3.3 / 3.3 | +5.0 / 5.0 | +3.8 / 3.8 | 3.6 |
 | T30 | measured (median) | 1.62 | 1.45 | 1.31 | 1.34 | 1.32 | 1.06 | |
-| | 3D mesh | +1.8 / 1.8 | +0.8 / 0.8 | +1.3 / 1.3 | +1.4 / 1.4 | +1.7 / 1.7 | +1.9 / 1.9 | 1.5 |
-| | 3D mesh calibrated | +0.1 / 0.9 | +0.7 / 0.9 | +1.0 / 1.1 | +1.0 / 1.0 | +0.8 / 0.8 | +1.6 / 1.6 | 1.0 |
-| | ↳ LS2 only (held out) | +0.0 / 1.3 | +0.9 / 1.0 | +1.4 / 1.4 | +0.9 / 0.9 | +0.7 / 0.7 | +2.6 / 2.6 | 1.0 |
-| | 2.5D | +2.8 / 2.8 | +3.7 / 3.7 | +3.4 / 3.4 | +3.2 / 3.2 | +3.0 / 3.0 | +4.0 / 4.0 | 3.2 |
+| | 3D mesh | +1.9 / 1.9 | +1.1 / 1.1 | +1.5 / 1.5 | +1.4 / 1.4 | +1.0 / 1.0 | +1.8 / 1.8 | 1.3 |
+| | 3D mesh calibrated | -0.3 / 0.6 | +0.0 / 0.3 | +0.1 / 0.5 | +0.1 / 0.8 | -0.3 / 1.0 | +1.0 / 1.0 | 0.8 |
+| | ↳ LS2 only (held out) | -0.7 / 0.7 | +0.2 / 0.6 | -0.0 / 0.1 | -0.2 / 0.5 | -0.4 / 1.1 | +1.4 / 1.4 | 0.6 |
+| | 2.5D | +1.8 / 1.8 | +2.4 / 2.4 | +2.2 / 2.2 | +2.1 / 2.1 | +2.6 / 2.6 | +2.9 / 2.9 | 2.3 |
 | C80 | measured (median) | 0.41 | 0.43 | 1.27 | 1.80 | 1.42 | 2.86 | |
-| | 3D mesh | -1.0 / 1.2 | +0.0 / 1.5 | -0.2 / 1.3 | -0.7 / 0.8 | -0.6 / 0.7 | -0.5 / 0.6 | 0.9 |
-| | 3D mesh calibrated | -0.6 / 1.3 | +0.4 / 1.2 | +0.4 / 0.6 | -0.4 / 0.8 | +0.1 / 0.2 | -0.2 / 0.8 | 0.5 |
-| | ↳ LS2 only (held out) | -1.0 / 1.0 | -0.1 / 0.4 | +0.4 / 0.6 | -0.0 / 0.3 | +0.2 / 0.2 | -0.3 / 0.9 | 0.4 |
-| | 2.5D | -0.9 / 2.4 | -1.8 / 2.6 | -0.4 / 1.0 | -0.6 / 1.4 | -0.9 / 1.9 | -0.7 / 2.0 | 1.4 |
+| | 3D mesh | -0.8 / 1.1 | +0.4 / 1.3 | -0.1 / 0.7 | -0.5 / 0.5 | -0.2 / 0.5 | -0.1 / 0.4 | 0.6 |
+| | 3D mesh calibrated | -0.1 / 0.7 | +0.7 / 1.4 | +0.4 / 0.6 | -0.0 / 0.3 | +0.4 / 0.6 | +0.3 / 0.6 | 0.5 |
+| | ↳ LS2 only (held out) | -0.4 / 0.8 | +0.2 / 0.8 | +0.6 / 0.6 | +0.1 / 0.2 | +0.6 / 0.6 | -0.2 / 1.4 | 0.5 |
+| | 2.5D | -0.2 / 1.7 | -0.7 / 1.7 | -0.4 / 1.6 | -0.1 / 0.8 | -0.4 / 1.0 | -0.3 / 1.3 | 1.1 |
 | C50 | measured (median) | -1.87 | -1.69 | -1.02 | -1.64 | -1.72 | -0.25 | |
-| | 3D mesh | +0.0 / 1.6 | -0.1 / 1.7 | -0.5 / 1.4 | -0.4 / 0.7 | +0.1 / 0.3 | -0.2 / 0.7 | 0.8 |
-| | 3D mesh calibrated | -0.2 / 1.7 | -0.4 / 1.2 | -0.2 / 1.1 | -0.1 / 0.4 | +0.3 / 0.7 | -0.1 / 0.7 | 0.7 |
-| | ↳ LS2 only (held out) | -1.4 / 2.7 | -0.7 / 0.9 | -0.4 / 0.9 | -0.1 / 0.4 | +0.9 / 0.9 | -0.5 / 1.3 | 0.7 |
-| | 2.5D | +0.6 / 2.7 | -1.9 / 2.6 | -0.4 / 1.8 | -0.5 / 2.0 | -0.1 / 1.5 | -0.6 / 2.5 | 1.8 |
+| | 3D mesh | -0.4 / 1.9 | -0.0 / 1.8 | -0.5 / 1.3 | -0.3 / 0.6 | +0.1 / 0.4 | +0.0 / 0.7 | 0.8 |
+| | 3D mesh calibrated | +0.2 / 1.6 | +0.2 / 1.8 | -0.1 / 0.9 | +0.1 / 0.6 | +0.6 / 0.6 | +0.3 / 0.7 | 0.7 |
+| | ↳ LS2 only (held out) | -1.0 / 2.9 | -0.6 / 1.7 | -0.2 / 0.7 | -0.1 / 0.2 | +0.5 / 0.6 | -0.4 / 1.7 | 0.5 |
+| | 2.5D | +0.2 / 2.8 | -1.3 / 2.4 | +0.2 / 1.9 | -0.2 / 1.4 | -0.0 / 0.7 | -0.5 / 1.7 | 1.3 |
 | Ts | measured (median) | 113 | 103 | 97 | 93 | 92 | 74 | |
-| | 3D mesh | +1.7 / 2.1 | +0.7 / 0.9 | +0.4 / 1.1 | +1.0 / 1.0 | +0.8 / 0.8 | +0.8 / 0.8 | 1.0 |
-| | 3D mesh calibrated | +0.8 / 1.0 | +0.1 / 0.4 | -0.5 / 0.8 | +0.3 / 0.4 | -0.1 / 0.4 | +0.3 / 0.3 | 0.5 |
-| | ↳ LS2 only (held out) | +0.9 / 0.9 | +0.2 / 0.2 | -0.7 / 0.9 | +0.2 / 0.3 | -0.1 / 0.2 | +0.2 / 0.7 | 0.5 |
-| | 2.5D | +1.4 / 3.0 | +2.3 / 2.3 | +0.7 / 1.3 | +0.9 / 1.2 | +1.7 / 2.0 | +1.1 / 1.4 | 1.5 |
+| | 3D mesh | +1.1 / 1.2 | -0.1 / 0.8 | +0.2 / 0.8 | +0.8 / 0.8 | +0.5 / 0.6 | +0.6 / 0.6 | 0.7 |
+| | 3D mesh calibrated | -0.2 / 0.4 | -0.6 / 0.8 | -0.5 / 0.5 | +0.0 / 0.4 | -0.4 / 0.8 | +0.1 / 0.4 | 0.6 |
+| | ↳ LS2 only (held out) | -0.1 / 0.3 | +0.5 / 0.8 | -0.5 / 0.5 | +0.1 / 0.5 | -0.7 / 0.8 | +0.5 / 0.9 | 0.6 |
+| | 2.5D | +1.4 / 2.4 | +1.7 / 1.7 | +0.4 / 1.1 | +0.6 / 1.2 | +1.0 / 1.3 | +0.9 / 1.3 | 1.2 |
 
 Measured Ts in ms; EDT / T30 in s; C80 / C50 in dB. JND: ISO 3382-1 Annex A.
 

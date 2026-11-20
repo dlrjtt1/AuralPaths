@@ -144,9 +144,14 @@ def main():
     ap.add_argument("hall", nargs="?", choices=["CR2", "CR3", "CR4"])
     ap.add_argument("--coeffs", default="initial", choices=["initial", "fitted"])
     ap.add_argument("--rays", type=int, default=6000)
+    ap.add_argument("--engine", choices=("js", "python"), default="js",
+                    help="js: the page's engine through Node (engine_js.py; default since 2026-11-20); python: pyroomacoustics")
     ap.add_argument("--out", default=os.path.join(HERE, "..", "out", "rs"))
     ap.add_argument("--table", default=None, help="only print the comparison table from the results in this folder")
     a = ap.parse_args()
+    if a.engine == "js":
+        import engine_js
+        engine_js.use_in(bp)
     if a.table:
         table(a.table)
     else:

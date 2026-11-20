@@ -192,6 +192,8 @@ Round-robin scores with the page's engine, 16 000 rays, before -> after: CR2 3.7
 (fitted data); the result files of CR3, CR4 and the coupled rooms CR1 are identical. Regression suite: 15 passed.
 Not rerun with the Python engine.
 
+Validation with the page's engine (2026-11-20): `validate_bras_cr.py`, `validation/rr_complex.py` and `validation/rr_coupled.py` now compute with the page's engine by default (`--engine js`; `--engine python` for pyroomacoustics), and `validation/bras_CR3.md`, `bras_CR4.md` and `docs/BENCHMARK_*` 2.2 / 2.3 hold its values. Not moved to the page's engine: the binaural checks (`check_bras_brir.py` and what reads its output: `rr_lateral.py`, `rr_tonecolor.py`, `iacc_split.py`), which render with the Python tools; their documented values are from before the 3D-model fixes. The Python calibrations and BRIR checks started on 2026-11-20 with 16 000 rays were stopped unfinished and are not used.
+
 ## The `.skp` reader
 
 - CR3: the `.skp` gives 2596 triangles, the Blender OBJ 2598. No face is missing: the area per material is the same

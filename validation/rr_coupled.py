@@ -198,9 +198,15 @@ def main():
     ap.add_argument("--extract", default=None, help="SuppPub2 pdf: read the figure curves")
     ap.add_argument("--coeffs", default="initial", choices=["initial", "fitted"])
     ap.add_argument("--rays", type=int, default=6000)
+    ap.add_argument("--engine", choices=("js", "python"), default="js",
+                    help="js: the page's engine through Node (engine_js.py; default since 2026-11-20); python: pyroomacoustics")
     ap.add_argument("--out", default=os.path.join(HERE, "..", "out", "rs"))
     ap.add_argument("--table", default=None)
     a = ap.parse_args()
+    if a.engine == "js":
+        import brir_proto as bp
+        import engine_js
+        engine_js.use_in(bp)
     if a.extract:
         extract(a.extract, os.path.join(a.out, "rr_edc.csv"))
     elif a.table:

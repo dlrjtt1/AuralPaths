@@ -775,14 +775,16 @@ median); in brackets the same run with a second seed of the ray tracing. The tab
 positions, mesh rules before 2026-11-19) is not comparable one to one; its 3D mesh rows were EDT 3.0 / T30 1.8 / C80
 0.8 / C50 1.0 / Ts 1.0 (CR3) and 3.7 / 2.1 / 1.6 / 1.8 / 2.3 (CR4):
 
+**Since 2026-11-20 the table is computed with the page's engine** (`validate_bras_cr.py`, default `--engine js`: the energy histograms of the 3D mesh and of the 2.5D hall come from the engine of the web page through `engine_js.py`; 16 000 rays, median, in brackets a second ray seed). The Python engine (`--engine python`, run of 2026-11-19, described in the paragraphs above) gave for the 3D mesh EDT 2.5 / T30 1.5 / C80 0.9 / C50 0.8 / Ts 1.0 in CR3 and 2.4 / 2.2 / 0.7 / 0.8 / 1.6 in CR4, and after calibration at the held-out LS2 positions 1.1 / 1.0 / 0.4 / 0.7 / 0.5 and 2.3 / 0.6 / 1.1 / 0.7 / 1.5. In CR4 the page's engine gives T30 about 4–5 % longer than the Python engine before calibration (three and two ray seeds; cause not found: not the scattering model, the image-source order or the spaces behind the ceiling panels). One-step calibration factors of the page's engine at 500 Hz–2 kHz: CR3 1.08–1.14 and 1.07–1.08, CR4 1.14–1.17 and 1.14–1.16 (two seeds).
+
 | hall | model | EDT | T30 | C80 | C50 | Ts |
 |---|---|---|---|---|---|---|
-| CR3 | 3D mesh | 2.5 (2.1) | 1.5 (1.1), long, +5–8 % | 0.9 (0.8) | 0.8 (0.7) | 1.0 (0.8) |
-| | 3D calibrated, held-out LS2 | 1.1 (1.4) | 1.0 (0.8) | 0.4 (0.7) | 0.7 (0.6) | 0.5 (0.5) |
-| | 2.5D | 3.2 (3.3) | 3.2 (3.2) | 1.4 (1.3) | 1.8 (1.6) | 1.5 (1.3) |
-| CR4 | 3D mesh | 2.4 (2.2) | 2.2 (2.0), long, +8–12 % | 0.7 (0.9) | 0.8 (0.6) | 1.6 (1.8) |
-| | 3D calibrated, held-out LS2 | 2.3 (2.1) | 0.6 (0.5) | 1.1 (1.1) | 0.7 (1.0) | 1.5 (1.7) |
-| | 2.5D | 1.4 (1.8) | 1.1 (0.9) | 1.1 (1.0) | 0.8 (0.8) | 1.4 (1.5) |
+| CR3 | 3D mesh | 2.4 (2.5) | 1.3 (1.8), long, +5–10 % | 0.6 (0.7) | 0.8 (0.8) | 0.7 (0.9) |
+| | 3D calibrated, held-out LS2 | 1.0 (1.6) | 0.6 (1.6) | 0.5 (0.5) | 0.5 (0.6) | 0.6 (0.6) |
+| | 2.5D | 3.6 (2.9) | 2.3 (2.2) | 1.1 (1.0) | 1.3 (1.2) | 1.2 (1.1) |
+| CR4 | 3D mesh | 3.8 (3.2) | 3.0 (3.1), long, +13–16 % | 1.2 (0.9) | 1.1 (0.8) | 2.5 (2.1) |
+| | 3D calibrated, held-out LS2 | 2.2 (1.1) | 0.8 (0.8) | 0.9 (0.9) | 1.1 (0.8) | 1.4 (1.2) |
+| | 2.5D | 2.2 (2.2) | 1.5 (2.0) | 0.9 (1.1) | 0.8 (1.2) | 1.5 (1.5) |
 
 Early reflections (500 Hz–2 kHz): every first-order image source the engine predicts at ≥ −15 dB re direct, ≥ 2 ms
 after the direct sound and 1.5 ms away from other predicted ones, against the measured energy in a 1 ms window at
@@ -800,13 +802,13 @@ on the same set as the first run, see *Specular reflection factors*: CR3 +1.2 �
 | CR4 | 3D mesh | 35 | −6.7 | −13.7 | −14.3 | −21.0 | +6.5 (+2.6 … +8.9) | 0.30 |
 
 Reading:
-- Reverberation: with Eyring-fitted coefficients the ray tracer gives T30 5–12 % too long in both halls (median over
-  the positions per band, 500 Hz–2 kHz, two seeds; 1.1–2.2 JND). A ray tracer decays slower than Eyring even in a diffuse box (7–12 % at scattering 0.7,
+- Reverberation: with Eyring-fitted coefficients the ray tracer gives T30 5–16 % too long (CR3 5–10 %, CR4 13–16 %; median over
+  the positions per band, 500 Hz–2 kHz, two seeds, page's engine; 1.3–3.1 JND). A ray tracer decays slower than Eyring even in a diffuse box (7–12 % at scattering 0.7,
   `validation/check_rt_eyring.py`, `validation/check_mesh_box.py`), so coefficients fitted with Eyring are too low
   for it. Calibrating this engine on measured T30 is therefore needed (`calibrate.py`). Calibrated on LS1, the
-  held-out LS2 positions came within 1.0 JND in T30 in both halls (median absolute); EDT, C80 / C50 and Ts within
-  0.4–2.3 JND.
-- Clarity and Ts are within 0.6–1.8 JND (median absolute) in the 3D runs before calibration. In CR4 the fixed energy
+  held-out LS2 positions came within 1.6 JND in T30 in both halls (median absolute; 0.6–1.6 in CR3, 0.8 in CR4); EDT, C80 / C50 and Ts within
+  0.5–2.2 JND.
+- Clarity and Ts are within 0.6–2.5 JND (median absolute) in the 3D runs before calibration (CR3 0.6–0.9, CR4 0.8–2.5); EDT 2.4–3.8 JND. The rest of this point describes runs with the Python engine. In CR4 the fixed energy
   floor made EDT 10–12 % longer and C80 0.3–0.4 dB lower (more late scattered energy), which moved EDT, C80 and Ts
   away from the measurement (EDT 2.3 → 3.7 JND; both at 4000 rays and one seed — at 16 000 rays the CR4 EDT error is
   2.2–2.4 JND, so this step is within the ray noise found on 2026-11-19).
@@ -847,8 +849,8 @@ python validate_bras_cr.py "CR3 medium room (chamber music hall)" "3 Surface des
 python validate_bras_cr.py "CR4 large room (auditorium)" "3 Surface descriptions" --obj CR4.obj --rays 16000 --voxel 0.08 --out validation/bras_CR4
 ```
 Run 2026-11-05, re-run 2026-11-06 with the specular reflection factors and again with the energy floor fixed (CR3
-about 25 min, CR4 about 40 min on 2 CPU cores); rerun 2026-11-19 with 16 000 rays and the median (CR3 about 2.6 h,
-CR4 about 3.5 h per seed on one core). The 2.5D halls
+about 25 min, CR4 about 40 min on 2 CPU cores); rerun 2026-11-19 with 16 000 rays and the median (Python engine: CR3 about 2.6 h,
+CR4 about 3.5 h per seed on one core); 2026-11-20 with the page's engine (CR3 about 4 min, CR4 about 8 min). The 2.5D halls
 (`validation/bras_CR*_2p5d_config.json`, CC BY-SA 4.0) open in the page with **Load config…**. `calibrate.py` now
 traces once per source for mesh halls (all receivers of that source together).
 
@@ -1137,7 +1139,7 @@ For other loudspeakers, use manufacturer data or your own measurements.
 - Room-criteria check against measured halls: within about 1 JND at 500 Hz–4 kHz in a raked lecture hall (ULH),
   about 15 % too long in an elliptical domed hall (STC) with the dataset's Odeon-calibrated inputs (see *Room
   criteria against measured halls*)
-- Position-by-position check against two real halls (BRAS CR3 / CR4): T30 5–12 % long with Eyring-fitted
+- Position-by-position check against two real halls (BRAS CR3 / CR4, page's engine): T30 5–16 % long with Eyring-fitted
   coefficients (calibrate first); first-order reflection levels +1.6 dB (CR3) and +2.7 dB (CR4) median, reflection by
   reflection poor in CR4; a 2.5D
   version of a hall with balconies does not reproduce its individual early reflections (see *Position-by-position

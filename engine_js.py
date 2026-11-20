@@ -128,6 +128,14 @@ def hists(cfg, paths, n_rays=None, seed=None, t_max=2.5, return_resid=False, mix
     return H, cen
 
 
+def use_in(bp_module):
+    """Make brir_proto.energy_hists compute with the page's engine (validation scripts, --engine js). The argument
+    `spec` of brir_proto.energy_hists is dropped: the page's engine always adds its ray-guided specular paths."""
+    def hists_js(cfg, src, recs, t_max=2.5, n_rays=None, seed=None, return_resid=False, spec=False):
+        return energy_hists(cfg, src, list(recs), t_max=t_max, n_rays=n_rays, seed=seed, return_resid=return_resid)
+    bp_module.energy_hists = hists_js
+
+
 def energy_hists(cfg, src, recs, t_max=2.5, n_rays=None, seed=None, return_resid=False, mix=None):
     """As brir_proto.energy_hists, computed with the browser engine: ({rec: hist}, band centres[, {rec: resid}])."""
     out = hists(cfg, {src: list(recs)}, n_rays, seed, t_max, return_resid, mix)
