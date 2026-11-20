@@ -66,7 +66,7 @@ CC BY-SA 4.0)および Fratoni データセット(Mendeley Data、[doi:10.17632/
 | 項目 | 結果 | 場所 |
 |---|---|---|
 | Python のツールがページのエンジンで計算 | `engine_js.py` はページと同じエネルギーヒストグラムを与える(ページとの最大相対差 3·10⁻¹²; 描いたホール、90° スピーカ、3D ホール)。実測指向性は両エンジンで同じ帯域振幅を与える(10⁻¹² dB) | `validation/check_engine_js.py`、`check_engine_js_dir.py` |
-| **描いたホール(2.5D)** におけるページ対 Python | 同じモデルではない: 散乱の扱いが異なり、同じ T30 に必要な吸音が異なる(Detmold 1 kHz: 同じ材料で T30 1.50 s 対 1.34 – 1.39 s)。計算に用いるエンジンで校正すること。3D ホールでは約 2 % 以内で一致する | `validation/detmold_js.md` |
+| **描いたホール(2.5D)** におけるページ対 Python | 同じモデルではない: 散乱の扱いが異なり、同じ T30 に必要な吸音が異なる(Detmold 1 kHz: 同じ材料で T30 1.50 s 対 1.34 – 1.39 s)。計算に用いるエンジンで校正すること。3D ホールでは約 2 % 以内で一致し(2026-11-15)、BRAS CR4 では校正前の T30 がサイトのエンジンで 4–5 % 長い(2026-11-20、原因未特定) | `validation/detmold_js.md` |
 | ページのエンジンによるホール検証 | Arvedi、Arni、OperaRIR、Detmold のいずれも Python エンジンと同じ結論 | `validation/engine_js_halls.md` |
 | 最初の 80 ms の時間窓ごとのエネルギー | BRAS CR3 / CR4 と Detmold で 500 Hz – 4 kHz において約 1.3 dB 以内(位置平均); Arvedi は 20 – 50 ms で −4 … −5 dB | `validation/bras_decay_shape.md`、`arvedi_placement.md` |
 | Arvedi の長い EDT の原因 | そのモデル(公開図面から作成)の初期反射パターン。原因でないもの: 吸音の配置、散乱係数と散乱の扱い、エンジン、照準、容積、鏡像音源の次数 | `validation/arvedi_placement.md` |

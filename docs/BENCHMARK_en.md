@@ -1,6 +1,6 @@
 # How accurate is AuralPaths? (benchmark against public measurements)
 
-Last run: 2026-11-13 (Python engine, sections 1 - 4); 2026-11-15 (page's engine, section 4a). 한국어: [BENCHMARK_ko.md](BENCHMARK_ko.md), 日本語: [BENCHMARK_ja.md](BENCHMARK_ja.md).
+Last run: 2026-11-20. Engine: the page's engine (the engine of the web page itself; room criteria through `engine_js.py`, BRIRs computed by the page in a headless browser) for every value of AuralPaths unless a row says otherwise. Section 4a keeps the earlier Python-engine values for comparison. 한국어: [BENCHMARK_ko.md](BENCHMARK_ko.md), 日本語: [BENCHMARK_ja.md](BENCHMARK_ja.md).
 
 This page compares AuralPaths with rooms and halls whose measured impulse responses are public. Every number comes from
 public data and the scripts in this repository and can be recomputed by anyone who has the data (section 6). The
@@ -11,10 +11,11 @@ measured data are not redistributed here.
 AuralPaths was compared with measurements in 8 rooms and halls (BRAS CR1 - CR4, Detmold Konzerthaus, Arvedi Auditorium,
 the Fratoni lecture hall and domed hall) and 7 reference scenes (BRAS RS1 - RS7). Scored on the same data and with the
 same measures as the 2019 international round robin (Brinkmann et al. 2019, https://doi.org/10.1121/1.5096178), it lies
-in the range of the six participating simulation programs (anonymous, A - F), and has the smallest error of all in the
-reverberation and clarity of the chamber music hall (CR3) and in source lateralization. Reverberation time and the
+in the range of the six participating simulation programs (anonymous, A - F): second of seven in the reverberation and
+clarity of the chamber music hall (CR3), third and sixth in the two other rooms, and with the smallest tone-colour error
+(1.2 dB; post hoc). Reverberation time and the
 clarity of an omnidirectional source (C80, D50) agree to within about 1 JND once the model is calibrated to a measured
-reverberation time. Early spatial impression is slightly low (Detmold 0.04); the high frequencies of directional
+reverberation time. Early spatial impression agrees in Detmold (page BRIRs, within 0.02 on average) and in BRAS CR4, and is 0.14 low in BRAS CR3 (one seat); the high frequencies of directional
 loudspeakers and sound grazing over the seating are not yet supported (section 5).
 
 ### Next to the other programs, on the same data
@@ -52,7 +53,7 @@ and was scored with the same measures after seeing the measurements (post hoc, s
 How to read this: the round-robin scores are post hoc (the participants submitted without knowing the results; here the
 measurements could be seen). JND as in ISO 3382-1:2009 Annex A (EDT and T 5 %, C80 1 dB, D50 5 percentage points). All
 checks are physical, not perceptual, and they do not show that laboratory perceptual findings carry over to real halls
-or sound systems. Three bugs of the Python engine were fixed on 2026-11-12; all values on this page are after the fixes
+or sound systems. Three bugs of the Python engine were fixed on 2026-11-12, and 3D models lost rays through faces the engine dropped until 2026-11-18 to 20 (`validation/mesh_leak.md`); the values on this page are after these fixes unless marked
 (before and after: [CHANGELOG](../CHANGELOG.md) and the `validation/` documents).
 
 ## 2. The 2019 round robin
@@ -197,14 +198,15 @@ off by default because they cost time (up to tens of seconds per source-receiver
 Reference values: EDT 5 % and C80 1 dB from ISO 3382-1:2009 Annex A; IACC 0.075 as assumed in the thesis that
 accompanies the Detmold data (no primary source checked).
 
-## 4a. With the page's engine (2026-11-15)
+## 4a. The page's engine and the Python engine side by side
 
-Sections 1 - 4 were computed with the Python engine, whose ray tracing is pyroomacoustics. Since 2026-11-15 the
-Python tools can compute with the page's own engine (`engine_js.py`; `calibrate.py` and the hall checks do so by
-default), and the checks below were rerun with it. Why it matters: in a **drawn (2.5-D) hall** the two engines scatter
+Until 2026-11-13 this page was computed with the Python engine, whose ray tracing is pyroomacoustics. Since 2026-11-15 the
+Python tools can compute with the page's own engine (`engine_js.py`), since 2026-11-20 every validation script does so by
+default, and sections 1 - 4 hold the page's values. The table keeps both engines for the halls of section 4 (runs of
+2026-11-15; the Python values of Arni are from before the 3D-model fix). Why it matters: in a **drawn (2.5-D) hall** the two engines scatter
 differently (the page: a reflection is specular or diffuse with probability s; pyroomacoustics: every reflection in
 a direction mixed from both) and need different absorption for the same reverberation (Detmold, 1 kHz: factor 0.97
-against 0.72). In 3-D (OBJ) halls both mix and agree within about 2 %. Materials calibrated with one engine must
+against 0.72). In 3-D (OBJ) halls both mix; they agreed within about 2 % on 2026-11-15, and on 2026-11-20 the page's engine gave T30 4 - 5 % longer than the Python engine in BRAS CR4 before calibration (cause not found; after calibration the two agree). Materials calibrated with one engine must
 not be used in a drawn hall of the other.
 
 | check | page's engine | Python engine (sections 1 - 4) | details |

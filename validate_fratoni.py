@@ -253,12 +253,16 @@ def jnd_units(name, sim, meas):
     return (sim - meas) / (j * meas) if kind == "rel" else (sim - meas) / j
 
 
+ENGINE = "Python engine"
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("dataset")
     ap.add_argument("hall", choices=sorted(VENUES))
     ap.add_argument("--obj", required=True)
     ap.add_argument("--rays", type=int, default=50000)
+    ap.add_argument("--engine", choices=("js", "python"), default="js",
+                    help="js: the page's engine through Node (engine_js.py; default since 2026-11-20); python: pyroomacoustics")
     ap.add_argument("--max-faces", type=int, default=3000, help="decimate larger meshes (fast-simplification)")
     ap.add_argument("--ism-order", type=int, default=1)
     ap.add_argument("--stc-doors", default="Furniture", help="material of the STC doors_organ tag (sensitivity)")
@@ -269,6 +273,11 @@ def main():
     ap.add_argument("--preserve", default="eyring", choices=["eyring", "sabine", "room-eyring"], help="see obj_to_hall.py")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
+    global ENGINE
+    if a.engine == "js":
+        import engine_js
+        engine_js.use_in(bp)
+        ENGINE = "page's engine through engine_js.py"
     V = VENUES[a.hall]
     out = a.out or os.path.join("validation", f"fratoni_{a.hall}")
     os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
@@ -352,7 +361,7 @@ def main():
 
     # ---------------------------------------------------------------- tables, csv, figure
     rows = []
-    md = [f"# Fratoni {a.hall}: measured vs AuralPaths (Python engine)", "",
+    md = [f"# Fratoni {a.hall}: measured vs AuralPaths ({ENGINE})", "",
           "Data: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic simulations*, "
           "Mendeley Data, https://doi.org/10.17632/y7xnv6xg5s.1 (CC BY 4.0). Measured values: the dataset's Room_Criteria "
           "sheet (mean over the listed receivers). Inputs: the dataset's GA absorption / scattering, unchanged.", "",
@@ -395,7 +404,7 @@ def main():
     with open(out + "_receivers.csv", "w", newline="", encoding="utf-8") as f:
         allp = per3 + per25
         w = csv.DictWriter(f, fieldnames=list(allp[0])); w.writeheader(); w.writerows(allp)
-    plot(blocks, plan, res3, res25, a.hall, out + ".png")
+    plot(blocks, plan, res3, res25, a.hall, out + ".png", engine=ENGINE)
     print("->", out + ".md", out + ".csv", out + ".png")
 
 

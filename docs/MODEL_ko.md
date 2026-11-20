@@ -344,7 +344,7 @@ T30 오차를 맞춤 위치와 나란히 보여 준다. 재료가 바뀌고, 기
 광선을 30 000개 이상 쓴다(광선 10 000개에서는 CR3의 T30 대역 평균이 seed에 따라 최대 6% 달라졌다). 위치들은 중앙값으로 합친다(`calibrate.py`와 같음;
 2026-11-15 이전에는 평균). Python으로 돌릴 config는 `calibrate.py`로 다시 보정해야 한다: 그린 홀에서는 두 엔진의 산란 방식이 달라
 같은 T30에 필요한 흡음이 다르다(Detmold 1 kHz: 페이지 계수 0.97, Python 0.72; `validation/detmold_js.md`). 3D(OBJ) 홀에서는 약 2%
-이내로 일치한다. 실측 데이터로 된 예제: `examples/bras_cr3/`(BRAS CR3, LS1 × 5위치로 맞춤, LS2 × 5위치로
+이내로 일치한다. 다만 2026-11-20에는 BRAS CR4의 보정 전 T30이 사이트 엔진에서 4–5% 길었다(원인 미확인). 실측 데이터로 된 예제: `examples/bras_cr3/`(BRAS CR3, LS1 × 5위치로 맞춤, LS2 × 5위치로
 확인, 약 8분): 맞춤 위치 2% 이내, 확인 위치 −1 … +7%(125 Hz–4 kHz T30, 보정 전 +5 … +14%).
 
 `python calibrate.py my_hall/config.json measurements.csv --source-directivity directivity/dodeca_NTi_DS3.csv`

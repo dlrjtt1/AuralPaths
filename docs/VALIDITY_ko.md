@@ -65,7 +65,7 @@ CC BY-SA 4.0)와 Fratoni 데이터셋(Mendeley Data, [doi:10.17632/y7xnv6xg5s.1]
 | 항목 | 결과 | 위치 |
 |---|---|---|
 | Python 도구가 페이지 엔진으로 계산 | `engine_js.py`가 페이지와 같은 에너지 히스토그램을 준다(페이지 대비 최대 상대 차이 3·10⁻¹²; 그린 홀, 90° 스피커, 3D 홀). 실측 지향성은 두 엔진에서 같은 대역 진폭을 준다(10⁻¹² dB) | `validation/check_engine_js.py`, `check_engine_js_dir.py` |
-| **그린 홀(2.5D)**에서 페이지 대 Python | 같은 모델이 아니다: 산란 방식이 달라 같은 T30에 필요한 흡음이 다르다(Detmold 1 kHz: 같은 재료로 T30 1.50 s 대 1.34 – 1.39 s). 계산할 엔진으로 보정할 것. 3D 홀에서는 약 2 % 이내로 일치 | `validation/detmold_js.md` |
+| **그린 홀(2.5D)**에서 페이지 대 Python | 같은 모델이 아니다: 산란 방식이 달라 같은 T30에 필요한 흡음이 다르다(Detmold 1 kHz: 같은 재료로 T30 1.50 s 대 1.34 – 1.39 s). 계산할 엔진으로 보정할 것. 3D 홀에서는 약 2 % 이내로 일치했고(2026-11-15), BRAS CR4에서는 보정 전 T30이 사이트 엔진에서 4–5 % 길다(2026-11-20, 원인 미확인) | `validation/detmold_js.md` |
 | 페이지 엔진으로 홀 검증 | Arvedi, Arni, OperaRIR, Detmold 모두 Python 엔진과 같은 결론 | `validation/engine_js_halls.md` |
 | 처음 80 ms의 시간 구간별 에너지 | BRAS CR3 / CR4와 Detmold에서 500 Hz – 4 kHz 약 1.3 dB 이내(위치 평균); Arvedi는 20 – 50 ms에서 −4 … −5 dB | `validation/bras_decay_shape.md`, `arvedi_placement.md` |
 | Arvedi의 긴 EDT의 원인 | 그 모델(공개 도면으로 작성)의 초기 반사 패턴. 원인이 아닌 것: 흡음 배치, 산란계수와 산란 방식, 엔진, 조준, 용적, 이미지 음원 차수 | `validation/arvedi_placement.md` |
