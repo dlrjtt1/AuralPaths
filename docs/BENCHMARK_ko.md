@@ -88,6 +88,14 @@ AuralPaths는 참가하지 않았고, 같은 그림에 대해 사후에 점수�
 
 그림별 값: [validation/bras_rs.md](../validation/bras_rs.md) 2절.
 
+어느 엔진인가: 기준 장면은 무향실이나 반무향실에 놓인 판, 물체, 좌석 모양 블록 하나씩이고 방이 아니어서 사이트 페이지에
+불러올 수 없다. `validation/bras_rs.py`는 엔진의 반사·회절 공식을 Python으로 구현한 것(`reflections.py`,
+`diffraction.py`)의 도달음을 더한다. 같은 공식의 사이트 쪽 구현은 이 형상들에서 같은 도달음을 낸다: RS1 – RS4, RS6, RS7의
+회절 도달음 429개가 경로 길이 10⁻⁶ m 이내, 대역 에너지 0.012 % 이내로 일치한다(`validation/check_rs_pyjs.py`, 회귀 검사
+`diffraction_rs`, 2026-11-20. RS5와 2차 회절은 `diffraction_plate`, `diffraction_order2`). 표의 값은 2026-11-10 실행의
+것이고, 공식 코드는 그 뒤로 바뀌지 않았다(2026-11-18 – 20의 3D 모델 수정은 방 모델의 광선추적에 관한 것이며, 이 장면들은
+광선추적을 쓰지 않는다). 2026-11-20에 다시 계산하지는 않았다.
+
 ### 2.2 실내: 잔향과 명료도
 
 라운드 로빈의 장면 9 – 11은 BRAS CR2(세미나실), CR3(실내악홀), CR4(강당)이다. 논문 부록 그림 S3-1(SuppPub3)은
@@ -150,7 +158,7 @@ KU100 HRIR(페이지의 기본 머리)로 렌더하면 편차는 0.3 / 0.3 / 0.9
 ## 3. BRAS 기준 장면
 
 Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.org/10.14279/depositonce-6726.3
-(CC BY-SA 4.0). 125 Hz – 4 kHz, 음원-수음점 쌍에 대한 중앙값.
+(CC BY-SA 4.0). 125 Hz – 4 kHz, 음원-수음점 쌍에 대한 중앙값. 엔진 공식의 Python 구현으로 한 2026-11-10 실행이며, 사이트 쪽 구현이 같은 도달음을 낸다(2.1절 "어느 엔진인가").
 
 | 장면 | 쌍 | 형태 오차 | 평균 절대 차이 | 엔진 설정 |
 |---|---|---|---|---|
@@ -172,12 +180,12 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
 
 | 홀 | 데이터 | 결과 | 상세 |
 |---|---|---|---|
-| Detmold Konzerthaus(약 600석), 무대 음원 4 × 좌석 34, KU100 더미헤드 | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3: 93 %의 쌍에서 0.075 이내; IACC_E3: 평균 0.04 낮음(0.075 이내 54 %); EDT 500 Hz / 1 / 2 kHz에서 −3 / −7 / −15 %(5 % 이내 13 – 32 %); C80 +0.4 / +1.0 / +1.6 dB(1 dB 이내 34 – 41 %); T30 교정 후 3.2 % 이내. 2026-11-13 초기 방향 옵션(기본값) 적용 값; 옵션 없이: IACC_E3 0.11 낮음, EDT −3 / −6 / −11 %, C80 +0.3 / +0.7 / +1.4 dB. 2026-11-12 엔진 수정 전: 수정 전: IACC_E3 0.15 낮음, EDT 0 … +3 %, C80 0.3 – 0.8 dB 낮음(좌석 dip 모델, 수정 전: IACC_E3 0.10 낮음, C80 −0.2 … +0.2 dB) | [validation/detmold_kh.md](../validation/detmold_kh.md) |
+| Detmold Konzerthaus(약 600석), 무대 음원 4 × 좌석 34, KU100 더미헤드 | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | **사이트 엔진**(페이지가 계산한 BRIR, 2026-11-15. 그린 홀이라 3D 모델 수정과 무관): IACC_E3 평균 +0.02(0.075 이내 60 %); IACC_L3 +0.01(92 %); EDT 500 Hz / 1 / 2 kHz에서 −2.0 / −1.4 / −4.6 %(5 % 이내 24 – 29 %); C80 −0.1 / +0.5 / +0.9 dB(1 dB 이내 33 – 60 %). **Python 도구(이전):** IACC_L3: 93 %의 쌍에서 0.075 이내; IACC_E3: 평균 0.04 낮음(0.075 이내 54 %); EDT 500 Hz / 1 / 2 kHz에서 −3 / −7 / −15 %(5 % 이내 13 – 32 %); C80 +0.4 / +1.0 / +1.6 dB(1 dB 이내 34 – 41 %); T30 교정 후 3.2 % 이내. 2026-11-13 초기 방향 옵션(기본값) 적용 값; 옵션 없이: IACC_E3 0.11 낮음, EDT −3 / −6 / −11 %, C80 +0.3 / +0.7 / +1.4 dB. 2026-11-12 엔진 수정 전: 수정 전: IACC_E3 0.15 낮음, EDT 0 … +3 %, C80 0.3 – 0.8 dB 낮음(좌석 dip 모델, 수정 전: IACC_E3 0.10 낮음, C80 −0.2 … +0.2 dB) | [validation/detmold_kh.md](../validation/detmold_kh.md) |
 | BRAS CR3 실내악홀, CR4 강당(바이노럴, FABIAN 헤드) | BRAS | 직접음 ITD 8 – 11 µs 이내, 옥타브 스펙트럼 1.4 dB 이내(사이트가 계산한 BRIR, 2026-11-20); Python 도구로 한 계산에서: 직접음 후 14 – 70 ms의 개별 반사: 실측 − 모델 −1.1 dB(중앙값, 두 홀); CR4에서 천장 패널–통로 플러터 아래 좌석의 후기 IACC 낮음 | [validation/bras_brir_iacc_diag.md](../validation/bras_brir_iacc_diag.md) |
-| Fratoni 강의실(ULH)과 돔형 홀(STC) | Fratoni et al. 데이터셋 | ULH: 500 Hz – 4 kHz에서 약 1 JND 이내; STC: T30 약 15 % 김(이런 홀은 먼저 교정할 것) | [validation/](../validation/) `fratoni_*.md` |
-| Auditorium Giovanni Arvedi, Cremona(무대를 둘러싼 약 470석), 무대 음원 5개 × 수음점 65개, 8채널 구형 마이크; 공개 도면으로 만든 단순화 모델 | Politecnico di Milano, https://doi.org/10.5281/zenodo.20098848 (CC BY 4.0) | **사후 비교**(맞대결 계산은 수음점을 반대쪽에 놓아 무효). 2026-11-12 엔진 수정 후: 무지향 음원 T20 3 % 이내(45 – 78 %가 5 % 이내), 250 Hz – 4 kHz C80 −0.9 … +0.2 dB, D50 0.06 이내, EDT 14 – 30 % 김; Genelec 스피커(8020A 데이터): 500 Hz – 1 kHz C80 0.7 dB 이내, 2 – 4 kHz 1.2 – 2.8 dB 낮고 EDT 2 – 3배 김. 수정 전: 2 – 4 kHz C80 무지향 1.3 – 1.5 dB, 스피커 3 – 8 dB 낮음 | [validation/arvedi_check.md](../validation/arvedi_check.md) |
-| Arni 가변 음향실(Aalto, 8.9 × 6.3 × 3.6 m), 패널 55개 중 0 – 9개 열림, 37개 상태 × 마이크 5 | Arni 데이터셋, https://doi.org/10.5281/zenodo.6985104 (CC BY 4.0) | 모두 닫힌 상태 하나로 맨벽·커튼만 교정한 뒤 다른 36개 상태를 예측: 500 Hz – 4 kHz T30·EDT 평균 −6 … +7 %, C80 0.6 dB 이내; EDT/T30 시뮬 0.87 – 0.95 대 실측 0.91 – 0.96(250 Hz – 4 kHz); 250 Hz는 +20 %(패널의 저역 흡음 데이터 없음); 천장 쪽 흡음의 효과를 T30에서 과대(사후 비교) | [validation/arni_check.md](../validation/arni_check.md) |
-| 핀란드 국립 오페라 대극장(1,350석), 무대 위 Genelec 8331A 2대 × 1층 97석 | OperaRIR, https://doi.org/10.5281/zenodo.8096639 (CC BY-NC 4.0); 지향성 https://zenodo.org/records/10255555 | 공개 평면·단면도(Lokki et al. 2015)로 만든 간략 모델, T30로 객석·무대동 흡음만 교정: T30 6 % 이내; C80 500 Hz – 1 kHz +1.4 dB, 2 – 4 kHz +3.0 – 3.2 dB(1 dB 이내 13 – 21 %), 앞줄(2 – 8열)은 1 – 2 dB 이내, 17열은 2 – 4 kHz +7.5 – 8.1 dB; EDT 12 – 23 % 짧음(사후 비교, 진단). 등받이를 기하학적 띠(회절 없음)로 넣어도 뒷줄로 갈수록 커지는 경향은 그대로(17열 2 – 4 kHz +9 dB). 시트 딥 모델을 켜도 같음(1 – 4 kHz C80이 1 dB 더 높아짐). 직접음은 측정과 맞고, 뒷줄로 갈수록 후기 에너지가 측정보다 더 많이 줄어듦. 단단한 면 산란계수 0.5(민감도 실험)로 이 경향이 절반쯤 줄어듦. Detmold에서도 C80이 가까워지지만 Arvedi에서는 C80이 0.2 – 0.4 dB 낮아짐(EDT는 세 홀 모두 가까워짐), 기본값은 그대로 | [validation/opera_check.md](../validation/opera_check.md) |
+| Fratoni 강의실(ULH)과 돔형 홀(STC) | Fratoni et al. 데이터셋 | ULH: 500 Hz – 4 kHz에서 EDT·C50·Ts 약 1 JND 이내, T30 1.7 JND 이내(500 Hz – 1 kHz에서 T30 8 % 김); STC: T30이 3D 모델에서 18 – 27 %, 2.5D 홀에서 5 – 16 % 김(이런 홀은 먼저 교정할 것). 사이트 엔진, 2026-11-20. 이전 Python 엔진: ULH 약 1 JND 이내, STC 약 15 % 김 | [validation/](../validation/) `fratoni_*.md` |
+| Auditorium Giovanni Arvedi, Cremona(무대를 둘러싼 약 470석), 무대 음원 5개 × 수음점 65개, 8채널 구형 마이크; 공개 도면으로 만든 단순화 모델 | Politecnico di Milano, https://doi.org/10.5281/zenodo.20098848 (CC BY 4.0) | **사이트 엔진**(2026-11-15. 이 홀은 이후 대조에서 제외): 무지향 음원 500 Hz / 1 / 2 / 4 kHz에서 C80 −0.29 / +0.04 / −0.58 / −0.88 dB, EDT +18 / +19 / +28 / +35 %; Genelec 스피커 2 / 4 kHz에서 C80 −1.5 … −2.3 / −1.6 … −3.0 dB. **Python 엔진:** **사후 비교**(맞대결 계산은 수음점을 반대쪽에 놓아 무효). 2026-11-12 엔진 수정 후: 무지향 음원 T20 3 % 이내(45 – 78 %가 5 % 이내), 250 Hz – 4 kHz C80 −0.9 … +0.2 dB, D50 0.06 이내, EDT 14 – 30 % 김; Genelec 스피커(8020A 데이터): 500 Hz – 1 kHz C80 0.7 dB 이내, 2 – 4 kHz 1.2 – 2.8 dB 낮고 EDT 2 – 3배 김. 수정 전: 2 – 4 kHz C80 무지향 1.3 – 1.5 dB, 스피커 3 – 8 dB 낮음 | [validation/arvedi_check.md](../validation/arvedi_check.md) |
+| Arni 가변 음향실(Aalto, 8.9 × 6.3 × 3.6 m), 패널 55개 중 0 – 9개 열림, 37개 상태 × 마이크 5 | Arni 데이터셋, https://doi.org/10.5281/zenodo.6985104 (CC BY 4.0) | **사이트 엔진**(3D 모델 수정 뒤 2026-11-19 재계산, 185쌍): 500 Hz / 1 / 2 / 4 kHz에서 T30 +10 / +4 / +3 / +0 %, EDT +7 / +2 / +0 / −2 %, C80 +0.17 / +0.04 / +0.32 / −0.01 dB; 250 Hz T30 +25 %. **Python 엔진(수정 전):** 모두 닫힌 상태 하나로 맨벽·커튼만 교정한 뒤 다른 36개 상태를 예측: 500 Hz – 4 kHz T30·EDT 평균 −6 … +7 %, C80 0.6 dB 이내; EDT/T30 시뮬 0.87 – 0.95 대 실측 0.91 – 0.96(250 Hz – 4 kHz); 250 Hz는 +20 %(패널의 저역 흡음 데이터 없음); 천장 쪽 흡음의 효과를 T30에서 과대(사후 비교) | [validation/arni_check.md](../validation/arni_check.md) |
+| 핀란드 국립 오페라 대극장(1,350석), 무대 위 Genelec 8331A 2대 × 1층 97석 | OperaRIR, https://doi.org/10.5281/zenodo.8096639 (CC BY-NC 4.0); 지향성 https://zenodo.org/records/10255555 | **사이트 엔진**(2026-11-15, 2026-11-19 재계산에서도 같음. 194쌍): 500 Hz / 1 / 2 / 4 kHz에서 C80 +1.66 / +1.67 / +2.48 / +2.25 dB, EDT −19 / −26 / −28 / −18 %. **Python 엔진:** 공개 평면·단면도(Lokki et al. 2015)로 만든 간략 모델, T30로 객석·무대동 흡음만 교정: T30 6 % 이내; C80 500 Hz – 1 kHz +1.4 dB, 2 – 4 kHz +3.0 – 3.2 dB(1 dB 이내 13 – 21 %), 앞줄(2 – 8열)은 1 – 2 dB 이내, 17열은 2 – 4 kHz +7.5 – 8.1 dB; EDT 12 – 23 % 짧음(사후 비교, 진단). 등받이를 기하학적 띠(회절 없음)로 넣어도 뒷줄로 갈수록 커지는 경향은 그대로(17열 2 – 4 kHz +9 dB). 시트 딥 모델을 켜도 같음(1 – 4 kHz C80이 1 dB 더 높아짐). 직접음은 측정과 맞고, 뒷줄로 갈수록 후기 에너지가 측정보다 더 많이 줄어듦. 단단한 면 산란계수 0.5(민감도 실험)로 이 경향이 절반쯤 줄어듦. Detmold에서도 C80이 가까워지지만 Arvedi에서는 C80이 0.2 – 0.4 dB 낮아짐(EDT는 세 홀 모두 가까워짐), 기본값은 그대로 | [validation/opera_check.md](../validation/opera_check.md) |
 
 기준값: EDT 5 %와 C80 1 dB는 ISO 3382-1:2009 Annex A; IACC 0.075는 Detmold 데이터에 딸린 학위논문에서 가정한 값(1차 출처는
 확인하지 않음).

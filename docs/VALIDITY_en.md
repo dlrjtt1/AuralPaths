@@ -20,7 +20,7 @@ criteria averaged over receivers. That is a small sample; the results describe t
 | ITDG and level ratio set by the stimulus builder | equal to the nominal values at the reference seat (0.000 ms, 0.000 dB); files rebuilt independently to 1.5·10⁻⁵ | Stimuli for the listening tests |
 | Browser page vs Python | C80 / D50 / EDT / T30 within 0.007 dB / 0.001 / 0.001 s / 0.001 s; IACC_E3 within 0.035 (shoebox, 36 conditions) | Browser vs Python |
 | Reverberation after calibration on measured T30 | held-out positions within 1.6 JND in T30 (median absolute) (BRAS CR3 and CR4) | Position-by-position check |
-| Room criteria with another program's calibrated inputs | ULH: all criteria within about 1 JND at 500 Hz–4 kHz; DUS: T30 within about 1 JND at mid frequencies | Room criteria against measured halls; The two opera houses |
+| Room criteria with another program's calibrated inputs | ULH: EDT, C50 and Ts within about 1 JND, T30 within 1.7 JND at 500 Hz–4 kHz (page's engine); DUS: T30 within about 1 JND at mid frequencies | Room criteria against measured halls; The two opera houses |
 | Against an independent simulator (I-Simpa SPPS) | diffuse box within 0–4 %, CR4 within about 1–2 JND | Comparison with an independent free simulator |
 
 ## 2. Checked, with known deviations
@@ -32,7 +32,7 @@ criteria averaged over receivers. That is a small sample; the results describe t
 | Early energy and clarity at the binaural listener | C80 1–4 dB low at 500 Hz–1 kHz; in CR4 13–20 % of the 0–80 ms energy at 20–50 ms against 5–9 % measured (mainly the ceiling panels; cause not established) | Binaural check |
 | Early interaural cross-correlation, IACC_E3 | low in CR3, right in CR4: 0.38 vs 0.52 (CR3), 0.82 vs 0.83 (CR4) (BRIRs computed by the page, the measurement's head FABIAN, measured loudspeaker directivity, calibrated materials; with the page's KU100 head 0.46 and 0.82); 0.41 vs 0.45 (Detmold) | Binaural check |
 | Late interaural cross-correlation, IACC_L | 0.12 vs 0.16 (CR3), 0.13 vs 0.33 (CR4): 40–75 % of the measured value (the late part is rendered as an ideal diffuse field) | Binaural check; Late interaural coherence |
-| Halls far from the inputs' assumptions | STC about 15 % long; TCB (box-tier opera house) decays too fast and is not counted as a successful check | Room criteria against measured halls; The two opera houses |
+| Halls far from the inputs' assumptions | STC 18–27 % long (3D model, page's engine); TCB (box-tier opera house) decays too fast and is not counted as a successful check | Room criteria against measured halls; The two opera houses |
 | Drawn 2.5D halls | reverberation and clarity within a few JND, but individual early reflections of a hall with balconies are not reproduced | Position-by-position check |
 | Hall not used in development, modelled from published drawings | Arvedi Auditorium (post hoc, after the fixes of 2026-11-12): T20 within 3 %, C80 within 1 dB for the omnidirectional source, but EDT 14–30 % long and, for directional loudspeakers, C80 1.2–2.8 dB low at 2–4 kHz | `validation/arvedi_check.md` |
 

@@ -562,6 +562,14 @@ Trimble 製ではない独立したリバースエンジニアリングによる
 
 ## 実測ホールとの室内音響指標の照合(`validate_fratoni.py`)
 
+**2026-11-20 以降、2 つのホールはサイトのエンジンで計算する**(`validate_fratoni.py`、既定 `--engine js`。3D メッシュと
+2.5D ホールを `engine_js.py` 経由で計算、ULH は光線 20 000 本、STC は 6 000 本、約 1 分と 15 分)。ULH、3D メッシュ、
+500 Hz–4 kHz: EDT・C50・Ts は約 1 JND 以内、T30 は 1.7 JND 以内(1.75 / 2.00 / 1.87 / 1.44 s、実測 1.62 / 1.85 / 1.83 /
+1.50 s)。STC: T30 は 3D メッシュで 18–27% 長く(S1 1.61 / 1.56 / 1.71 / 1.47 s、実測 1.27 / 1.32 / 1.36 / 1.19 s)、
+2.5D ホールで 5–16% 長い。本節の残りは Python エンジンによる実行についての記述である(ULH 約 1 JND 以内、STC 約 15% 長い)。
+結論は同じで、サイトのエンジンの T30 が数 % 長い。ファイル: `validation/fratoni_ULH.md`、`fratoni_STC.md`、
+`fratoni_STC_doors_Wood.md`。
+
 データ: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic simulations*,
 Mendeley Data, [doi:10.17632/y7xnv6xg5s.1](https://doi.org/10.17632/y7xnv6xg5s.1)、CC BY 4.0(SketchUp モデル、音源
 ごとに受音点平均した ISO 3382-1 指標、境界条件、FDTD による IR)。同梱しない。4 空間のうち 2 つが本モデルに適合する:

@@ -17,6 +17,8 @@ Checks (name: what it guards):
   diffraction_plate  the same on a free-standing partition on a floor (thin-plate edges, diffraction combined with
                floor reflections; the BRAS RS5 geometry, no measured data needed)
   diffraction_order2  the same for second-order diffraction over a thick body on a floor (BRAS RS6 geometry)
+  diffraction_rs  the same on the geometries of the BRAS reference scenes RS1 - RS4, RS6, RS7 (first order, as
+               validation/bras_rs.py computes them; validation/check_rs_pyjs.py, no measured data needed)
   seatdip      the seat-dip transfer function (2-D BEM over the rows), Python vs browser, every pair of the fan hall
   rays_split   the browser ray tracer gives the same histogram whether rays are traced in one run or split in parts
                (worker pool)
@@ -117,6 +119,12 @@ def c_diffraction_order2():
             "max_energy_diff": num(r"largest difference ([0-9.e+-]+)", out)}
 
 
+def c_diffraction_rs():
+    out = run([PY, "validation/check_rs_pyjs.py"])
+    return {"arrivals": num(r"all scenes: (\d+) diffracted arrivals", out),
+            "max_rel_energy_diff": num(r"all scenes: .*\(relative ([0-9.e+-]+)\)", out)}
+
+
 def c_seatdip():
     out = run([PY, "validation/check_seatdip_pyjs.py", "examples/fan_hall_config.json"], timeout=900)
     return {"pairs": num(r"(\d+) of \d+ pairs with a seat dip", out),
@@ -205,7 +213,7 @@ def c_calibrate():
 
 CHECKS = {"page": c_page, "page_load": c_page_load, "specular": c_specular, "diffraction": c_diffraction,
           "diffraction_plate": c_diffraction_plate,
-          "diffraction_order2": c_diffraction_order2, "seatdip": c_seatdip,
+          "diffraction_order2": c_diffraction_order2, "diffraction_rs": c_diffraction_rs, "seatdip": c_seatdip,
           "rays_split": c_rays_split, "box_js": c_box_js, "mesh_leak": c_mesh_leak, "box_py": c_box_py, "rays_energy": c_rays_energy,
           "engine_js": c_engine_js, "engine_js_dir": c_engine_js_dir, "calibrate": c_calibrate}
 SLOW = {"calibrate"}

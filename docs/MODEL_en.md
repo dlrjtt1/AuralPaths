@@ -622,6 +622,14 @@ closed room (BRAS RS5) is refused, as its OBJ would be. If a file does not open,
 
 ## Room criteria against measured halls (`validate_fratoni.py`)
 
+**Since 2026-11-20 the two halls are computed with the page's engine** (`validate_fratoni.py`, default `--engine js`; the 3D
+mesh and the 2.5D hall through `engine_js.py`, ULH 20 000 rays, STC 6 000 rays, about 1 and 15 minutes). ULH, 3D mesh,
+500 Hz–4 kHz: EDT, C50 and Ts within about 1 JND, T30 within 1.7 JND (1.75 / 2.00 / 1.87 / 1.44 s against the
+measured 1.62 / 1.85 / 1.83 / 1.50 s). STC: T30 18–27 % too long in the 3D mesh (S1 1.61 / 1.56 / 1.71 / 1.47 s against
+1.27 / 1.32 / 1.36 / 1.19 s), 5–16 % in the 2.5D hall. The rest of this section describes the runs with the Python
+engine (ULH within about 1 JND, STC about 15 % long); the findings are the same, the page's engine is a few per cent
+longer in T30. Files: `validation/fratoni_ULH.md`, `fratoni_STC.md`, `fratoni_STC_doors_Wood.md`.
+
 Data: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic simulations*,
 Mendeley Data, [doi:10.17632/y7xnv6xg5s.1](https://doi.org/10.17632/y7xnv6xg5s.1), CC BY 4.0 (SketchUp models,
 ISO 3382-1 criteria averaged over the receivers per source, boundary conditions, FDTD IRs). Not bundled. Two of

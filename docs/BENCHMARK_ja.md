@@ -89,6 +89,14 @@ fitted 材料を用いる。プログラムは材料データのみを持って�
 
 図ごとの値: [validation/bras_rs.md](../validation/bras_rs.md) 2 節。
 
+どのエンジンか: 基準場面は無響室または半無響室に置いた板、物体、座席状のブロックであって室ではないため、サイトのページには
+読み込めない。`validation/bras_rs.py` は、エンジンの反射・回折の式を Python で実装したもの(`reflections.py`、
+`diffraction.py`)の到来音を加算する。同じ式のサイト側の実装は、これらの形状で同じ到来音を与える: RS1 – RS4、RS6、RS7 の
+回折到来音 429 個が経路長 10⁻⁶ m 以内、帯域エネルギー 0.012 % 以内で一致する(`validation/check_rs_pyjs.py`、回帰検査
+`diffraction_rs`、2026-11-20。RS5 と 2 次回折は `diffraction_plate`、`diffraction_order2`)。表の値は 2026-11-10 の実行の
+ものであり、式のコードはそれ以降変わっていない(2026-11-18 – 20 の 3D モデル修正は室モデルの光線追跡に関するもので、
+これらの場面は光線追跡を用いない)。2026-11-20 には再計算していない。
+
 ### 2.2 室: 残響と明瞭性
 
 ラウンドロビンの場面 9 – 11 は BRAS CR2(セミナー室)、CR3(室内楽ホール)、CR4(講堂)である。論文の補足資料の図 S3-1
@@ -153,7 +161,7 @@ KU100 HRIR(ページの既定の頭部)でレンダリングすると、偏差�
 ## 3. BRAS 基準場面
 
 Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.org/10.14279/depositonce-6726.3
-(CC BY-SA 4.0)。125 Hz – 4 kHz、音源–受音点の組に対する中央値。
+(CC BY-SA 4.0)。125 Hz – 4 kHz、音源–受音点の組に対する中央値。エンジンの式の Python 実装による 2026-11-10 の実行であり、サイト側の実装が同じ到来音を与える(2.1 節「どのエンジンか」)。
 
 | 場面 | 組 | 形状誤差 | 平均絶対差 | エンジン設定 |
 |---|---|---|---|---|
@@ -175,12 +183,12 @@ Aspöck et al., BRAS – Benchmark for Room Acoustical Simulation, https://doi.o
 
 | ホール | データ | 結果 | 詳細 |
 |---|---|---|---|
-| Detmold Konzerthaus(約 600 席)、舞台音源 4 × 座席 34、KU100 ダミーヘッド | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3: 93 % の組で 0.075 以内; IACC_E3: 平均 0.04 低い(0.075 以内は 54 %); EDT は 500 Hz / 1 / 2 kHz で −3 / −7 / −15 %(5 % 以内 13 – 32 %); C80 は +0.4 / +1.0 / +1.6 dB(1 dB 以内 34 – 41 %); T30 は校正後 3.2 % 以内。2026-11-13 の初期方向オプション(既定)を適用した値; オプションなし: IACC_E3 は 0.11 低い、EDT −3 / −6 / −11 %、C80 +0.3 / +0.7 / +1.4 dB。2026-11-12 のエンジン修正前: IACC_E3 は 0.15 低い、EDT 0 … +3 %、C80 は 0.3 – 0.8 dB 低い(座席ディップモデル、修正前: IACC_E3 は 0.10 低い、C80 −0.2 … +0.2 dB) | [validation/detmold_kh.md](../validation/detmold_kh.md) |
+| Detmold Konzerthaus(約 600 席)、舞台音源 4 × 座席 34、KU100 ダミーヘッド | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | **サイトのエンジン**(ページが計算した BRIR、2026-11-15。描いたホールのため 3D モデルの修正は関係しない): IACC_E3 平均 +0.02(0.075 以内 60 %); IACC_L3 +0.01(92 %); EDT は 500 Hz / 1 / 2 kHz で −2.0 / −1.4 / −4.6 %(5 % 以内 24 – 29 %); C80 は −0.1 / +0.5 / +0.9 dB(1 dB 以内 33 – 60 %)。**Python ツール(以前):** IACC_L3: 93 % の組で 0.075 以内; IACC_E3: 平均 0.04 低い(0.075 以内は 54 %); EDT は 500 Hz / 1 / 2 kHz で −3 / −7 / −15 %(5 % 以内 13 – 32 %); C80 は +0.4 / +1.0 / +1.6 dB(1 dB 以内 34 – 41 %); T30 は校正後 3.2 % 以内。2026-11-13 の初期方向オプション(既定)を適用した値; オプションなし: IACC_E3 は 0.11 低い、EDT −3 / −6 / −11 %、C80 +0.3 / +0.7 / +1.4 dB。2026-11-12 のエンジン修正前: IACC_E3 は 0.15 低い、EDT 0 … +3 %、C80 は 0.3 – 0.8 dB 低い(座席ディップモデル、修正前: IACC_E3 は 0.10 低い、C80 −0.2 … +0.2 dB) | [validation/detmold_kh.md](../validation/detmold_kh.md) |
 | BRAS CR3 室内楽ホール、CR4 講堂(バイノーラル、FABIAN ヘッド) | BRAS | 直接音の ITD 8 – 11 µs 以内、オクターブスペクトル 1.4 dB 以内(サイトが計算した BRIR、2026-11-20); Python ツールによる計算から: 直接音後 14 – 70 ms の個別反射: 実測 − モデル −1.1 dB(中央値、両ホール); CR4 では天井パネル–通路のフラッター下の座席で後期 IACC が低い | [validation/bras_brir_iacc_diag.md](../validation/bras_brir_iacc_diag.md) |
-| Fratoni の講義室(ULH)とドーム型ホール(STC) | Fratoni et al. のデータセット | ULH: 500 Hz – 4 kHz で約 1 JND 以内; STC: T30 が約 15 % 長い(このようなホールではまず校正すること) | [validation/](../validation/) `fratoni_*.md` |
-| Auditorium Giovanni Arvedi、Cremona(舞台を囲む約 470 席)、舞台音源 5 × 受音点 65、8 チャンネル球形マイクロホン; 公開図面から作った簡略モデル | Politecnico di Milano, https://doi.org/10.5281/zenodo.20098848 (CC BY 4.0) | **事後比較**(ブラインド計算は受音点を反対側に置いたため無効)。2026-11-12 のエンジン修正後: 無指向性音源の T20 は 3 % 以内(45 – 78 % が 5 % 以内)、250 Hz – 4 kHz の C80 は −0.9 … +0.2 dB、D50 は 0.06 以内、EDT は 14 – 30 % 長い; Genelec スピーカー(8020A のデータ): 500 Hz – 1 kHz の C80 は 0.7 dB 以内、2 – 4 kHz で 1.2 – 2.8 dB 低く、EDT は 2 – 3 倍長い。修正前: 2 – 4 kHz の C80 が無指向性で 1.3 – 1.5 dB、スピーカーで 3 – 8 dB 低い | [validation/arvedi_check.md](../validation/arvedi_check.md) |
-| Arni 可変音響室(Aalto、8.9 × 6.3 × 3.6 m)、55 枚中 0 – 9 枚のパネルが開、37 状態 × マイク 5 | Arni データセット, https://doi.org/10.5281/zenodo.6985104 (CC BY 4.0) | 全閉の 1 状態だけで素の壁・カーテンを校正し、他の 36 状態を予測: 500 Hz – 4 kHz で T30・EDT 平均 −6 … +7 %、C80 0.6 dB 以内; EDT/T30 はシミュレーション 0.87 – 0.95 対実測 0.91 – 0.96(250 Hz – 4 kHz); 250 Hz は +20 %(パネルの低域吸音データなし); 天井側の吸音の効果を T30 で過大評価(事後比較) | [validation/arni_check.md](../validation/arni_check.md) |
-| フィンランド国立歌劇場メインホール(1,350 席)、舞台上の Genelec 8331A 2 台 × 1 階 97 席 | OperaRIR, https://doi.org/10.5281/zenodo.8096639 (CC BY-NC 4.0); 指向性 https://zenodo.org/records/10255555 | 公開の平面・断面図(Lokki et al. 2015)から作った簡略モデル、T30 で客席と舞台塔の吸音のみ校正: T30 6 % 以内; C80 は 500 Hz – 1 kHz で +1.4 dB、2 – 4 kHz で +3.0 – 3.2 dB(1 dB 以内 13 – 21 %)、前方 2 – 8 列は 1 – 2 dB 以内、17 列は 2 – 4 kHz で +7.5 – 8.1 dB; EDT は 12 – 23 % 短い(事後比較、診断)。背もたれを幾何学的な帯(回折なし)として加えても後方ほど大きくなる傾向は残る(17 列 2 – 4 kHz で +9 dB)。シートディップモデルでも同じ(1 – 4 kHz の C80 は 1 dB 高くなる)。直接音は測定どおりで、後部席ほど後期エネルギーの減り方が測定より大きい。硬い面の散乱係数 0.5(感度試験)でこの傾向は約半分になる。Detmold でも C80 は近づくが、Arvedi では C80 が 0.2 – 0.4 dB 下がる(EDT は 3 ホールとも近づく)。既定値は変更せず | [validation/opera_check.md](../validation/opera_check.md) |
+| Fratoni の講義室(ULH)とドーム型ホール(STC) | Fratoni et al. のデータセット | ULH: 500 Hz – 4 kHz で EDT・C50・Ts は約 1 JND 以内、T30 は 1.7 JND 以内(500 Hz – 1 kHz で T30 が 8 % 長い); STC: T30 が 3D モデルで 18 – 27 %、2.5D ホールで 5 – 16 % 長い(このようなホールではまず校正すること)。サイトのエンジン、2026-11-20。以前の Python エンジン: ULH 約 1 JND 以内、STC 約 15 % 長い | [validation/](../validation/) `fratoni_*.md` |
+| Auditorium Giovanni Arvedi、Cremona(舞台を囲む約 470 席)、舞台音源 5 × 受音点 65、8 チャンネル球形マイクロホン; 公開図面から作った簡略モデル | Politecnico di Milano, https://doi.org/10.5281/zenodo.20098848 (CC BY 4.0) | **サイトのエンジン**(2026-11-15。このホールは以後の照合から除外): 無指向性音源は 500 Hz / 1 / 2 / 4 kHz で C80 −0.29 / +0.04 / −0.58 / −0.88 dB、EDT +18 / +19 / +28 / +35 %; Genelec スピーカは 2 / 4 kHz で C80 −1.5 … −2.3 / −1.6 … −3.0 dB。**Python エンジン:** **事後比較**(ブラインド計算は受音点を反対側に置いたため無効)。2026-11-12 のエンジン修正後: 無指向性音源の T20 は 3 % 以内(45 – 78 % が 5 % 以内)、250 Hz – 4 kHz の C80 は −0.9 … +0.2 dB、D50 は 0.06 以内、EDT は 14 – 30 % 長い; Genelec スピーカー(8020A のデータ): 500 Hz – 1 kHz の C80 は 0.7 dB 以内、2 – 4 kHz で 1.2 – 2.8 dB 低く、EDT は 2 – 3 倍長い。修正前: 2 – 4 kHz の C80 が無指向性で 1.3 – 1.5 dB、スピーカーで 3 – 8 dB 低い | [validation/arvedi_check.md](../validation/arvedi_check.md) |
+| Arni 可変音響室(Aalto、8.9 × 6.3 × 3.6 m)、55 枚中 0 – 9 枚のパネルが開、37 状態 × マイク 5 | Arni データセット, https://doi.org/10.5281/zenodo.6985104 (CC BY 4.0) | **サイトのエンジン**(3D モデル修正後の 2026-11-19 の再計算、185 組): 500 Hz / 1 / 2 / 4 kHz で T30 +10 / +4 / +3 / +0 %、EDT +7 / +2 / +0 / −2 %、C80 +0.17 / +0.04 / +0.32 / −0.01 dB; 250 Hz の T30 +25 %。**Python エンジン(修正前):** 全閉の 1 状態だけで素の壁・カーテンを校正し、他の 36 状態を予測: 500 Hz – 4 kHz で T30・EDT 平均 −6 … +7 %、C80 0.6 dB 以内; EDT/T30 はシミュレーション 0.87 – 0.95 対実測 0.91 – 0.96(250 Hz – 4 kHz); 250 Hz は +20 %(パネルの低域吸音データなし); 天井側の吸音の効果を T30 で過大評価(事後比較) | [validation/arni_check.md](../validation/arni_check.md) |
+| フィンランド国立歌劇場メインホール(1,350 席)、舞台上の Genelec 8331A 2 台 × 1 階 97 席 | OperaRIR, https://doi.org/10.5281/zenodo.8096639 (CC BY-NC 4.0); 指向性 https://zenodo.org/records/10255555 | **サイトのエンジン**(2026-11-15、2026-11-19 の再計算でも同じ。194 組): 500 Hz / 1 / 2 / 4 kHz で C80 +1.66 / +1.67 / +2.48 / +2.25 dB、EDT −19 / −26 / −28 / −18 %。**Python エンジン:** 公開の平面・断面図(Lokki et al. 2015)から作った簡略モデル、T30 で客席と舞台塔の吸音のみ校正: T30 6 % 以内; C80 は 500 Hz – 1 kHz で +1.4 dB、2 – 4 kHz で +3.0 – 3.2 dB(1 dB 以内 13 – 21 %)、前方 2 – 8 列は 1 – 2 dB 以内、17 列は 2 – 4 kHz で +7.5 – 8.1 dB; EDT は 12 – 23 % 短い(事後比較、診断)。背もたれを幾何学的な帯(回折なし)として加えても後方ほど大きくなる傾向は残る(17 列 2 – 4 kHz で +9 dB)。シートディップモデルでも同じ(1 – 4 kHz の C80 は 1 dB 高くなる)。直接音は測定どおりで、後部席ほど後期エネルギーの減り方が測定より大きい。硬い面の散乱係数 0.5(感度試験)でこの傾向は約半分になる。Detmold でも C80 は近づくが、Arvedi では C80 が 0.2 – 0.4 dB 下がる(EDT は 3 ホールとも近づく)。既定値は変更せず | [validation/opera_check.md](../validation/opera_check.md) |
 
 基準値: EDT 5 % と C80 1 dB は ISO 3382-1:2009 Annex A; IACC 0.075 は Detmold データに付随する学位論文で仮定された値
 (一次出典は未確認)。

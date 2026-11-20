@@ -549,6 +549,13 @@ Trimble 제품이 아닌 독립적인 역공학 리더. jsDelivr에서 한 번 �
 
 ## 실측 홀과의 실내음향 지표 대조 (`validate_fratoni.py`)
 
+**2026-11-20부터 두 홀은 사이트 엔진으로 계산한다**(`validate_fratoni.py`, 기본값 `--engine js`. 3D 메시와 2.5D 홀을
+`engine_js.py`를 통해 계산, ULH 광선 20 000개, STC 6 000개, 약 1분과 15분). ULH, 3D 메시, 500 Hz–4 kHz: EDT·C50·Ts는 약
+1 JND 이내, T30은 1.7 JND 이내(1.75 / 2.00 / 1.87 / 1.44 s, 실측 1.62 / 1.85 / 1.83 / 1.50 s). STC: T30이 3D 메시에서
+18–27% 길고(S1 1.61 / 1.56 / 1.71 / 1.47 s, 실측 1.27 / 1.32 / 1.36 / 1.19 s), 2.5D 홀에서 5–16% 길다. 이 절의 나머지는
+Python 엔진으로 한 실행에 대한 설명이다(ULH 약 1 JND 이내, STC 약 15% 김). 결론은 같고, 사이트 엔진의 T30이 몇 % 더 길다.
+파일: `validation/fratoni_ULH.md`, `fratoni_STC.md`, `fratoni_STC_doors_Wood.md`.
+
 데이터: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic simulations*,
 Mendeley Data, [doi:10.17632/y7xnv6xg5s.1](https://doi.org/10.17632/y7xnv6xg5s.1), CC BY 4.0(SketchUp 모델, 음원별
 수음점 평균 ISO 3382-1 지표, 경계 조건, FDTD IR). 포함되지 않는다. 네 공간 중 두 곳이 이 모델에 맞는다: **ULH**(계단식

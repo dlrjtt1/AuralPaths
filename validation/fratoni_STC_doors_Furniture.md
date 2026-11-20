@@ -1,5 +1,7 @@
 # Fratoni STC: measured vs AuralPaths (Python engine)
 
+**Not recomputed.** Python engine; `fratoni_STC.md` (doors as Furniture, the default) and `fratoni_STC_doors_Wood.md` are computed with the page's engine since 2026-11-20.
+
 Data: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic simulations*, Mendeley Data, https://doi.org/10.17632/y7xnv6xg5s.1 (CC BY 4.0). Measured values: the dataset's Room_Criteria sheet (mean over the listed receivers). Inputs: the dataset's GA absorption / scattering, unchanged.
 
 ```

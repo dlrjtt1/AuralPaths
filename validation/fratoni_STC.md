@@ -1,19 +1,19 @@
-# Fratoni STC: measured vs AuralPaths (Python engine)
+# Fratoni STC: measured vs AuralPaths (page's engine through engine_js.py)
 
-**Rerun 2026-11-19** with the mesh rules of that day (`validation/mesh_leak.md`: narrow faces kept two-sided, faces behind the room's faces kept but not counted) and the engine fixes of 2026-11-12, 6 000 rays as before. Against the tables this file held until then (run of 2026-11-06, 2815 faces, 183 dropped, volume 816 m3): the mesh has 2915 room faces and 842 m3; 3D mesh T30 0 - 0.04 s longer and EDT 0.02 - 0.07 s longer, C80 0.2 - 0.6 dB higher; 2.5D T30 within 0.01 s, 2.5D EDT of S1 0.02 - 0.03 s shorter, 2.5D C80 of S1 about 0.25 dB higher and of S2 about 0.15 dB lower. Mean absolute errors changed by at most 0.8 JND (3D mesh EDT of S2, 500 Hz - 1 kHz: 3.4 -> 4.2).
+**Computed with the page's engine since 2026-11-20** (`validate_fratoni.py`, default `--engine js`: the energy histograms of the 3D mesh and of the 2.5D hall come from the engine of the web page through `engine_js.py`; same rays as before). With the Python engine (rerun of 2026-11-19, 6 000 rays) the 3D mesh gave T30 1.56 / 1.51 / 1.64 / 1.43 s at 500 Hz - 4 kHz for S1 (page's engine: 1.61 / 1.56 / 1.71 / 1.47; measured 1.27 / 1.32 / 1.36 / 1.19). The Python-engine file is in the history of this file (commit 558b1e6 and before).
 
 Data: G. Fratoni, *Materials for calibrating four complex virtual environments through acoustic simulations*, Mendeley Data, https://doi.org/10.17632/y7xnv6xg5s.1 (CC BY 4.0). Measured values: the dataset's Room_Criteria sheet (mean over the listed receivers). Inputs: the dataset's GA absorption / scattering, unchanged.
 
 ```
-STC: OBJ 19025 faces -> 2998 after decimation -> 2915 room faces (105 narrow ones kept two-sided; 70 behind the room's faces, 18.0 m2, kept but not counted; 13 not at the room dropped), 5970 walls incl. back faces; room volume (voxels) 842 m3
+STC: OBJ 19025 faces -> 2998 after decimation -> 2915 room faces (105 narrow ones kept two-sided; 83 behind the room's faces, 20.9 m2, kept but not counted; 0 not at the room dropped), 5996 walls incl. back faces; room volume (voxels) 842 m3
 surface areas (m2): Ceiling 209.5, Furniture 30.2, Plasterboard (walls) 128.6, Seats 50.6, Wood 195.1; total 614
 Sabine T (s), no air: 125 Hz 1.44, 250 Hz 1.50, 500 Hz 1.52, 1000 Hz 1.47, 2000 Hz 1.67, 4000 Hz 1.67
 height above the surface below (m): S1 1.58, S2 1.50, R1 1.23, R2 1.23, R3 1.23, R4 1.35, R5 1.45, R6 1.45, R7 1.35, R8 1.23, R9 1.23, R10 1.23
-[3D mesh] S1: 10 receivers, 2886 s
-[3D mesh] S2: 4 receivers, 2039 s
+[3D mesh] S1: 10 receivers, 552 s
+[3D mesh] S2: 4 receivers, 482 s
 2.5D hall: 32 plan vertices, 71 surfaces, volume 804.8 m3 (mesh 842.4); positions lifted above the averaged floor: B_L 3.18->1.58, B_R 3.18->1.58
-[2.5D] S1: 10 receivers, 12 s
-[2.5D] S2: 4 receivers, 7 s
+[2.5D] S1: 10 receivers, 1 s
+[2.5D] S2: 4 receivers, 1 s
 ```
 
 ## S1, receivers: (R1,R2,R3,R4,R5,R6,R7,R8,R9,R10) (10)
@@ -21,34 +21,34 @@ height above the surface below (m): S1 1.58, S2 1.50, R1 1.23, R2 1.23, R3 1.23,
 | criterion | model | 125 Hz | 250 Hz | 500 Hz | 1000 Hz | 2000 Hz | 4000 Hz | mean abs (JND) 500-1k | mean abs (JND) all |
 |---|---|---|---|---|---|---|---|---|---|
 | EDT | measured | 1.34 | 1.32 | 1.31 | 1.31 | 1.41 | 1.27 | | |
-| | 3D mesh | 1.59 (+3.8) | 1.64 (+4.9) | 1.66 (+5.4) | 1.61 (+4.6) | 1.75 (+4.8) | 1.53 (+4.0) | 5.0 | 4.6 |
-| | 2.5D | 1.69 (+5.3) | 1.74 (+6.3) | 1.74 (+6.6) | 1.65 (+5.3) | 1.80 (+5.6) | 1.57 (+4.8) | 5.9 | 5.6 |
+| | 3D mesh | 1.66 (+4.7) | 1.71 (+6.0) | 1.73 (+6.4) | 1.67 (+5.6) | 1.84 (+6.1) | 1.58 (+4.9) | 6.0 | 5.6 |
+| | 2.5D | 1.57 (+3.5) | 1.62 (+4.6) | 1.62 (+4.8) | 1.55 (+3.6) | 1.68 (+3.9) | 1.48 (+3.3) | 4.2 | 3.9 |
 | T30 | measured | 1.09 | 1.25 | 1.27 | 1.32 | 1.36 | 1.19 | | |
-| | 3D mesh | 1.49 (+7.3) | 1.54 (+4.7) | 1.56 (+4.6) | 1.51 (+2.9) | 1.64 (+4.2) | 1.43 (+4.0) | 3.8 | 4.6 |
-| | 2.5D | 1.50 (+7.5) | 1.54 (+4.6) | 1.54 (+4.2) | 1.46 (+2.2) | 1.59 (+3.4) | 1.39 (+3.4) | 3.2 | 4.2 |
+| | 3D mesh | 1.54 (+8.2) | 1.60 (+5.5) | 1.61 (+5.4) | 1.56 (+3.7) | 1.71 (+5.1) | 1.47 (+4.7) | 4.5 | 5.4 |
+| | 2.5D | 1.42 (+6.1) | 1.47 (+3.6) | 1.47 (+3.2) | 1.41 (+1.3) | 1.53 (+2.5) | 1.34 (+2.5) | 2.2 | 3.2 |
 | C80 | measured | 0.19 | 0.05 | 1.15 | 1.43 | 1.39 | 2.02 | | |
-| | 3D mesh | 0.28 (+0.1) | 0.07 (+0.0) | -0.01 (-1.2) | 0.25 (-1.2) | -0.34 (-1.7) | 0.61 (-1.4) | 1.2 | 0.9 |
-| | 2.5D | -0.15 (-0.3) | -0.29 (-0.3) | -0.23 (-1.4) | 0.12 (-1.3) | -0.52 (-1.9) | 0.46 (-1.6) | 1.3 | 1.1 |
+| | 3D mesh | -0.22 (-0.4) | -0.43 (-0.5) | -0.48 (-1.6) | -0.21 (-1.6) | -0.79 (-2.2) | 0.22 (-1.8) | 1.6 | 1.4 |
+| | 2.5D | 0.68 (+0.5) | 0.52 (+0.5) | 0.59 (-0.6) | 0.91 (-0.5) | 0.29 (-1.1) | 1.23 (-0.8) | 0.5 | 0.7 |
 | Ts | measured | 96 | 96 | 85 | 86 | 87 | 78 | | |
-| | 3D mesh | 107 (+1.1) | 111 (+1.5) | 113 (+2.8) | 108 (+2.2) | 119 (+3.2) | 102 (+2.4) | 2.5 | 2.2 |
-| | 2.5D | 111 (+1.5) | 114 (+1.8) | 113 (+2.8) | 107 (+2.1) | 119 (+3.2) | 101 (+2.3) | 2.5 | 2.3 |
+| | 3D mesh | 113 (+1.7) | 117 (+2.1) | 119 (+3.4) | 114 (+2.8) | 126 (+3.9) | 107 (+2.9) | 3.1 | 2.8 |
+| | 2.5D | 99 (+0.3) | 102 (+0.6) | 102 (+1.7) | 96 (+1.0) | 107 (+2.0) | 91 (+1.3) | 1.3 | 1.2 |
 
 ## S2, receivers: (R3,R4,R5,R8) (4)
 
 | criterion | model | 125 Hz | 250 Hz | 500 Hz | 1000 Hz | 2000 Hz | 4000 Hz | mean abs (JND) 500-1k | mean abs (JND) all |
 |---|---|---|---|---|---|---|---|---|---|
 | EDT | measured | 1.00 | 1.25 | 1.23 | 1.27 | 1.26 | 1.21 | | |
-| | 3D mesh | 1.47 (+9.4) | 1.52 (+4.3) | 1.54 (+5.0) | 1.49 (+3.4) | 1.63 (+5.9) | 1.41 (+3.2) | 4.2 | 5.2 |
-| | 2.5D | 1.44 (+8.9) | 1.49 (+3.8) | 1.49 (+4.2) | 1.41 (+2.3) | 1.54 (+4.4) | 1.34 (+2.1) | 3.2 | 4.3 |
+| | 3D mesh | 1.47 (+9.4) | 1.52 (+4.3) | 1.53 (+4.9) | 1.47 (+3.2) | 1.62 (+5.7) | 1.39 (+2.9) | 4.1 | 5.1 |
+| | 2.5D | 1.27 (+5.4) | 1.32 (+1.0) | 1.31 (+1.4) | 1.25 (-0.2) | 1.37 (+1.8) | 1.19 (-0.3) | 0.8 | 1.7 |
 | T30 | measured | 1.01 | 1.32 | 1.35 | 1.31 | 1.33 | 1.16 | | |
-| | 3D mesh | 1.48 (+9.3) | 1.53 (+3.1) | 1.53 (+2.6) | 1.47 (+2.5) | 1.61 (+4.2) | 1.39 (+4.0) | 2.6 | 4.3 |
-| | 2.5D | 1.45 (+8.7) | 1.49 (+2.5) | 1.49 (+2.0) | 1.42 (+1.6) | 1.54 (+3.1) | 1.34 (+3.2) | 1.8 | 3.5 |
+| | 3D mesh | 1.53 (+10.4) | 1.61 (+4.3) | 1.62 (+4.0) | 1.56 (+3.7) | 1.69 (+5.5) | 1.44 (+4.8) | 3.8 | 5.4 |
+| | 2.5D | 1.39 (+7.5) | 1.44 (+1.8) | 1.44 (+1.3) | 1.37 (+0.9) | 1.50 (+2.5) | 1.30 (+2.4) | 1.1 | 2.7 |
 | C80 | measured | 1.91 | 0.94 | 2.39 | 1.62 | 1.61 | 1.91 | | |
-| | 3D mesh | 1.09 (-0.8) | 0.80 (-0.1) | 0.73 (-1.7) | 0.96 (-0.7) | 0.38 (-1.2) | 1.28 (-0.6) | 1.2 | 0.9 |
-| | 2.5D | 0.84 (-1.1) | 0.66 (-0.3) | 0.68 (-1.7) | 0.96 (-0.7) | 0.48 (-1.1) | 1.39 (-0.5) | 1.2 | 0.9 |
+| | 3D mesh | 0.42 (-1.5) | 0.14 (-0.8) | 0.10 (-2.3) | 0.33 (-1.3) | -0.19 (-1.8) | 0.74 (-1.2) | 1.8 | 1.5 |
+| | 2.5D | 2.13 (+0.2) | 1.91 (+1.0) | 1.94 (-0.5) | 2.23 (+0.6) | 1.74 (+0.1) | 2.61 (+0.7) | 0.5 | 0.5 |
 | Ts | measured | 89 | 100 | 81 | 85 | 88 | 82 | | |
-| | 3D mesh | 102 (+1.3) | 106 (+0.6) | 107 (+2.6) | 104 (+1.9) | 114 (+2.6) | 98 (+1.6) | 2.3 | 1.8 |
-| | 2.5D | 103 (+1.4) | 106 (+0.6) | 106 (+2.5) | 101 (+1.6) | 110 (+2.2) | 95 (+1.3) | 2.1 | 1.6 |
+| | 3D mesh | 107 (+1.8) | 111 (+1.1) | 112 (+3.1) | 108 (+2.3) | 118 (+3.0) | 101 (+1.9) | 2.7 | 2.2 |
+| | 2.5D | 89 (-0.0) | 92 (-0.8) | 92 (+1.1) | 88 (+0.3) | 95 (+0.7) | 83 (+0.1) | 0.7 | 0.5 |
 
 Values in brackets: simulated - measured in JND (ISO 3382-1 Annex A: EDT / T30 5 %, C80 / C50 1 dB, Ts 10 ms).
 

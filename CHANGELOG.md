@@ -4,6 +4,12 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- **Fratoni halls and the benchmark page on the page's engine.** `validate_fratoni.py --engine js` (default): ULH
+  EDT / C50 / Ts within about 1 JND and T30 within 1.7 JND at 500 Hz–4 kHz, STC T30 18–27 % long (Python engine:
+  about 1 JND, about 15 %). `docs/BENCHMARK_*`: header, summary and the hall table now give the page's values first
+  (the summary no longer claims the smallest error for CR3 and lateralization). New `validation/check_rs_pyjs.py`
+  (regression check `diffraction_rs`): the page's diffraction gives the same arrivals as the Python code on the
+  geometries of the BRAS reference scenes (429 arrivals, band energies within 0.012 %).
 - **Room-criteria validation now runs on the page's engine.** `validate_bras_cr.py`, `validation/rr_complex.py` and
   `validation/rr_coupled.py` got `--engine js|python` (default `js`, through `engine_js.py`; `engine_js.use_in`).
   BRAS CR3 / CR4 (`validation/bras_CR*.md`, `docs/MODEL_*`): 3D mesh before calibration T30 5–10 % long in CR3,

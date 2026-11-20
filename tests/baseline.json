@@ -66,6 +66,15 @@
    "value": 3
   }
  },
+ "diffraction_rs": {
+  "arrivals": {
+   "tol": 0,
+   "value": 429
+  },
+  "max_rel_energy_diff": {
+   "max": 0.001
+  }
+ },
  "engine_js": {
   "max_material_diff": {
    "max": 1e-12
@@ -97,20 +106,20 @@
   "dropped_max": {
    "max": 0
   },
+  "hidden_min": {
+   "min": 6
+  },
   "lost_max_pct": {
    "max": 0.1
   },
   "narrow_min": {
    "min": 20
   },
-  "volume_err_max_pct": {
-   "max": 2.0
-  },
-  "hidden_min": {
-   "min": 6
-  },
   "shell_area_err_max_pct": {
    "max": 0.1
+  },
+  "volume_err_max_pct": {
+   "max": 2.0
   }
  },
  "page": {

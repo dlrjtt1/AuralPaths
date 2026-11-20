@@ -53,8 +53,8 @@ By LABO 1557 (Dong-Gyun You).
   5–11 dB too loud without the optional seat-dip model (`geometry.seat_dip`) and 3.3–6.2 dB off with it (BRAS RS7;
   in sight of the source 1.8–2.5 dB), where the 400–500 Hz dip is within 3 dB but starts about a third octave low.
 - Room-criteria check against two measured halls (Fratoni dataset, inputs from the authors' Odeon calibration,
-  unchanged): raked lecture hall (ULH) EDT / T30 / C50 / Ts within about 1 JND at 500 Hz–4 kHz, T30 1–2 JND short
-  at 125–250 Hz; elliptical domed hall (STC) T30 about 15 % too long at all bands (non-diffuse field; calibrate
+  unchanged): raked lecture hall (ULH) EDT / C50 / Ts within about 1 JND and T30 within 1.7 JND at 500 Hz–4 kHz, EDT 1–2 JND short
+  at 125–250 Hz; elliptical domed hall (STC) T30 18–27 % too long at 500 Hz–4 kHz (the page's engine, 2026-11-20) (non-diffuse field; calibrate
   first in such halls). Receiver means only: early arrivals and PA paths are not tested by it.
   Details: `validation/fratoni_*`, `docs/MODEL_en.md`.
 - Position-by-position check against measured RIRs of two real halls (BRAS CR3 chamber music hall, CR4 auditorium;
