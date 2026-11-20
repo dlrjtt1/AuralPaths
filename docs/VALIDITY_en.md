@@ -15,7 +15,7 @@ criteria averaged over receivers. That is a small sample; the results describe t
 | What | Result | Section in MODEL_en.md |
 |---|---|---|
 | Direct-sound arrival time | measured onset within −0.67 … +0.07 ms of distance / c at all 20 BRAS position pairs | Position-by-position check |
-| Direct-sound ITD and ILD | within 14–18 µs and 0.8–0.9 dB of the measured BRIRs with the KU100 head; 0–5 µs and 0.3–0.5 dB with the measurement's head (FABIAN) (5 loudspeakers × 2 halls) | Binaural check against measured BRIRs |
+| Direct-sound ITD and ILD | within 16–19 µs and 0.7–0.9 dB of the measured BRIRs with the KU100 head; 8–11 µs and 0.5–0.9 dB with the measurement's head (FABIAN) (mean over 5 loudspeakers, CR3 and CR4; BRIRs computed by the page) | Binaural check against measured BRIRs |
 | Octave spectrum at the binaural listener, same head and loudspeaker as the measurement | within 1.4 dB, 125 Hz–4 kHz (relative to 250 Hz–1 kHz) | Binaural check against measured BRIRs |
 | ITDG and level ratio set by the stimulus builder | equal to the nominal values at the reference seat (0.000 ms, 0.000 dB); files rebuilt independently to 1.5·10⁻⁵ | Stimuli for the listening tests |
 | Browser page vs Python | C80 / D50 / EDT / T30 within 0.007 dB / 0.001 / 0.001 s / 0.001 s; IACC_E3 within 0.035 (shoebox, 36 conditions) | Browser vs Python |
@@ -27,11 +27,11 @@ criteria averaged over receivers. That is a small sample; the results describe t
 
 | What | Result | Section |
 |---|---|---|
-| T30 without calibration | 5–16 % long with Eyring-fitted coefficients (BRAS RIRs, median over the positions, page's engine: CR3 5–10 %, CR4 13–16 %); 15–25 % long in CR4 in the binaural check | Position-by-position check; Binaural check |
+| T30 without calibration | 5–16 % long with Eyring-fitted coefficients (BRAS RIRs, median over the positions, page's engine: CR3 5–10 %, CR4 13–16 %); 14–22 % long in CR4 at 500 Hz–4 kHz in the binaural check | Position-by-position check; Binaural check |
 | First-order reflection levels | median +1.6 dB (CR3) and +2.7 dB (CR4) re measured; reflection by reflection poor in CR4 | Position-by-position check |
 | Early energy and clarity at the binaural listener | C80 1–4 dB low at 500 Hz–1 kHz; in CR4 13–20 % of the 0–80 ms energy at 20–50 ms against 5–9 % measured (mainly the ceiling panels; cause not established) | Binaural check |
-| Early interaural cross-correlation, IACC_E3 | slightly low: 0.44 vs 0.52 (CR3), 0.76 vs 0.83 (CR4) with the measured loudspeaker directivity, 0.41 vs 0.45 (Detmold); before the early-direction option (2026-11-13, default) 0.40, 0.75, 0.34 | Binaural check |
-| Late interaural cross-correlation, IACC_L | a third to a half of the measured value (the late part is rendered as an ideal diffuse field) | Binaural check; Late interaural coherence |
+| Early interaural cross-correlation, IACC_E3 | low in CR3, right in CR4: 0.38 vs 0.52 (CR3), 0.82 vs 0.83 (CR4) (BRIRs computed by the page, the measurement's head FABIAN, measured loudspeaker directivity, calibrated materials; with the page's KU100 head 0.46 and 0.82); 0.41 vs 0.45 (Detmold) | Binaural check |
+| Late interaural cross-correlation, IACC_L | 0.12 vs 0.16 (CR3), 0.13 vs 0.33 (CR4): 40–75 % of the measured value (the late part is rendered as an ideal diffuse field) | Binaural check; Late interaural coherence |
 | Halls far from the inputs' assumptions | STC about 15 % long; TCB (box-tier opera house) decays too fast and is not counted as a successful check | Room criteria against measured halls; The two opera houses |
 | Drawn 2.5D halls | reverberation and clarity within a few JND, but individual early reflections of a hall with balconies are not reproduced | Position-by-position check |
 | Hall not used in development, modelled from published drawings | Arvedi Auditorium (post hoc, after the fixes of 2026-11-12): T20 within 3 %, C80 within 1 dB for the omnidirectional source, but EDT 14–30 % long and, for directional loudspeakers, C80 1.2–2.8 dB low at 2–4 kHz | `validation/arvedi_check.md` |

@@ -27,8 +27,8 @@ and was scored with the same measures after seeing the measurements (post hoc, s
 | median shape error of reflection spectra (15 reference cases) | 1.0 - 2.8 dB | 1.5 dB |
 | mean error of reverberation and clarity (T20, EDT, C80, D50), material data only | CR2 1.8 - 5.5, CR3 2.9 - 6.4, CR4 1.3 - 4.3 JND | CR2 3.5 (6th of 7), **CR3 3.0 (2nd of 7)**, CR4 2.3 (3rd) JND |
 | overestimate of low-frequency reverberation (T20, mean of three rooms) | 125 Hz +58 %, 250 Hz +35 % (mean) | 125 Hz +47 %, 250 Hz +15 % |
-| source lateralization error (three rooms) | 0.2 - 14.2 deg | **0.3 - 0.6 deg** |
-| binaural tone colour error (37 gammatone bands) | 1.3 - 3.2 dB | 1.4 dB |
+| source lateralization error (three rooms) | 0.2 - 14.2 deg | 0.6 - 1.1 deg |
+| binaural tone colour error (37 gammatone bands) | 1.3 - 3.2 dB | **1.2 dB** |
 | energy decay of coupled rooms (door 30.4 / 4.1 deg) | 2.5 - 7.5 / 4.1 - 5.1 dB | 1.2 - 7.0 / 5.3 - 6.6 dB |
 
 ### By use
@@ -39,11 +39,11 @@ and was scored with the same measures after seeing the measurements (post hoc, s
 | reverberation time, predicted from material data only | CR3 and CR4 near the top of the round robin; CR2 15 - 31 % short | conditional: calibrate where possible |
 | clarity C80, D50, omnidirectional source | Arvedi C80 within 1 dB at 250 Hz - 4 kHz; CR3 C80 0.5 JND; Detmold C80 0.4 - 1.6 dB high | mostly usable (about 1 JND) |
 | how much C80, D50, Ts change when the source changes | 500 Hz - 1 kHz within 0.5 dB on average; at 2 - 4 kHz the change comes out 1 - 2 dB too small (Arvedi, change of source type and position; a change of delay is not checked) | usable at mid frequencies, underestimated at high frequencies |
-| source direction, direct-sound ITD | 0.3 - 0.6 deg; direct-sound ITD within 5 us (FABIAN) | usable |
-| binaural tone colour | 1.4 dB | usable |
+| source direction, direct-sound ITD | 0.6 - 1.1 deg; direct-sound ITD within 8 - 17 us (mean over five loudspeakers, FABIAN) | usable |
+| binaural tone colour | 1.2 dB with the measurement's head (FABIAN); 4.0 dB with the page's default KU100 HRIRs (2 - 6 kHz up to 15 dB lower: another head and another equalisation, not checked further) | usable with a head set that matches the comparison |
 | late spaciousness IACC_L3 | within 0.075 at 92 % of 136 pairs (Detmold) | usable |
 | absolute EDT | follows the reverberation error in most rooms; 14 - 30 % long in Arvedi | conditional |
-| early spaciousness IACC_E3 | 0.04 low (Detmold, 54 % within 0.075); 0.08 / 0.07 low (BRAS CR3 / CR4) | conditional: trends only, post hoc |
+| early spaciousness IACC_E3 | 0.04 low (Detmold, 54 % within 0.075); 0.14 / 0.01 low (BRAS CR3 / CR4, BRIRs computed by the page, FABIAN head) | conditional: trends only, post hoc |
 | C80, EDT of directional loudspeakers at 2 - 4 kHz | C80 1.2 - 2.8 dB low, EDT 2 - 3 times (Arvedi); the opposite, 3.0 - 3.2 dB high, EDT 12 - 23 % short (Finnish National Opera, measured directivity; growing towards the back rows) | not supported |
 | sound grazing over the seating behind the first row | 5 - 11 dB too strong; 3.3 - 6.2 dB with the seat-dip model (RS7) | not supported: check by measurement |
 | coupled rooms through a narrow gap | late decay 10 - 13 dB low (CR1, 4.1 deg) | not supported |
@@ -78,8 +78,8 @@ The numbers for the programs are quoted from the paper or read from its suppleme
 | Coupled rooms, door 4.1 deg (SuppPub2) | figures only | second slope 10 - 13 dB too low: EDC -51 ... -53 dB at 1.0 s (measured -38 dB), so within the figure's range (down to -50 dB) a single decay with T = 1.1 - 1.4 s (measured late T 4.0 - 4.2 s). Page's engine, 2026-11-20 (16 000 rays): EDC -48 ... -49 dB at 1.0 s (about 10 dB low); T not recomputed |
 | T20, mean of 10 source-receiver pairs, octave bands (Fig. 5, S3-1) | measured T20 "on average, overestimated by 58% (125 Hz) and 35% (250 Hz)"; at 500 Hz - 2 kHz "still above the JND in most cases" | +47 % (125 Hz), +15 % (250 Hz), +1 / -4 / -14 / -15 % (500 Hz - 4 kHz), mean over the three rooms; 14 of 18 room-bands beyond the 5 % JND (programs 14 - 17). Read from S3-1, the six programs average +58 % and +35 %, as the paper says |
 | Correlation of measured and simulated parameters over the 10 pairs, 1 kHz | not significant, "with the exception of C80 and D50" in the large room (r = 0.7 - 0.9) | the same pattern: large room C80 r = 0.77, D50 r = 0.85 (p < 0.05); all others not significant |
-| Tone colour: energy differences in 37 gammatone bands 80 Hz - 16 kHz, BRIRs, mean over sources and ears (Fig. 6) | mean error E 1.3 dB, B and C 2.2 dB, A 3.2 dB | CR2 1.4 dB, CR3 1.4 dB, CR4 1.4 dB (FABIAN HRIRs, fitted materials, K8 directivity) |
-| ITD of the direct sound (discussion; lateralization in SuppPub3 Fig. S3-33) | "well preserved in the simulations (except for C)"; mean absolute lateralization error A 0.2 - 0.8, B 1.0 - 1.2, E 0.6 - 0.9, C 7.2 - 14.2 deg | 0.3 - 0.6 deg (2.4) |
+| Tone colour: energy differences in 37 gammatone bands 80 Hz - 16 kHz, BRIRs, mean over sources and ears (Fig. 6) | mean error E 1.3 dB, B and C 2.2 dB, A 3.2 dB | CR2 1.1 dB, CR3 1.3 dB, CR4 1.1 dB (BRIRs computed by the page, FABIAN HRIRs, fitted materials, K8 directivity; with materials calibrated on T30: CR3 1.3, CR4 1.2) |
+| ITD of the direct sound (discussion; lateralization in SuppPub3 Fig. S3-33) | "well preserved in the simulations (except for C)"; mean absolute lateralization error A 0.2 - 0.8, B 1.0 - 1.2, E 0.6 - 0.9, C 7.2 - 14.2 deg | 0.6 - 1.1 deg (2.4) |
 | Authenticity, plausibility, SAQI (listening tests, Figs. 7 - 10) | no program authentic; B, C, E plausible | not tested |
 
 The paper leaves some details open; choices made here: the transition time and decay rates are from a two-line fit
@@ -151,11 +151,11 @@ FABIAN HRIRs, as the programs were:
 
 | room | measured BRIR, here | measured (figure) | A | B | C | E | AuralPaths |
 |---|---|---|---|---|---|---|---|
-| CR2 | 1.4 deg | 2.3 deg | 0.8 deg | 1.0 deg | 14.2 deg | 0.9 deg | **0.6 deg** |
-| CR3 | 0.8 deg | 1.0 deg | 0.6 deg | 1.2 deg | 7.9 deg | 0.7 deg | **0.3 deg** |
-| CR4 | 0.3 deg | 0.7 deg | 0.2 deg | 1.2 deg | 7.2 deg | 0.6 deg | **0.5 deg** |
+| CR2 | 1.4 deg | 2.3 deg | 0.8 deg | 1.0 deg | 14.2 deg | 0.9 deg | **1.1 deg** |
+| CR3 | 0.8 deg | 1.0 deg | 0.6 deg | 1.2 deg | 7.9 deg | 0.7 deg | **0.6 deg** |
+| CR4 | 0.3 deg | 0.7 deg | 0.2 deg | 1.2 deg | 7.2 deg | 0.6 deg | **0.8 deg** |
 
-Rendered with the KU100 HRIRs instead (the page's default head), the deviation is 1.2 - 1.3 deg (CR3, CR4).
+Rendered with the KU100 HRIRs instead (the page's default head), the deviation is 0.3 / 0.3 / 0.9 deg (CR2, CR3, CR4). Since 2026-11-20 the BRIRs are computed by the web page itself (`validation/check_bras_brir.py`, default `--engine page`: headless Chromium, the page's engine and binaural rendering, FABIAN HRIRs loaded with **HRIR set…**, measured K8 directivity, 16 000 rays). The values before, rendered by the Python tools before the 3D-model fixes, were 0.6 / 0.3 / 0.5 deg.
 
 ### 2.5 Not compared
 
@@ -188,7 +188,7 @@ off by default because they cost time (up to tens of seconds per source-receiver
 | hall | data | result | details |
 |---|---|---|---|
 | Detmold Konzerthaus (about 600 seats), 4 stage sources x 34 seats, KU100 dummy head | Detmold SRIR database, https://zenodo.org/records/4116247 (CC BY 4.0) | IACC_L3 within 0.075 at 93 % of the pairs; IACC_E3 0.04 low on average (54 % within 0.075); EDT -3 / -7 / -15 % at 500 Hz / 1 / 2 kHz (13 - 32 % of the pairs within 5 %); C80 +0.4 / +1.0 / +1.6 dB (34 - 41 % within 1 dB); T30 within 3.2 % after calibration. With the early-direction option of 2026-11-13 (default); without it: IACC_E3 0.11 low, EDT -3 / -6 / -11 %, C80 +0.3 / +0.7 / +1.4 dB. Before the engine fixes of 2026-11-12: IACC_E3 0.15 low, EDT 0 ... +3 %, C80 0.3 - 0.8 dB low (with the seat-dip model, before the fixes: IACC_E3 0.10 low, C80 -0.2 ... +0.2 dB) | [validation/detmold_kh.md](../validation/detmold_kh.md) |
-| BRAS CR3 chamber music hall, CR4 auditorium (binaural, FABIAN head) | BRAS | direct-sound ITD within 5 us, 2 - 4 kHz spectrum within 1.4 dB; discrete reflections 14 - 70 ms after the direct sound: measured - model -1.1 dB (median, both halls); CR4 late IACC too low at seats under a flutter between ceiling panels and aisle | [validation/bras_brir_iacc_diag.md](../validation/bras_brir_iacc_diag.md) |
+| BRAS CR3 chamber music hall, CR4 auditorium (binaural, FABIAN head) | BRAS | direct-sound ITD within 8 - 11 us and octave spectrum within 1.4 dB (BRIRs computed by the page, 2026-11-20); from the runs with the Python tools: discrete reflections 14 - 70 ms after the direct sound: measured - model -1.1 dB (median, both halls); CR4 late IACC too low at seats under a flutter between ceiling panels and aisle | [validation/bras_brir_iacc_diag.md](../validation/bras_brir_iacc_diag.md) |
 | Fratoni lecture hall (ULH) and domed hall (STC) | Fratoni et al. dataset | ULH within about 1 JND at 500 Hz - 4 kHz; STC T30 about 15 % too long (calibrate first in such halls) | [validation/](../validation/) `fratoni_*.md` |
 | Auditorium Giovanni Arvedi, Cremona (about 470 seats round the stage), 5 stage sources x 65 receivers, 8-capsule array; simplified model from the published drawings | Politecnico di Milano, https://doi.org/10.5281/zenodo.20098848 (CC BY 4.0) | **post hoc** (the blind run placed the receivers on the wrong side and is void). After the engine fixes of 2026-11-12: omnidirectional source T20 within 3 % (45 - 78 % within 5 %), C80 -0.9 ... +0.2 dB at 250 Hz - 4 kHz, D50 within 0.06, EDT 14 - 30 % too long; Genelec loudspeakers (8020A data): C80 within 0.7 dB at 500 Hz - 1 kHz, 1.2 - 2.8 dB low at 2 - 4 kHz, EDT 2 - 3 times too long there. Before the fixes: C80 1.3 - 1.5 dB low at 2 - 4 kHz (omnidirectional), 3 - 8 dB (loudspeakers) | [validation/arvedi_check.md](../validation/arvedi_check.md) |
 | Arni variable-acoustics room (Aalto, 8.9 x 6.3 x 3.6 m), 0 - 9 of 55 panels open, 37 states x 5 microphones | Arni dataset, https://doi.org/10.5281/zenodo.6985104 (CC BY 4.0) | Bare surfaces and curtains calibrated on the all-closed state only, the other 36 states predicted: 500 Hz - 4 kHz T30 and EDT -6 ... +7 % on average, C80 within 0.6 dB; EDT/T30 simulated 0.87 - 0.95 vs measured 0.91 - 0.96 (250 Hz - 4 kHz); 250 Hz +20 % (no low-frequency panel data); absorption on the ceiling too effective in T30 (post hoc) | [validation/arni_check.md](../validation/arni_check.md) |
@@ -245,7 +245,7 @@ it is not known whether other programs show similar errors there.
   3 - 4 dB too loud; generic seats, two-dimensional, checked in one real hall with default seats (docs/MODEL_en.md,
   *Seat dip*). The deep notch at the lower edge of the dip is not explained (ruled out: 2-D approximation, block
   dimensions, surface absorption); read levels there qualitatively. Check such positions with measurements.
-- **Early spaciousness** (IACC_E3) about 0.04 too low in a concert hall (Detmold; BRAS CR3 0.08, CR4 0.07). It was 0.11 low before the default option of 2026-11-13 that sets the interaural coherence of the early residual from the arrival directions of the scattered energy; the fix came from a post hoc diagnosis, so it is not a blind check. In exchange C80 in Detmold is 0.4 - 1.6 dB high (0.3 - 1.4 without the option) and EDT 3 - 15 % short (3 - 11 without); the earlier close agreement of C80 and EDT was partly the double-counted scattered energy (fixed 2026-11-12). The optional seat-dip model had narrowed the IACC_E3 deficit (0.15 -> 0.10, before the fixes; not repeated) but moves the first 15 ms further from the measurement at 200 - 315 Hz.
+- **Early spaciousness** (IACC_E3) about 0.04 too low in a concert hall (Detmold; BRAS CR3 0.14, CR4 0.01 with the page's BRIRs and the FABIAN head). It was 0.11 low before the default option of 2026-11-13 that sets the interaural coherence of the early residual from the arrival directions of the scattered energy; the fix came from a post hoc diagnosis, so it is not a blind check. In exchange C80 in Detmold is 0.4 - 1.6 dB high (0.3 - 1.4 without the option) and EDT 3 - 15 % short (3 - 11 without); the earlier close agreement of C80 and EDT was partly the double-counted scattered energy (fixed 2026-11-12). The optional seat-dip model had narrowed the IACC_E3 deficit (0.15 -> 0.10, before the fixes; not repeated) but moves the first 15 ms further from the measurement at 200 - 315 Hz.
 - **Early decay and direct / early balance near the stage** in a hall not used in development, modelled from published drawings (Arvedi, post hoc): EDT 14 - 30 % too long with T20 right; with directional loudspeakers C80 1.2 - 2.8 dB low and EDT 2 - 3 times too long at 2 - 4 kHz. Ruled out: aim (tilt -10 ... +5 deg), volume (model at 5206 m3), image-source order (3 instead of 2), scattering (0.05 to twice the value: EDT / T30 moves by 0.05 at most); a more detailed model with per-surface published absorption shortened the EDT error only below 1 kHz. In a small room with known absorber positions (Arni) the engine does give an EDT shorter than T30 (EDT/T30 0.87 - 0.95, measured 0.91 - 0.96; [validation/arni_check.md](../validation/arni_check.md)), so it is not a property of the engine as such. Open: the loudspeaker data (8020A for 8020C) and how seating returns a beam aimed at it ([validation/arvedi_check.md](../validation/arvedi_check.md)).
 - **Flutter between parallel surfaces**: repeated reflections between finite panels are too weak at low
   frequencies with the default finite-reflector factor (RS3) and a ceiling-aisle flutter was underestimated in CR4.
@@ -270,7 +270,8 @@ above). Then:
     python validation/rr_extract_ra.py <SuppPub3.pdf> out/rs/rr_ra.csv
     python validation/rr_complex.py <BRAS folder> CR3 --coeffs initial --rays 16000   # CR2, CR3, CR4; then --table out/rs
     python validation/rr_coupled.py --extract <SuppPub2.pdf>; python validation/rr_coupled.py <BRAS folder> --rays 16000
-    python validation/rr_lateral.py <BRAS folder> --fabian <FABIAN HRIR SOFA> --ku100 hrir/KU100.sofa
+    python validation/check_bras_brir.py <BRAS folder> CR3 --k8-mps <K8 file> --hrir <FABIAN HRIR SOFA> --rays 16000 --out validation/bras_brir_CR3_FABIAN_K8data   # CR2, CR4 too
+    python validation/rr_lateral.py <BRAS folder> --fabian <FABIAN HRIR SOFA> --ku100 hrir/KU100.sofa --pattern "bras_brir_{hall}_FABIAN_K8data_LS{k}_sim.wav" --sim-hrir fabian
     python validation/detmold_kh.py ...                              # see the script's docstring
 
 Outputs go to `out/` (not in the repository: they are derived from the measured data).

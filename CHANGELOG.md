@@ -9,7 +9,13 @@ files.
   BRAS CR3 / CR4 (`validation/bras_CR*.md`, `docs/MODEL_*`): 3D mesh before calibration T30 5–10 % long in CR3,
   13–16 % in CR4 (Python engine: 5–8 %, 8–12 %); held-out positions after calibration within 1.6 JND in T30.
   Round robin (`docs/BENCHMARK_*`): CR2 3.5, CR3 3.0, CR4 2.3 JND; coupled rooms 7.0 / 1.2 dB (30.4 deg) and
-  6.6 / 5.3 dB (4.1 deg). The binaural checks still use the Python tools and were not rerun.
+  6.6 / 5.3 dB (4.1 deg).
+- **Binaural check computed by the web page itself.** `validation/check_bras_brir.py --engine page` (default) runs the
+  page in headless Chromium (`tests/page_brirs.js`, now with an optional HRIR set and `H5WASM` for machines without the
+  CDN) and compares its BRIRs with the BRAS measurements (FABIAN HRIRs, measured K8 directivity; CR2, CR3, CR4).
+  With materials calibrated by the page's engine: T30 within 9 % and C80 within 1.5 dB per band (mean of five
+  loudspeakers), IACC_E3 0.38 vs 0.52 (CR3) and 0.82 vs 0.83 (CR4), IACC_L 40–75 % of the measured value.
+  Round robin: lateralization 1.1 / 0.6 / 0.8 deg (before, Python tools: 0.6 / 0.3 / 0.5), tone colour 1.2 dB (1.4).
 - **3D models: walls behind a slot thinner than the voxel band were dropped** (found 2026-11-20 in BRAS CR2: the wall
   6.5 cm behind the radiators, 12 faces, 20 % of the rays lost from the room centre). A face with no room voxel within
   3 voxels is no longer dropped; it stays in the model as a face behind the room's faces (reflects rays, not counted),

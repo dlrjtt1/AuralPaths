@@ -1,5 +1,7 @@
 # BRAS CR4: binaural check, AuralPaths (Python engine, KU100) vs measured BRIRs (FABIAN)
 
+**Not recomputed.** Rendered with the Python tools (5000 rays) before the 3D-model fixes of 2026-11-18 to 2026-11-20. The current check is computed by the web page itself: `bras_brir_CR4_FABIAN_K8data.md`, `bras_brir_CR4_FABIAN_K8data_cal16.md`, `bras_brir_CR4_K8data.md` (docs/MODEL_*, *Binaural check*).
+
 Five loudspeakers LS3 - LS7 to listener MP6 (= RIR position MP1), head facing LS7. Materials: BRAS fitted estimates, unchanged (not calibrated). 5000 rays per source, image sources order 1. Sources: omnidirectional. Simulated BRIRs: `bras_brir_CR4_LSk_sim.wav`.
 
 ## Direct sound and spatial measures

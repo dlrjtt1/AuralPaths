@@ -892,6 +892,35 @@ against an independent implementation in CR4 and in a diffuse box, and records t
 
 ## Binaural check against measured BRIRs (BRAS CR3 / CR4; `validation/check_bras_brir.py`, 2026-11-08)
 
+### Computed by the web page itself (2026-11-20)
+
+Since 2026-11-20 `validation/check_bras_brir.py` runs the web page in headless Chromium (default `--engine page`,
+`tests/page_brirs.js`) and compares the BRIRs the page computes: its engine, its binaural rendering and its defaults,
+the FABIAN HRIRs loaded with **HRIR set…** (the head of the measurement), the measured QSC K8 balloon per loudspeaker,
+materials in 8 octave bands, 16 000 rays. The page takes two directional sources per run, so a hall needs three runs
+(2–4 min in all). Materials: BRAS fitted estimates, and the same calibrated on the measured T30 of the RIRs with the
+page's engine (`calibrate.py`, LS1 × 5 positions, 30 000 rays; CR3 in 4 iterations, CR4 in 8, fit within 2 %).
+Mean over the five loudspeakers, simulated − measured:
+
+| hall, materials | T30, 125 Hz – 4 kHz | EDT | C80 | IACC_E3 sim. / meas. | IACC_L sim. / meas. | \|ITD\| / \|ILD\| difference |
+|---|---|---|---|---|---|---|
+| CR2, fitted | −17 / −9 / −5 / +2 / +6 / +10 % | +25 / +15 / +15 / +7 / +18 / +8 % | −0.8 / −1.2 / +0.2 / −0.6 / −1.2 / −0.4 dB | 0.21 / 0.39 | 0.09 / 0.11 | 17 µs / 0.7 dB |
+| CR3, fitted | +11 / +7 / +0 / +4 / −1 / −6 % | +33 / +3 / +5 / −5 / −3 / −12 % | −1.3 / −0.3 / −0.0 / −0.8 / −1.8 / +0.4 dB | 0.37 / 0.52 | 0.12 / 0.16 | 11 µs / 0.9 dB |
+| CR3, calibrated | +1 / +5 / −0 / −1 / −7 / −9 % | +22 / +2 / +5 / −9 / −6 / −14 % | −0.8 / −0.3 / −0.0 / −0.5 / −1.5 / +0.7 dB | 0.38 / 0.52 | 0.12 / 0.16 | 11 µs / 0.9 dB |
+| CR4, fitted | +10 / +4 / +15 / +14 / +22 / +22 % | −4 / +20 / +21 / +12 / +5 / +10 % | −0.6 / −0.1 / −1.1 / −0.0 / −1.4 / −1.8 dB | 0.82 / 0.83 | 0.12 / 0.33 | 8 µs / 0.5 dB |
+| CR4, calibrated | −0 / −6 / +3 / +5 / +8 / −2 % | −14 / +2 / +10 / +4 / −9 / −0 % | +0.1 / +0.6 / −0.4 / +0.5 / −0.6 / −0.7 dB | 0.82 / 0.83 | 0.13 / 0.33 | 8 µs / 0.5 dB |
+
+With the page's default KU100 HRIRs instead (fitted materials): IACC_E3 0.32 (CR2), 0.46 (CR3), 0.82 (CR4); IACC_L 0.28,
+0.18, 0.18; ITD difference 16–23 µs. Octave spectrum (relative to 250 Hz–1 kHz, FABIAN head): within 1.4 dB in CR3,
+0.5 dB in CR4 (calibrated), 1.1 dB in CR2. Reading: the direct sound (ITD, ILD), the spectrum and, after calibration,
+T30 and C80 agree with the measurement; early spaciousness is right in CR4 and too low in CR3 and CR2 (IACC_E3 0.14
+and 0.18 low with the measurement's head); late IACC is 40–75 % of the measured value in CR3 and CR4. One listener
+position per hall, five loudspeakers: not a statistical statement. Files: `validation/bras_brir_CR*_FABIAN_K8data.md`,
+`…_FABIAN_K8data_cal16.md`, `…_K8data.md` (KU100), `validation/bras_brir_iacc_split_page.md`. The rest of this section
+describes the runs of 2026-11-08 to 2026-11-13 with the Python tools (before the 3D-model fixes of 2026-11-18 to 20);
+their files with omnidirectional sources, the generic 105° pattern and the 6-band calibration
+(`bras_brir_CR*.md`, `…_K8.md`, `…_FABIAN_K8data_cal.md`) were not recomputed.
+
 BRAS (Aspöck et al. 2020, [doi:10.14279/depositonce-6726.3](https://doi.org/10.14279/depositonce-6726.3), CC BY-SA 4.0)
 contains BRIRs measured with the FABIAN head at one listener position (MP6 = RIR position MP1, head facing LS7) for five
 loudspeakers LS3–LS7 (QSC K8). The script renders the same five pairs with the Python mesh path (BRAS OBJ, fitted

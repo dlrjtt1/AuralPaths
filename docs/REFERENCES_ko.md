@@ -21,8 +21,10 @@
 | 1차 모서리 회절 | UTD: Kouyoumjian & Pathak 1974, Tsingos et al. 2001 | `diffraction.py`, `GEOM.diffract` |
 | 정반사 계수 (유한 반사판·산란 손실) | Rindel 2005 (Kirchhoff–Fresnel), Rindel 1992 | `reflections.py`, `GEOM.specFactor` |
 | 재료 보정 (실측 T30에 맞추기) | ISO 3382-1 Annex A (JND 5 %) | `calibrate.py` |
+| 검증을 사이트 엔진으로 실행 (2026-11-20: 방 지표는 `engine_js.py`로, BRIR은 웹 페이지를 화면 없는 Chromium으로 실행) | 자체 구현; [Playwright](https://github.com/microsoft/playwright)(Apache-2.0, 검증 실행에만 사용) | `engine_js.py`, `tests/page_brirs.js`, `validation/check_bras_brir.py` |
+| 라운드 로빈과의 사후 비교 (방 지표 CR2 3.5·CR3 3.0·CR4 2.3 JND, 좌우 정위 0.6–1.1°, 음색 1.2 dB) | Brinkmann et al. 2019, BRAS CR1–CR4 | `validation/rr_*.py`, `docs/BENCHMARK_ko.md` |
 | 회절 실측 검증 (RS5, 500 Hz–2 kHz 평균 1.8 dB 차) | BRAS RS5 (Aspöck et al. 2020) | `validate_bras.py`, `validation/` |
-| 실제 홀 위치별 검증 (CR3·CR4: T30 8–11% 김, C80·Ts 0.8–2.3 JND, 1차 반사 중앙값 CR3 +1.6 dB·CR4 +2.7 dB(보정 전 +6.5)) | BRAS CR3·CR4 (Aspöck et al. 2020) | `validate_bras_cr.py`, `validation/bras_CR*` |
+| 실제 홀 위치별 검증 (CR3·CR4, 2026-11-20 사이트 엔진: 보정 전 T30 5–16% 김, C80·C50·Ts 0.6–2.5 JND, 한 번 보정 뒤 보정 밖 위치의 T30 1.6 JND 이내; 1차 반사 중앙값 CR3 +1.6 dB·CR4 +2.7 dB(계수 적용 전 +6.5)) | BRAS CR3·CR4 (Aspöck et al. 2020) | `validate_bras_cr.py`, `validation/bras_CR*` |
 | OBJ 3D 홀 계산·2.5D 변환 | 복셀 채우기 + 메시 Sabine 면적 → 2.5D Eyring 지수(자체 구현), fast-simplification(MIT) | `geometry.py`, `obj_to_hall.py` |
 | 실측 홀 지표 대조 (ULH 500 Hz–4 kHz 약 1 JND 이내, STC 약 15% 김) | Fratoni 데이터셋(CC BY 4.0), Fratoni 2022, Fratoni et al. 2023 | `validate_fratoni.py`, `validation/fratoni_*` |
 | 좌석 dip — 일반 의자 2차원 BEM(선택 사항) | Meyer, Tahvanainen, Saarelma & Lokki 2023 (닫힌형 모델 부재), Davies & Cox 2000 (2차원 BEM 방식), Tahvanainen et al. 2020 (등받이·틈 범위) | docs/MODEL "Seat dip" |
@@ -128,6 +130,7 @@
 - **어디:** `validate_bras.py`. RS5(무한 모서리: MDF 칸막이, 높이 2.07 m, 4×4 위치, Genelec 8020c, 44.1 kHz)의 게이트 IR을 UTD 예측과 1/3옥타브로 비교한다.
 - **상태 (2026-11-03 실행):** RS5의 16개 RIR을 UTD + 바닥 영상 모델과 비교했다. 500 Hz–2 kHz 평균 절대 차이는 그림자 위치 11개에서 2.2 dB, 전체 16개에서 1.8 dB다. 예측이 평균 0.1–1.9 dB 높은데, 스피커 응답·지향성, 칸막이 두께(25 mm), 공기흡음을 넣지 않은 영향이 포함된다. 음원이나 수음점이 바닥 높이인 3개는 칸막이 투과음으로 보이는 성분이 먼저 도달한다(모델 밖). 결과 파일: `validation/bras_RS5.png/.csv/.md`. RS6(유한 물체)와 RS7(좌석 dip)은 다중 회절이 필요해 이 모델의 범위 밖이다.
 - **CR3·CR4 (2026-11-05 실행, `validate_bras_cr.py`):** 실제 홀 두 곳(CR3 실내악 홀 3331 m³, CR4 대학 강당 8657 m³)의 12면체 RIR 각 10개를 3D 모델(SketchUp → Blender OBJ)과 BRAS `fitted_estimates` 재료로 위치별 비교했다. T30은 8–11% 길다(광선추적은 확산적인 직육면체에서도 Eyring보다 7–12% 느리게 감쇠하므로 Eyring으로 맞춘 계수는 광선추적에는 작다). C80·C50·Ts는 0.8–2.3 JND. LS1으로 한 번 보정하면 보정 밖 LS2의 T30이 두 홀 모두 0.8 JND(2026-11-06 에너지 하한 수정 후 재계산). 1차 반사는 CR3에서 시각·레벨이 맞고(+1.6 dB 중앙값), CR4는 처음 +6.5 dB 과대였으나 유한 반사판 계수(2.2a) 후 같은 반사로 +2.7 dB(반사 하나하나의 상관은 낮음). 발코니가 있는 홀의 2.5D 버전은 잔향은 대체로 유지하지만 개별 초기 반사는 맞지 않는다. 이 과정에서 `obj_to_hall.py`의 평면 외곽선 버그(여러 조각이 하나로 이어짐)를 찾아 고쳤다. 결과: `validation/bras_CR3.*`, `bras_CR4.*`.
+- **CR3·CR4 갱신 (2026-11-19 – 20):** 3D 모델에서 좁은 면과 얇은 틈 뒤의 벽이 버려져 광선이 새던 문제를 고친 뒤(`validation/mesh_leak.md`) 다시 계산했고, 2026-11-20부터는 사이트 엔진으로 계산한다(광선 16 000개, 위치 결합은 중앙값, 광선 시드 2개). 보정 전 T30은 CR3에서 5–10%, CR4에서 13–16% 길다. EDT는 2.4–3.8 JND, C80·C50·Ts는 0.6–2.5 JND. LS1으로 한 번 보정하면 보정 밖 LS2의 T30이 0.6–1.6 JND(CR3), 0.8 JND(CR4). 위 문단의 8–11%, 0.8–2.3 JND, 0.8 JND는 그전 Python 엔진·광선 4000개의 값이다. 실측 BRIR과의 바이노럴 대조도 같은 날부터 웹 페이지가 직접 계산한 BRIR로 한다(FABIAN HRIR, K8 실측 지향성): 보정 뒤 T30은 대역별 9% 이내, C80은 1.5 dB 이내, IACC_E3는 CR3에서 0.38(실측 0.52), CR4에서 0.82(실측 0.83), 후기 IACC는 실측의 40–75%. 청취 위치는 홀마다 하나다. 결과: `validation/bras_brir_CR*`, docs/MODEL "실측 BRIR과의 바이노럴 대조".
 
 ### 5.2 좌석 dip — 모델 부재 확인
 - **무엇:** Meyer, J., Tahvanainen, H., Saarelma, J., & Lokki, T. (2023). Investigation of the seat-dip effect using finite-difference time-domain simulations. *J. Acoust. Soc. Am.*, 154(3), 1628–1639. [doi:10.1121/10.0020826](https://doi.org/10.1121/10.0020826)
@@ -142,7 +145,7 @@
 
 ### 5.3 시뮬레이션 신뢰도 근거 (계획서에서 인용)
 - Brinkmann, F., Aspöck, L., Ackermann, D., Lepa, S., Vorländer, M., & Weinzierl, S. (2019). A round robin on room acoustical simulation and auralization. *J. Acoust. Soc. Am.*, 145(4), 2746–2760. [doi:10.1121/1.5096178](https://doi.org/10.1121/1.5096178)
-- 용도: 기하음향 시뮬레이션의 한계를 서술할 때 인용(계획서 3장). AuralPaths 코드에서 직접 쓰지는 않았다.
+- 용도: 기하음향 시뮬레이션의 한계를 서술할 때 인용(계획서 3장). 2026-11-10부터는 이 논문의 장면과 부록 그림을 써서 AuralPaths를 같은 척도로 사후 비교한다(`validation/rr_*.py`, `docs/BENCHMARK_ko.md`). AuralPaths는 라운드 로빈에 참가하지 않았고 실측을 본 뒤에 점수를 낸 것이므로, 참가 프로그램과 같은 조건의 비교가 아니다. 2026-11-20 사이트 엔진 기준 값: 방 지표 평균 오차 CR2 3.5, CR3 3.0, CR4 2.3 JND(참가 프로그램 1.8–5.5, 2.9–6.4, 1.3–4.3), 결합실 EDC 오차 7.0 / 1.2 dB(문 30.4°, initial / fitted 재료)와 6.6 / 5.3 dB(문 4.1°), 좌우 정위 1.1 / 0.6 / 0.8°, 음색 1.2 dB.
 
 ### 5.4 Fratoni 데이터셋 (실측 홀 지표 대조용)
 - **무엇:** Fratoni, G. *Materials for calibrating four complex virtual environments through acoustic simulations*. Mendeley Data, v1. [doi:10.17632/y7xnv6xg5s.1](https://doi.org/10.17632/y7xnv6xg5s.1). 홀 4곳(TCB, DUS, STC, ULH)의 SketchUp 모델, ISO 3382-1 실측 지표(음원별 수음점 평균), 경계 조건(GA용 흡음·산란, FDTD용 LRC), FDTD IR.
@@ -152,7 +155,7 @@
   - Fratoni, G., D'Orazio, D., & Garai, M. (2023). Uncertainty of input data for wave-based room acoustic simulations in large non-trivial environments. *Forum Acusticum 2023*, Turin. [doi:10.61782/fa.2023.1114](https://doi.org/10.61782/fa.2023.1114). CC BY 3.0. Odeon에서 GA 계수를 실측에 맞춘 절차와, 보정된 GA의 잔차(오페라 극장 4곳, 500–1000 Hz T30 −0.06 … +0.12 s)를 비교 기준으로 인용했다. 이 논문의 홀 4곳은 오페라 극장(그림 1(a)의 25,400 m³는 TCB와 같다)이며 ULH·STC는 포함되지 않는다.
   - Christensen, C. L., & Rindel, J. H. (2005). A new scattering method that combines roughness and diffraction effects. *Forum Acusticum 2005*, Budapest. [DTU Orbit](https://orbit.dtu.dk/en/publications/a-new-scattering-method-that-combines-roughness-and-diffraction-e/). Odeon이 산란 계수에 면 크기·경로 길이에 따른 회절 산란을 더한다는 근거(STC 차이의 해석에 사용).
 - **어디:** `validate_fratoni.py`(ULH, STC), `obj_to_hall.py`. TCB와 DUS는 박스석·발코니가 있어 2.5D 범위 밖이다.
-- **상태 (2026-11-05 실행):** ULH는 3D 메시 기준 500 Hz–4 kHz에서 EDT·T30·C50·Ts가 약 1 JND 이내, 125–250 Hz에서 T30이 1–2 JND 짧다. STC는 3D 메시·2.5D 모두 T30이 약 15% 길다(입력이 Odeon용으로 보정된 영향으로 해석, 엔진 오류는 슈박스 확인에서 보이지 않음). 2026-11-06 에너지 하한 수정 후 재계산해도 변화는 0.4 JND 이하. 위치는 시트 그림에서 읽었고(±0.3 m), STC 재료 대응 일부는 판단이다. 결과 파일: `validation/fratoni_*`.
+- **상태 (2026-11-05 실행):** ULH는 3D 메시 기준 500 Hz–4 kHz에서 EDT·T30·C50·Ts가 약 1 JND 이내, 125–250 Hz에서 T30이 1–2 JND 짧다. STC는 3D 메시·2.5D 모두 T30이 약 15% 길다(입력이 Odeon용으로 보정된 영향으로 해석, 엔진 오류는 슈박스 확인에서 보이지 않음). 2026-11-06 에너지 하한 수정 후 재계산해도 변화는 0.4 JND 이하. 위치는 시트 그림에서 읽었고(±0.3 m), STC 재료 대응 일부는 판단이다. 결과 파일: `validation/fratoni_*`. 2026-11-19에 3D 모델 규칙을 고친 뒤 ULH, STC, DUS, TCB를 다시 계산했다. 현재 값은 `validation/fratoni_*.md`에 있고, 이 문단의 수치는 2026-11-05 – 06의 것이다.
 
 ---
 
@@ -193,3 +196,5 @@
 | 2026-11-05 | OBJ 3D 홀(Python), OBJ → 2.5D 변환(체적 보존, 흡음은 메시 Sabine 면적 → 2.5D Eyring 지수), 실측 홀 2곳 지표 대조 | Fratoni 데이터셋, Fratoni 2022, Fratoni et al. 2023, Christensen & Rindel 2005, ISO 3382-1 Annex A |
 | 2026-11-05 | BRAS CR3·CR4 위치별 검증(지표·1차 반사), `obj_to_hall.py` 외곽선 버그 수정, `calibrate.py` 메시 홀 가속 | Aspöck et al. 2020 (BRAS v3) |
 | 2026-11-05 | 허상 반사에 유한 반사판 계수(Kirchhoff–Fresnel)와 산란 손실, 대역별 산란 계수 | Rindel 2005, Rindel 1992, BRAS CR3·CR4 대조 |
+| 2026-11-18 – 19 | 3D 모델: 표면 띠보다 좁은 면(계단 챌판 등)이 버려져 광선이 새던 문제 수정, 방의 면 뒤에 있는 면은 남기되 면적에서 제외, 좁은 틈 뒤 공간을 방에 포함(사이트 엔진), 부피 추정 수정. BRAS CR3·CR4와 Fratoni 홀 재계산(광선 16 000개, 중앙값) | `validation/mesh_leak.md`, Aspöck et al. 2020, Fratoni 데이터셋 |
+| 2026-11-20 | 3D 모델: 근처에 방 안 격자가 없는 면도 버리지 않음(BRAS CR2, 라디에이터 뒤 벽에서 광선 20% 손실 → 0%). 방 지표 검증을 사이트 엔진으로 전환(`--engine js`), 바이노럴 대조를 웹 페이지가 직접 계산한 BRIR로 전환(`--engine page`), 라운드 로빈 비교 재계산 | `validation/mesh_leak.md`, Brinkmann et al. 2019, Aspöck et al. 2020 |
