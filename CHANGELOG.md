@@ -3,6 +3,9 @@
 Dates are those of the commits on GitHub. The version is shown on the page and recorded in saved configs and exported
 files.
 
+## Unreleased
+- Zenodo DOI of 0.9.0 (https://doi.org/10.5281/zenodo.24386517) in `CITATION.cff`, README and `docs/VALIDITY_*`.
+
 ## 0.9.0 (2026-11-20)
 Results of 3D models change against 0.8.1 (rays were lost through faces the engine dropped), and the validation now
 runs on the page's own engine. Recompute anything made with a 3D model in 0.8.1 or earlier; shoebox and drawn halls
