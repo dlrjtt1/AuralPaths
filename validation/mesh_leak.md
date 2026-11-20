@@ -38,7 +38,7 @@ the JavaScript engine itself, so the page and the Python tools share the ray tra
 ## Fix
 
 1. A face with no room voxel at 2.5 voxels is looked at again: room voxels within 3 voxels of its own points make it
-   a narrow face, kept as a two-sided face. Only a face with none is left out (`keepAll` / `keep_all` keeps those too).
+   a narrow face, kept as a two-sided face. Until 2026-11-20 a face with none was left out; it now stays in the model as a face behind the room's faces (see "Faces with no room voxel near them" below; `dropFar` / `drop_far` restores the old rule).
 2. The two sides of a two-sided face lie in one plane. Before, the back was 2 mm behind the front; where the voxel
    vote took the room side for the back, a slit of up to 2 mm opened at the edge towards the next face (model of 24
    steps with 6 cm risers at 10 cm voxels: 0.24 % of the rays lost with fix 1 alone, 0 with both).
@@ -176,6 +176,21 @@ calibrations built on them. Their numbers are from the engine with the dropped f
 runs use drawn halls, which have no voxel step, and are not affected.
 
 Rerun 2026-11-19 with the final rules: `fratoni_STC.md`, `fratoni_ULH.md`, `bras_CR3.md`, `bras_CR4.md` (notes at their tops; the BRAS runs with 16 000 rays and the positions combined by the median, because single-pair T30 and EDT depended on the ray seed at 4 000 rays; `docs/MODEL_*` updated). Rerun 2026-11-20 with 16 000 rays (before: 6000): the round-robin room scores (`rr_complex.py`; initial data CR2 4.1 → 3.7, CR3 2.8 → 2.9, CR4 2.2 → 2.3 JND; fitted data CR2 2.4 → 1.1, CR3 1.2 → 1.3) and the coupled rooms (`rr_coupled.py`; 30.4 deg 7.6 / 1.7 → 7.2 / 1.0 dB, 4.1 deg 8.2 / 6.6 → 7.2 / 6.5 dB, initial / fitted data); model fix and ray count changed together (`docs/BENCHMARK_*` sections 2.2, 2.3). Not rerun yet: `rr_lateral.py`, `rr_tonecolor.py` (they read the BRIR checks) and the I-Simpa comparison.
+
+## Faces with no room voxel near them (2026-11-20)
+
+BRAS CR2 (seminar room, not in the checks above) lost 20.6 % of the rays in the page's engine (model centre, 5 cm
+voxels; 20 % at 8 cm, 5 % at 3 cm). Cause: the wall under the windows (three faces 1.5 m x 0.45 m and their sills,
+each present twice in the file) lies 6.5 cm behind the radiator boxes. No free voxel fits in that slot, so the faces had
+no room voxel within 3 voxels and were dropped as "outside the hall", but rays enter the slot. With the 12 faces kept,
+0 rays are lost. Rule now, in both engines: such a face is not dropped; it stays in the model as a face behind the
+room's faces (reflects rays, not counted in the areas, the room faces and the volume; counted in `nFar` / `n_far`).
+
+After the change (page's engine, `validation/check_mesh_leak.js`): CR2 0.000 % lost; CR3, CR4, ULH, STC unchanged (0.000 %,
+same face counts, areas and volumes); DUS 1.415 % -> 1.132 % (33 faces no longer dropped); TCB 0.290 % unchanged (1 face).
+Round-robin scores with the page's engine, 16 000 rays, before -> after: CR2 3.7 -> 3.5 (initial data), 1.1 -> 0.8
+(fitted data); the result files of CR3, CR4 and the coupled rooms CR1 are identical. Regression suite: 15 passed.
+Not rerun with the Python engine.
 
 ## The `.skp` reader
 

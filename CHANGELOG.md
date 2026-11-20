@@ -4,6 +4,11 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- **3D models: walls behind a slot thinner than the voxel band were dropped** (found 2026-11-20 in BRAS CR2: the wall
+  6.5 cm behind the radiators, 12 faces, 20 % of the rays lost from the room centre). A face with no room voxel within
+  3 voxels is no longer dropped; it stays in the model as a face behind the room's faces (reflects rays, not counted),
+  in both engines (`dropFar` / `drop_far` restores the old rule; `keepAll` / `keep_all` is gone). CR2 now loses 0 %;
+  CR3, CR4, ULH, STC unchanged; DUS 1.4 % -> 1.1 %. `validation/mesh_leak.md`.
 - **3D models lost rays through faces that the engine itself dropped** (found 2026-11-18, `validation/mesh_leak.md`).
   `buildMesh` / `build_mesh` dropped every face with no room voxel 2.5 voxels in front of or behind it; faces narrower
   than the surface band (step risers, strips, panel sides) went with them. BRAS CR3: 285 of 2598 faces (8.1 m²),

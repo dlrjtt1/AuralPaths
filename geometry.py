@@ -259,7 +259,8 @@ below ~10 cm do not leak), the free voxels connected to the seed are the room, a
 the side whose offset points (2.5 voxels, spread over the face at 0.2 m) fall in the room. Faces with the room
 on neither side at that distance are looked at again: one with room voxels within 3 voxels of its own points (a
 step riser or strip narrower than the surface band) is kept as a two-sided face, one without (outer skins of thick
-walls, faces inside solids) is dropped. A face with the room on both sides (a free-standing panel or suspended
+walls, faces inside solids, a wall behind a slot thinner than the band) stays in the model as a hidden face that
+reflects rays but is not counted (dropped until 2026-11-20). A face with the room on both sides (a free-standing panel or suspended
 reflector) is kept twice, once per side, 2 mm apart. The voxel set also gives the room volume (interior voxels +
 1.5 voxels of the surface band next to them).
 """
@@ -513,6 +514,7 @@ def build_mesh(geom, seed):
     two_sided = bool(spec.get("two_sided", True))
     inflate = float(spec.get("inflate_mm", 1.0)) / 1000
     S, dropped, narrow, hidden, a_hidden, no_mat, unmatched = [], 0, 0, 0, 0.0, 0, set()
+    far = 0
     VT = V[T]                                           # triangle corners and bounds (exposure test of the second look)
     t_lo, t_hi = VT.min(1), VT.max(1)
     for k, f in enumerate(F):
@@ -537,14 +539,20 @@ def build_mesh(geom, seed):
             # A face narrower than the surface band of its neighbours (a step riser, a narrow strip) has no room voxel
             # at 2.5 h on either side although it bounds the room; dropping such faces opened holes (BRAS CR3 at
             # 6.5 cm: 285 faces, 8.1 m2). Second look: room voxels within 3 voxels of the face's own points. A face
-            # with any is kept as a two-sided one; only a face with none (inside a solid, outside the hall) is
-            # dropped, and spec["keep_all"] keeps those too (as engine_geom.js buildMesh).
+            # with any is kept as a two-sided one. A face with none (inside a solid, outside the hall, or behind a
+            # slot thinner than the surface band: BRAS CR2, the wall 6.5 cm behind the radiators) was dropped until
+            # 2026-11-20, which let rays out through such walls; it now stays in the model as a hidden face (not
+            # counted in the areas and the room faces) and is counted in n_far. spec["drop_far"] restores the old
+            # rule (as engine_geom.js buildMesh).
             fwd, bwd = _room_near(vr, C, n, 3)
             near = True
             if fwd == 0 and bwd == 0:
-                dropped += 1
-                if not spec.get("keep_all"):
+                if spec.get("drop_far"):
+                    dropped += 1
                     continue
+                far += 1
+                hid = True
+                hidden += 1
             else:
                 # A kept face that cannot see any of those room voxels (the outer skin of a thin wall, the slab under
                 # a flight of steps, the touching sides of two panels) stays in the model, so that no ray passes where
@@ -585,7 +593,7 @@ def build_mesh(geom, seed):
     if unmatched:
         raise ValueError("mesh faces without a material (add them to mesh.groups or set mesh.default): "
                          + "; ".join(sorted(unmatched)[:8]))
-    return dict(S=S, mesh=True, volume=vr["volume"], voxel=vr, n_dropped=dropped, n_narrow=narrow, n_hidden=hidden, a_hidden=a_hidden, n_no_mat=no_mat, n_skipped=n_skipped, n_input=n_in, n_faces=len(F),
+    return dict(S=S, mesh=True, volume=vr["volume"], voxel=vr, n_dropped=dropped, n_far=far, n_narrow=narrow, n_hidden=hidden, a_hidden=a_hidden, n_no_mat=no_mat, n_skipped=n_skipped, n_input=n_in, n_faces=len(F),
                 area={k: sum(x["area"] for x in S if x["mat"] == k and x["kind"] == "mesh" and not x["hidden"]) for k in {x["mat"] for x in S if not x["hidden"]}},
                 bbox=(V.min(0), V.max(0)))
 

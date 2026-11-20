@@ -442,7 +442,7 @@ are wanted.
   lines run from the face's points to the room voxels found, points within 1 mm of another face are not used, and
   faces in the same plane do not block; `"exposure": false` skips the test). Until 2026-11-18 all such faces were dropped ("hidden faces"),
   which opened holes in closed models: see *Lost rays* under *3D models in the browser* and
-  `validation/mesh_leak.md`. `"mesh": {"keep_all": true}` (Python) / `keepAll` (JavaScript) keeps every face.
+  `validation/mesh_leak.md`. Since 2026-11-20 a face with no room voxel near it is no longer dropped: it stays in the model as a face behind the room's faces (reflects rays, not counted). Before, a wall behind a slot thinner than the voxel band was dropped and rays left through it (BRAS CR2, the wall 6.5 cm behind the radiators: 12 faces, 20 % of the rays lost from the room centre, now 0 %). `"mesh": {"drop_far": true}` (Python) / `dropFar` (JavaScript) restores the old rule.
   A name mapped to `"__none"` in `groups` is not part of the room (markers of a measurement set-up).
   Spaces behind narrow openings (JavaScript engine only, since 2026-11-18): the surface band closes every opening
   narrower than about 3 voxels, so the room fill does not reach a space that the model joins to the room by slots.

@@ -904,7 +904,7 @@ const GEOM = (() => {
       return tested === 0;
     };
     const classify = () => {
-    const S = [], unmatched = new Set(); let dropped = 0, hidden = 0, aHid = 0, narrow = 0, tiny = 0, noMat = 0, vol3 = 0, aOne = 0; const clos = [0, 0, 0], cen = [0, 1, 2].map((a) => (Math.max(...V.map((v) => v[a])) + Math.min(...V.map((v) => v[a]))) / 2);
+    const S = [], unmatched = new Set(); let dropped = 0, far = 0, hidden = 0, aHid = 0, narrow = 0, tiny = 0, noMat = 0, vol3 = 0, aOne = 0; const clos = [0, 0, 0], cen = [0, 1, 2].map((a) => (Math.max(...V.map((v) => v[a])) + Math.min(...V.map((v) => v[a]))) / 2);
     obj.F.forEach((f, k) => {
       if (skip[k]) return;
       const P = f.map((i) => V[i]), nw = newell(P), A = Math.hypot(...nw) / 2; if (A < 1e-6) { tiny++; return; }
@@ -916,8 +916,7 @@ const GEOM = (() => {
       // 2.5 h in front of or behind it although it bounds the room. Dropping such faces opened holes (BRAS CR3 at
       // 6.5 cm: 285 faces, 8.1 m2, 8 % of the rays lost). Second look: room voxels within 3 voxels of the face's own
       // points. A face with any of them is kept as a two-sided one (its orientation cannot be told from the voxels,
-      // and a two-sided face needs none); only a face with no room voxel near it (inside a solid, outside the hall) is
-      // dropped. spec.keepAll keeps those as well (validation runs).
+      // and a two-sided face needs none); a face with no room voxel near it is kept as a hidden face (below).
       // A kept face that cannot see any of those room voxels (faceExposed: the outer skin of a thin wall, the slab
       // under a flight of steps, the touching sides of two panels) stays in the model, so that no ray passes where it
       // closes a slit, but it is marked hidden and is not counted in the areas, the room faces and the volume
@@ -928,7 +927,12 @@ const GEOM = (() => {
         const [f2, b2] = voxNear(vx, C, n, 3); fwd = f2; bwd = b2; near = true;
         // room voxels near the face, but none that it can see: the face lies behind the faces of the room
         if ((fwd || bwd) && spec.exposure !== false && !exposed(k, P, n, C)) hid = true;
-        if (fwd === 0 && bwd === 0) { dropped++; if (spec.dropLog) spec.dropLog.push(k); if (!spec.keepAll) return; }
+        // No room voxel near the face at all (inside a solid, outside the hall, or behind a slot thinner than the
+        // surface band: BRAS CR2, the wall 6.5 cm behind the radiators, 12 faces, 20 % of the rays lost through
+        // them). Such a face was dropped until 2026-11-20; it now stays in the model like the hidden faces above
+        // (rays are reflected, the face is not counted in the areas, the room faces and the volume) and is counted
+        // in nFar. spec.dropFar restores the old rule (validation runs).
+        if (fwd === 0 && bwd === 0) { if (spec.dropLog) spec.dropLog.push(k); if (spec.dropFar) { dropped++; return; } far++; hid = true; hidden++; }
         else if (hid) hidden++; else { narrow++; nar = true; }
       }
       const both = near || Math.min(fwd, bwd) > 0.2 * Math.max(fwd, bwd), nn = fwd >= bwd ? n : n.map((v) => -v);
@@ -954,7 +958,7 @@ const GEOM = (() => {
     // If the one-sided faces, as oriented here, form a closed surface (sum of the area vectors below 0.1 % of their
     // area) and the divergence theorem agrees with the voxel count within 3 %, that value is used instead.
     const vVox = vx.volume, vMesh = vol3 / 3, meshOk = aOne > 0 && Math.hypot(...clos) < 0.001 * aOne && Math.abs(vMesh - vVox) < 0.03 * vVox;
-    const G = { S, mesh: true, vox: vx, V: meshOk ? vMesh : vVox, vVox, vMesh, volFrom: meshOk ? "mesh" : "voxels", closure: Math.hypot(...clos) / (aOne || 1), nNarrow: narrow, nHidden: hidden, aHidden: aHid, nSkipped: nSkip, nTiny: tiny, nNoMat: noMat, area: Object.values(area).reduce((a, b) => a + b, 0), areaByMat: area, nDropped: dropped, nFaces: obj.F.length, bbox: [lo, hi], h };
+    const G = { S, mesh: true, vox: vx, V: meshOk ? vMesh : vVox, vVox, vMesh, volFrom: meshOk ? "mesh" : "voxels", closure: Math.hypot(...clos) / (aOne || 1), nNarrow: narrow, nFar: far, nHidden: hidden, aHidden: aHid, nSkipped: nSkip, nTiny: tiny, nNoMat: noMat, area: Object.values(area).reduce((a, b) => a + b, 0), areaByMat: area, nDropped: dropped, nFaces: obj.F.length, bbox: [lo, hi], h };
     G.bvh = bvhBuild(G.S);
     return G;
     };
