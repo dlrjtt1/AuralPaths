@@ -215,11 +215,74 @@ def simulate(bras, hall, rays, hrir_path, fs=44100, coverage=0.0, k8=None, mater
     return out
 
 
+def simulate_page(bras, hall, rays, hrir_path, k8=None, materials=None, work=None):
+    """As simulate(), but the BRIRs are computed by the web page itself (headless Chromium, tests/page_brirs.js):
+    the page's engine, its binaural rendering and its defaults. Measured K8 balloon per loudspeaker (the page takes
+    two directional sources per run, so three runs: LS3 + LS4, LS5 + LS6, LS7), materials in 8 octave bands
+    (125 Hz - 16 kHz), HRIR set loaded with the page's "HRIR set..." (None: the page's KU100). Returns ({LSk: [2, n]}, fs)."""
+    import subprocess
+    root = os.path.abspath(os.path.join(HERE, ".."))
+    scene = os.path.join(bras, SCENES[hall])
+    bands = [125, 250, 500, 1000, 2000, 4000, 8000, 16000]
+    mats = vb.read_bras_materials(os.path.join(bras, "3 Surface descriptions"), hall, "fitted", bands=bands)
+    if materials:
+        cal = json.load(open(materials, encoding="utf-8"))["geometry"]["materials"]
+        for k in mats:
+            mats[k]["alpha"] = list(cal[k]["alpha"])
+            if isinstance(cal[k].get("s"), list):
+                mats[k]["s_oct"] = list(cal[k]["s"])
+    obj = rotate_obj(open(os.path.join(scene, "Geometry", f"{hall}.obj"), encoding="utf-8", errors="ignore").read(), hall)
+    P = POS[hall]
+    bal = k8_balloon(k8, [float(b) for b in bands]) if k8 else None
+    work = work or tempfile.mkdtemp()
+    os.makedirs(work, exist_ok=True)
+
+    def pa(k):
+        p = rot(P["LS"][k], hall)
+        aim = aim_at(p, rot(P["L"], hall))
+        if k == 7:
+            aim["el"] = 0.0
+        return dict({"pos": p}, **({"aim": aim, "directivity": bal} if bal else {}))
+    out, fs = {}, None
+    ks = sorted(P["LS"])
+    for i in range(0, len(ks), 2):
+        pair = ks[i:i + 2] if len(ks[i:i + 2]) == 2 else [ks[i], ks[i]]
+        t = time.time()
+        cfg = {"name": f"BRAS {hall} binaural check, page run LS{pair[0]} LS{pair[1]}", "fs": 48000, "c": 343.5,
+               "room": {"dims_m": [10, 10, 5], "absorption_octave": {"values": [0.2] * 6}, "air_absorption": True},
+               "sources": {"S_amp": {"pos": rot(P["LS"][pair[0]], hall)}, "B_L": pa(pair[0]), "B_R": pa(pair[1])},
+               "receivers": {"C": rot(P["L"], hall)},
+               "geometry": {"mesh": {"obj": f"{hall}_rotated.obj", "obj_text": obj, "axes": "y-up", "groups": {k: k for k in mats}},
+                            "materials": {k: {"alpha": list(map(float, v["alpha"])), "s": list(map(float, v["s_oct"]))}
+                                          for k, v in mats.items()},
+                            "ism_order": 1, "rays": rays, "diffraction": False}}
+        pc, pj = os.path.join(work, "page_config.json"), os.path.join(work, "page_brirs.json")
+        json.dump(cfg, open(pc, "w"))
+        r = subprocess.run(["node", os.path.join(root, "tests", "page_brirs.js"), root, pc, pj] + ([hrir_path] if hrir_path else []),
+                           capture_output=True, text=True, cwd=root)
+        if r.returncode:
+            sys.exit(r.stderr[-1500:] or r.stdout[-500:])
+        info = json.loads(r.stdout.strip().splitlines()[-1])
+        if info["errors"] or not info.get("mesh") or (hrir_path and info.get("hrir") != os.path.basename(hrir_path)) \
+                or (bal and not all(info["dirs"].get(k) for k in ("B_L", "B_R"))):
+            sys.exit(f"page did not take the config as intended: {info}")
+        B = json.load(open(pj))
+        fs = B["fs"]
+        for key, k in (("B_L", pair[0]), ("B_R", pair[1])):
+            x = np.array(B["brirs"][f"C|{key}"], float)
+            if k8:
+                from scipy import signal as sg
+                x = sg.fftconvolve(x, k8_onaxis_fir(k8, fs)[None, :])[:, :x.shape[1]]
+            out[f"LS{k}"] = x
+        print(f"{hall} LS{pair[0]} LS{pair[1]}: page run {time.time() - t:.0f} s ({info['rays']} rays, HRIR {info['hrir']})", flush=True)
+    return out, fs
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("bras"); ap.add_argument("hall", choices=list(SCENES))
     ap.add_argument("--rays", type=int, default=10000)
-    ap.add_argument("--hrir", default=os.path.join(HERE, "..", "hrir", "KU100.sofa"))
+    ap.add_argument("--hrir", default=None, help="SOFA HRIR set (python engine: default hrir/KU100.sofa)")
     ap.add_argument("--coverage", type=float, default=0.0,
                     help="model the sources as the generic directional pattern of brir_proto.dir_model with this "
                          "nominal -6 dB angle (deg), aimed at the listener (QSC K8: 105); 0 = omnidirectional")
@@ -227,21 +290,32 @@ def main():
     ap.add_argument("--materials", default=None,
                     help="calibrated config (calibrate.py output) whose material absorption replaces the fitted estimates")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--engine", choices=("page", "python"), default="page",
+                    help="page: BRIRs computed by the web page itself (headless Chromium; default since 2026-11-20; --hrir "
+                         "only if given, else the page's KU100; --coverage and --early-dir do not apply); python: brir_proto")
     ap.add_argument("--early-dir", action="store_true", help="early residual with direction-dependent coherence (path_brir ew=)")
     a = ap.parse_args()
     out = a.out or os.path.join(HERE, f"bras_brir_{a.hall}")
-    sim = simulate(a.bras, a.hall, a.rays, a.hrir, coverage=a.coverage, k8=a.k8_mps, materials=a.materials, early_dir=a.early_dir)
+    if a.engine == "page":
+        if a.coverage or a.early_dir:
+            sys.exit("--coverage and --early-dir need --engine python")
+        sim, fs_sim = simulate_page(a.bras, a.hall, a.rays, a.hrir, k8=a.k8_mps, materials=a.materials, work=os.path.dirname(os.path.abspath(out)))
+    else:
+        sim, fs_sim = simulate(a.bras, a.hall, a.rays, a.hrir or os.path.join(HERE, "..", "hrir", "KU100.sofa"), coverage=a.coverage,
+                               k8=a.k8_mps, materials=a.materials, early_dir=a.early_dir), 44100
+    head = os.path.basename(a.hrir) if a.hrir else "KU100"
     rows, lines = [], []
     for k in range(3, 8):
         x, fs = sf.read(os.path.join(a.bras, SCENES[a.hall], "BRIRs", "wav", f"{a.hall}_BRIR_LS{k}_MP6_HATO0.wav"))
-        me = metrics(x.T, fs); si = metrics(np.asarray(sim[f"LS{k}"]), 44100)
-        sf.write(f"{out}_LS{k}_sim.wav", np.asarray(sim[f"LS{k}"]).T.astype(np.float32), 44100, subtype="FLOAT")
+        me = metrics(x.T, fs); si = metrics(np.asarray(sim[f"LS{k}"]), fs_sim)
+        sf.write(f"{out}_LS{k}_sim.wav", np.asarray(sim[f"LS{k}"]).T.astype(np.float32), fs_sim, subtype="FLOAT")
         rows.append((k, me, si))
-    md = [f"# BRAS {a.hall}: binaural check, AuralPaths (Python engine, KU100) vs measured BRIRs (FABIAN)", "",
+    md = [f"# BRAS {a.hall}: binaural check, AuralPaths ({'the web page itself' if a.engine == 'page' else 'Python engine'}, HRIR set {head}) vs measured BRIRs (FABIAN)", "",
           "Five loudspeakers LS3 - LS7 to listener MP6 (= RIR position MP1), head facing LS7. Materials: "
           + (f"BRAS fitted estimates with absorption calibrated on measured T30 (`{os.path.basename(a.materials)}`, "
              "calibrate.py; scattering as fitted; with 8 / 16 kHz when the calibration had them). " if a.materials else "BRAS fitted estimates, unchanged (not calibrated). ")
-          + f"{a.rays} rays per source, image sources order 1. Sources: "
+          + (f"{a.rays} rays per source; image sources, specular paths, late field and all other settings as the page's defaults. "
+             if a.engine == "page" else f"{a.rays} rays per source, image sources order 1. ") + "Sources: "
           + ("measured QSC K8 directivity of the BRAS release (balloon, pattern only; LS3 - LS6 aimed at the head, "
              "LS7 horizontal). " if a.k8_mps else "")
           + (f"generic directional pattern, {a.coverage:.0f} deg nominal, aimed at the listener (an approximation of the "
@@ -254,7 +328,7 @@ def main():
         md.append(f"| LS{k} | {me['ITD_us']:+.0f} / {si['ITD_us']:+.0f} | {me['ILD']:+.1f} / {si['ILD']:+.1f} | "
                   f"{me['IACC_E3']:.2f} / {si['IACC_E3']:.2f} | {me['IACC_L']:.2f} / {si['IACC_L']:.2f} |")
     md += ["", "ITD sign: negative = left ear leads. ILD: left minus right. AuralPaths renders the direct sound with the "
-           "nearest KU100 HRIR (no interpolation).", ""]
+           "nearest HRIR of the set (no interpolation).", ""]
     for key, unit in (("T30", "s"), ("EDT", "s"), ("C80", "dB"), ("spectrum_dB", "dB re 250 Hz - 1 kHz")):
         md += [f"## {key} ({unit}), measured / simulated", "", "| source | " + " | ".join(f"{b} Hz" for b in OCT) + " |",
                "|---|" + "---|" * len(OCT)]
