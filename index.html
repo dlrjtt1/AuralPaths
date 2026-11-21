@@ -4173,7 +4173,7 @@ function balloonFromPoints(dirs, power) {   // power [band][P]; IDW of the 4 nea
 // Directions (unit vectors: x front, y left, z up) from SOFA positions. Some published loudspeaker files declare
 // cartesian but hold azimuth / elevation / radius (e.g. Zenodo 10255555): third column constant and positive, first
 // column beyond any plausible distance in metres (> 20), second within +-90, row lengths far from constant.
-// Same rule as brir_proto._angles_declared_cartesian.
+// Azimuth then read clockwise (positive = right), as the Aalto record states. Same rule as brir_proto._angles_declared_cartesian.
 function sofaDirs(rows, typ) {
   let fixed = false;
   if (String(typ).includes("cart")) {
@@ -4181,7 +4181,7 @@ function sofaDirs(rows, typ) {
     fixed = rows.length >= 8 && z0 > 0 && rows.every((c) => Math.abs(c[2] - z0) < 1e-6) && mx(0) > 20 && mx(1) <= 90 + 1e-6 && Math.max(...L) > 1.5 * Math.max(Math.min(...L), 1e-9);
     if (!fixed) return { fixed, dirs: rows.map((c, i) => c.map((x) => x / (L[i] || 1))) };
   }
-  return { fixed, dirs: rows.map((c) => { const az = c[0] * Math.PI / 180, el = c[1] * Math.PI / 180; return [Math.cos(el) * Math.cos(az), Math.cos(el) * Math.sin(az), Math.sin(el)]; }) };
+  return { fixed, dirs: rows.map((c) => { const az = (fixed ? -c[0] : c[0]) * Math.PI / 180, el = c[1] * Math.PI / 180; return [Math.cos(el) * Math.cos(az), Math.cos(el) * Math.sin(az), Math.sin(el)]; }) };
 }
 let SOFA_NOTE = "";
 async function sofaBalloon(buf) {
@@ -4205,7 +4205,7 @@ async function sofaBalloon(buf) {
     } else throw new Error("no Data.Real / Data.IR in this SOFA file");
     const posOf = (d, n) => { const v = d.value, sh = d.shape, I = sh.length === 3 ? sh[2] : 1, rows = [];
       for (let i = 0; i < n; i++) { const row = sh[0] === 1 ? 0 : i; rows.push([0, 1, 2].map((j) => v[(row * 3 + j) * I])); }
-      const r = sofaDirs(rows, typeOf(d)); if (r.fixed) SOFA_NOTE = " The file declares cartesian positions but holds azimuth / elevation / radius: read as angles (azimuth counter-clockwise); check left / right against the data description."; return r.dirs; };
+      const r = sofaDirs(rows, typeOf(d)); if (r.fixed) SOFA_NOTE = " The file declares cartesian positions but holds azimuth / elevation / radius: read as angles with azimuth clockwise (positive = right), as the Aalto record (Zenodo 10255555) states."; return r.dirs; };
     const byRec = R > 1, dirs = byRec ? posOf(ds("ReceiverPosition"), R) : posOf(ds("SourcePosition"), M), nP = dirs.length;
     const power = D.praBands.map((fc) => { let ks = freqs.map((f, k) => (f >= fc / Math.SQRT2 && f < fc * Math.SQRT2 ? k : -1)).filter((k) => k >= 0);
       if (!ks.length) { let best = 0; freqs.forEach((f, k) => { if (Math.abs(Math.log(Math.max(f, 1e-9) / fc)) < Math.abs(Math.log(Math.max(freqs[best], 1e-9) / fc))) best = k; }); ks = [best]; }

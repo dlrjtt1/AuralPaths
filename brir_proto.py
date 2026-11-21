@@ -417,7 +417,9 @@ def _sph_to_vec(pos, typ):
             return pos / np.linalg.norm(pos, axis=1, keepdims=True)
         import warnings
         warnings.warn("SOFA positions are declared cartesian but hold azimuth / elevation / radius; read as angles "
-                      "(SOFA convention, azimuth counter-clockwise). Check left / right against the data description.")
+                      "with azimuth clockwise (positive = right), as the Aalto record states "
+                      "(https://zenodo.org/records/10255555).")
+        pos = np.c_[-pos[:, 0], pos[:, 1], pos[:, 2]]
     az, el = np.radians(pos[:, 0]), np.radians(pos[:, 1])
     return np.c_[np.cos(el) * np.cos(az), np.cos(el) * np.sin(az), np.sin(el)]
 

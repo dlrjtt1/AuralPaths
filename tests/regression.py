@@ -249,7 +249,7 @@ def c_calibrate():
 
 def c_sofa_positions():
     """SOFA directivity positions declared cartesian but holding azimuth / elevation / radius (Zenodo 10255555 style)
-    are read as angles, in Python and on the page; real cartesian positions are left alone."""
+    are read as angles (azimuth clockwise, as the Aalto record states), in Python and on the page; real cartesian positions are left alone."""
     import warnings
     import numpy as np
     sys.path.insert(0, ROOT)
@@ -259,7 +259,7 @@ def c_sofa_positions():
     ref = bp._sph_to_vec(ang, "spherical")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        py_bad = float(np.abs(bp._sph_to_vec(ang, "cartesian") - ref).max())
+        py_bad = float(np.abs(bp._sph_to_vec(ang, "cartesian") - ref * [1, -1, 1]).max())   # clockwise azimuth
     py_cart = float(np.abs(bp._sph_to_vec(ref * 2.0, "cartesian") - ref).max())
     ring = np.c_[2 * np.cos(np.radians(np.arange(0, 360, 10.))), 2 * np.sin(np.radians(np.arange(0, 360, 10.))), np.full(36, 1.0)]
     py_ring = float(np.abs(bp._sph_to_vec(ring, "cartesian") - ring / np.linalg.norm(ring, axis=1, keepdims=True)).max())
@@ -274,7 +274,7 @@ const { chromium } = require('playwright');
     for (let el = -80; el <= 90; el += 10) for (let az = 0; az < 360; az += 10) { ang.push([az, el, 1]); ref.push([Math.cos(el * d2) * Math.cos(az * d2), Math.cos(el * d2) * Math.sin(az * d2), Math.sin(el * d2)]); }
     const err = (a, r) => Math.max(...a.map((c, i) => Math.max(...c.map((x, j) => Math.abs(x - r[i][j])))));
     const bad = sofaDirs(ang, 'cartesian'), cart = sofaDirs(ref.map((c) => c.map((x) => 2 * x)), 'cartesian');
-    return { bad: err(bad.dirs, ref), fixed: bad.fixed ? 1 : 0, cart: err(cart.dirs, ref), cartFixed: cart.fixed ? 1 : 0 }; });
+    return { bad: err(bad.dirs, ref.map(([x, y, z]) => [x, -y, z])), fixed: bad.fixed ? 1 : 0, cart: err(cart.dirs, ref), cartFixed: cart.fixed ? 1 : 0 }; });
   console.log(JSON.stringify(o)); await b.close();
 })();"""
     try:
