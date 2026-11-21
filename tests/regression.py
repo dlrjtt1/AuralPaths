@@ -10,6 +10,8 @@ Run before every commit, and automatically on GitHub (.github/workflows/regressi
 
 Checks (name: what it guards):
   page         index.html is exactly viewer_template.html + engine_geom.js (tools/build_page.py)
+  page_refresh a refresh while the BRIRs of a 3D model are recomputed shows dashes, no error and no stale values
+               (needs playwright; skipped without it)
   page_load    the page opens in Chromium without script errors and finishes its first computation (needs playwright;
                skipped if it is missing)
   specular     Python and browser image sources with specular factors agree (validation/check_specular_pyjs.py)
@@ -70,6 +72,40 @@ def num(pattern, text):
 def c_page():
     r = subprocess.run([PY, "tools/build_page.py", "--check"], cwd=ROOT, capture_output=True, text=True)
     return {"up_to_date": 1.0 if r.returncode == 0 else 0.0}
+
+
+def c_page_refresh():
+    js = r"""
+const { chromium } = require('playwright'); const fs = require('fs'), os = require('os'), path = require('path');
+(async () => {
+  const obj = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'ap-')), 'box.obj');   // 20 x 8 x 12 m box, y up
+  const V = [[0,0,0],[20,0,0],[20,0,-12],[0,0,-12],[0,8,0],[20,8,0],[20,8,-12],[0,8,-12]];
+  fs.writeFileSync(obj, V.map((v) => 'v ' + v.join(' ')).join('\n') + '\ng floor\nf 1 2 3 4\ng wall\nf 5 8 7 6\nf 1 5 6 2\nf 2 6 7 3\nf 3 7 8 4\nf 4 8 5 1\n');
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1300, height: 1300 } }); const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto('file://' + process.argv[1] + '/index.html');
+  const idle = async () => { for (let i = 0; i < 600; i++) { await p.waitForTimeout(500); if (await p.evaluate(() => document.getElementById('busy').hidden)) return true; } return false; };
+  await idle(); await p.setInputFiles('#fObj', obj); await p.waitForTimeout(2000); await idle(); await p.evaluate(() => { HALL.rays = 10000; }); errs.length = 0;
+  const t30 = () => p.evaluate(() => document.getElementById('kvMet').innerText.match(/T30\s*([^\s]+)/)?.[1] ?? '');
+  await p.evaluate(() => { work(rebuildAll); setTimeout(() => dispatchEvent(new Event('resize')), 60); }); await idle();
+  const before = await t30(); errs.length = 0;
+  await p.evaluate(() => { for (const k in HALL.mats) HALL.mats[k].alpha = HALL.mats[k].alpha.map((a) => Math.min(0.9, a * 2)); work(rebuildAll); setTimeout(() => dispatchEvent(new Event('resize')), 60); });
+  await p.waitForTimeout(400); const during = await t30(); await idle(); const after = await t30();
+  console.log(JSON.stringify({ errors: errs.length, first: errs[0] || '', during, before, after }));
+  await b.close();
+})();"""
+    try:
+        out = run(["node", "-e", js, ROOT], timeout=600)
+    except RuntimeError as e:
+        if "Cannot find module 'playwright'" in str(e) or "Executable doesn't exist" in str(e):
+            return None
+        raise
+    o = json.loads(out.strip().splitlines()[-1])
+    if o["errors"]:
+        print(f"    first script error: {o['first']}")
+    print(f"    T30 before {o['before']}, while computing {o['during']}, after {o['after']}")
+    return {"script_errors": float(o["errors"]), "dashes_while_computing": float(o["during"].startswith("\u2014")),
+            "values_changed": float(o["before"] != o["after"])}
 
 
 def c_page_load():
@@ -211,7 +247,7 @@ def c_calibrate():
     return {"iterations": float(its[-1][0]), "max_abs_error_pct": max(errs)}
 
 
-CHECKS = {"page": c_page, "page_load": c_page_load, "specular": c_specular, "diffraction": c_diffraction,
+CHECKS = {"page": c_page, "page_load": c_page_load, "page_refresh": c_page_refresh, "specular": c_specular, "diffraction": c_diffraction,
           "diffraction_plate": c_diffraction_plate,
           "diffraction_order2": c_diffraction_order2, "diffraction_rs": c_diffraction_rs, "seatdip": c_seatdip,
           "rays_split": c_rays_split, "box_js": c_box_js, "mesh_leak": c_mesh_leak, "box_py": c_box_py, "rays_energy": c_rays_energy,

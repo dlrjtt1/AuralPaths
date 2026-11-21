@@ -4,6 +4,11 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- **Page: stale values while a 3D model or drawn hall was recomputed.** A refresh during the computation (resizing the
+  window, a slider, a seat click, loading a config) threw a TypeError in `paSum` on the cleared BRIRs and left the
+  values of the previous layout on the page until the next refresh (reported 2026-11-21 in the RAVEN comparison: T30
+  0.75 s shown after loading a config, 1.68 s after recomputing). The panels now show dashes until the BRIRs are
+  ready. Regression check `page_refresh` (fails on 0.9.0, passes now).
 - Zenodo DOI of 0.9.0 (https://doi.org/10.5281/zenodo.24386517) in `CITATION.cff`, README and `docs/VALIDITY_*`.
 - README badge and `CITATION.cff` `doi` now give the DOI for all versions (https://doi.org/10.5281/zenodo.24053629), which always resolves to
   the latest version, so a release's own README already carries a valid DOI; the DOI of each version is listed next to it.

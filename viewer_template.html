@@ -3321,7 +3321,20 @@ function titleBlock() {
 document.querySelectorAll(".ph").forEach((ph) => { const p = ph.querySelector("p.expl"); if (!p) return;
   const b = document.createElement("button"); b.className = "qbtn"; b.type = "button"; b.textContent = "?"; b.setAttribute("aria-expanded", "false"); b.setAttribute("aria-label", "Notes: " + ph.querySelector("h2").textContent);
   b.onclick = () => { const o = ph.classList.toggle("open"); b.setAttribute("aria-expanded", String(o)); }; ph.querySelector("h2").after(b); });
-function refreshPlots() { C = cond(S.itdg, S.lr); drawMap(); drawSection(); drawEcho(); drawArr(); drawCondition(); drawTrend(); titleBlock(); }
+// The BRIRs are cleared when a computation starts (rebuildAll) and filled when it ends. A refresh in between (a resize,
+// a slider, a seat click, a loaded config) threw in paSum on the missing BRIRs and left the values of the previous
+// layout on the page (reported 2026-11-21: T30 0.75 s shown after loading a config, 1.68 s after recomputing). Until
+// the BRIRs of the reference seat and the shown seat are there, the panels show dashes instead.
+function brReady() { const ids = sourcesAll().map((o) => o.id); return [D.ref, S.seat].every((sid) => ids.every((id) => BR[sid + "|" + id])); }
+function showPending() {
+  CUR = null; TREND.key = null;
+  $("kvLive").innerHTML = "";
+  $("kvMet").innerHTML = kv(Object.keys(MET).map((k) => [MET[k][0], "—", MET[k][1]]));
+  $("mNote").textContent = "Computing: the values appear when the computation has finished.";
+  for (const id of ["echo", "arr", "trend"]) prep($(id));
+  drawMap(); drawSection(); titleBlock();
+}
+function refreshPlots() { if (!brReady()) return showPending(); C = cond(S.itdg, S.lr); drawMap(); drawSection(); drawEcho(); drawArr(); drawCondition(); drawTrend(); titleBlock(); }
 function refresh() {
   TREND.key = null; buildPaTable(); buildSeatRow(); refreshPlots();
   if (player) { if (player.seat !== S.seat) restartPlayer(); else if (player.type === "single") applyLive(); }

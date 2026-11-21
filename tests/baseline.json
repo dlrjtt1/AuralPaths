@@ -138,6 +138,17 @@
    "max": 0
   }
  },
+ "page_refresh": {
+  "dashes_while_computing": {
+   "min": 1
+  },
+  "script_errors": {
+   "max": 0
+  },
+  "values_changed": {
+   "min": 1
+  }
+ },
  "rays_energy": {
   "max_abs_db": {
    "max": 1.2
