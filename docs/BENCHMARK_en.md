@@ -31,6 +31,7 @@ and was scored with the same measures after seeing the measurements (post hoc, s
 | source lateralization error (three rooms) | 0.2 - 14.2 deg | 0.6 - 1.1 deg |
 | binaural tone colour error (37 gammatone bands) | 1.3 - 3.2 dB | **1.2 dB** |
 | energy decay of coupled rooms (door 30.4 / 4.1 deg) | 2.5 - 7.5 / 4.1 - 5.1 dB | 1.2 - 7.0 / 5.3 - 6.6 dB |
+| another program on the same input (RAVEN, BRAS CR3, initial materials; code-to-code, section 4b) | - | T30 1.5 - 1.8 JND (7 - 9 %) shorter than RAVEN; EDT, C80, Ts within about 1 JND |
 
 ### By use
 
@@ -244,6 +245,44 @@ The findings of sections 1, 4 and 5 hold with both engines. New on 2026-11-15:
 - **Calibration**: the positions are combined by the median (the mean before). With one ray-tracing run per
   position the mean is not robust (Detmold: factor 0.74 or 1.00 at 1 kHz from the same data, depending on the ray
   count).
+
+## 4b. Another program on the same input: RAVEN (BRAS CR3, 2026-11-20/21)
+
+RAVEN (RWTH Aachen, Institute for Hearing Technology and Acoustics; installer 0.96; described in Schröder 2011,
+https://publications.rwth-aachen.de/record/50580) was run by the author of AuralPaths on BRAS CR3 with the same geometry (`CR3.skp`, exported to RAVEN's
+format: 2164 polygons, 2763.0 m², 3330.6 m³, material areas as the BRAS documentation), the BRAS initial material
+estimates (octave values, one scattering value per material, the 1 kHz value), the same source and receiver positions
+(read from the BRAS SOFA files; direct-sound times of the measured RIRs match within 0.18 ms rms) and no calibration.
+RAVEN: image sources to order 2, 50 000 particles per band, detection sphere 0.6 m, 20 °C / 50 %, three runs.
+AuralPaths: the page's engine with the page's settings (image sources to order 2, 50 000 rays, the same single
+scattering value), three ray seeds. Measured RIRs, RAVEN's RIRs and AuralPaths' energy histograms are analysed with
+the same code (`validate_bras_cr.criteria`). This is a code-to-code comparison: neither program is the reference.
+
+Omnidirectional source, 10 source-receiver pairs, median over the pairs of the 500 Hz - 1 kHz mean:
+
+| | measured | AuralPaths (3 seeds) | RAVEN | AuralPaths - RAVEN |
+|---|---|---|---|---|
+| T30 | 1.32 s | 1.53 - 1.56 s | 1.68 s | -1.5 ... -1.8 JND (7 - 9 % shorter) |
+| EDT | 1.30 s | 1.49 - 1.50 s | 1.53 s | -0.4 ... -0.5 JND |
+| C80 | 1.35 dB | 0.71 - 0.95 dB | 0.44 dB | +0.3 ... +0.5 dB |
+| Ts | 94 ms | 104 - 106 ms | 112 ms | -0.6 ... -0.8 JND |
+
+The RAVEN column is the median over its 10 pairs (from the comparison report; difference of medians, not median of
+differences). Per octave band (125 Hz - 4 kHz; AuralPaths with scattering per band and 16 000 rays, one run), AuralPaths
+gives the shorter T30 in every band: -2.4 / -1.6 / -3.0 / -2.1 / -1.5 / -0.8 JND, so the difference is not larger above
+1 kHz than below. Directional source (Genelec 8020c, 4 orientations x 3 positions x 5 receivers; RAVEN with its own
+third-octave directivity, AuralPaths with the BRAS balloon reduced to octaves on a 5 deg grid, scattering per band,
+16 000 rays): both programs follow the measured change of C80 with the loudspeaker's orientation (1 and 2 kHz) with
+0.61 dB (RAVEN) and 0.71 dB (AuralPaths) rms error; the level of the direct sound over the four orientations spans
+less in AuralPaths than in the measurement (on axis +5.4 against +7.3 dB for LS1), but AuralPaths' value was taken
+from the first 4 ms of the energy histogram, which may include the floor reflection, so this is not settled.
+
+Reading: the two programs differ in one direction, AuralPaths decays 7 - 9 % faster in T30, while EDT, C80 and Ts
+agree within about 1 JND. Which one is closer to the measurement says nothing here: the initial estimates themselves
+predict too much reverberation below 1 kHz and too little at 2 kHz (Eyring 1.56 / 1.25 / 1.00 s at 500 Hz / 1 / 2 kHz
+against measured 1.31 / 1.34 / 1.32 s). The cause of the 7 - 9 % has not been found; the 1 % smaller voxel volume
+(3304 against 3330.6 m³) accounts for about 1 %, and the voxel size (5 or 6.5 cm) changes nothing. Limits: one hall,
+one seat set, RAVEN run by the author of AuralPaths; binaural quantities were not compared.
 
 ## 5. Known weak spots
 

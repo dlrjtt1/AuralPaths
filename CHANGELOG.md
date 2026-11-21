@@ -4,6 +4,9 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- **RAVEN on the same input** (`docs/BENCHMARK_*` 4b): BRAS CR3, same geometry, initial materials, positions and analysis
+  code; AuralPaths (the page's engine and settings, three seeds) decays 7–9 % faster in T30 (1.5–1.8 JND) and agrees
+  within about 1 JND in EDT, C80 and Ts; the difference is not larger above 1 kHz.
 - **Page: stale values while a 3D model or drawn hall was recomputed.** A refresh during the computation (resizing the
   window, a slider, a seat click, loading a config) threw a TypeError in `paSum` on the cleared BRIRs and left the
   values of the previous layout on the page until the next refresh (reported 2026-11-21 in the RAVEN comparison: T30
