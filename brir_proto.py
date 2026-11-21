@@ -398,10 +398,26 @@ BAL_AZ = np.arange(-180, 180 + BAL_STEP / 2, BAL_STEP)
 BAL_EL = np.arange(-90, 90 + BAL_STEP / 2, BAL_STEP)
 
 
+def _angles_declared_cartesian(pos):
+    """True when positions declared as cartesian hold azimuth / elevation / radius (seen in published loudspeaker
+    SOFA files, e.g. Zenodo 10255555): third column constant and positive, first column beyond any plausible
+    distance in metres (> 20), second column within +-90, and the row lengths far from constant."""
+    pos = np.atleast_2d(np.asarray(pos, float))
+    if pos.shape[0] < 8 or pos.shape[1] < 3:
+        return False
+    n = np.linalg.norm(pos, axis=1)
+    return bool(np.ptp(pos[:, 2]) < 1e-6 and pos[0, 2] > 0 and np.abs(pos[:, 0]).max() > 20
+                and np.abs(pos[:, 1]).max() <= 90 + 1e-6 and n.max() > 1.5 * max(n.min(), 1e-9))
+
+
 def _sph_to_vec(pos, typ):
     pos = np.atleast_2d(np.asarray(pos, float))
     if "cart" in str(typ).lower():
-        return pos / np.linalg.norm(pos, axis=1, keepdims=True)
+        if not _angles_declared_cartesian(pos):
+            return pos / np.linalg.norm(pos, axis=1, keepdims=True)
+        import warnings
+        warnings.warn("SOFA positions are declared cartesian but hold azimuth / elevation / radius; read as angles "
+                      "(SOFA convention, azimuth counter-clockwise). Check left / right against the data description.")
     az, el = np.radians(pos[:, 0]), np.radians(pos[:, 1])
     return np.c_[np.cos(el) * np.cos(az), np.cos(el) * np.sin(az), np.sin(el)]
 

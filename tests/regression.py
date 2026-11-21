@@ -247,7 +247,47 @@ def c_calibrate():
     return {"iterations": float(its[-1][0]), "max_abs_error_pct": max(errs)}
 
 
-CHECKS = {"page": c_page, "page_load": c_page_load, "page_refresh": c_page_refresh, "specular": c_specular, "diffraction": c_diffraction,
+def c_sofa_positions():
+    """SOFA directivity positions declared cartesian but holding azimuth / elevation / radius (Zenodo 10255555 style)
+    are read as angles, in Python and on the page; real cartesian positions are left alone."""
+    import warnings
+    import numpy as np
+    sys.path.insert(0, ROOT)
+    import brir_proto as bp
+    az, el = np.meshgrid(np.arange(0, 360, 10.), np.arange(-80, 91, 10.))
+    ang = np.c_[az.ravel(), el.ravel(), np.ones(az.size)]
+    ref = bp._sph_to_vec(ang, "spherical")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        py_bad = float(np.abs(bp._sph_to_vec(ang, "cartesian") - ref).max())
+    py_cart = float(np.abs(bp._sph_to_vec(ref * 2.0, "cartesian") - ref).max())
+    ring = np.c_[2 * np.cos(np.radians(np.arange(0, 360, 10.))), 2 * np.sin(np.radians(np.arange(0, 360, 10.))), np.full(36, 1.0)]
+    py_ring = float(np.abs(bp._sph_to_vec(ring, "cartesian") - ring / np.linalg.norm(ring, axis=1, keepdims=True)).max())
+    out = {"py_mislabelled_max_err": py_bad, "py_cartesian_max_err": py_cart, "py_ring_max_err": py_ring}
+    js = r"""
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch(); const p = await b.newPage();
+  await p.goto('file://' + process.argv[1] + '/index.html'); await p.waitForFunction(() => typeof sofaDirs === 'function');
+  const o = await p.evaluate(() => {
+    const ang = [], ref = [], d2 = Math.PI / 180;
+    for (let el = -80; el <= 90; el += 10) for (let az = 0; az < 360; az += 10) { ang.push([az, el, 1]); ref.push([Math.cos(el * d2) * Math.cos(az * d2), Math.cos(el * d2) * Math.sin(az * d2), Math.sin(el * d2)]); }
+    const err = (a, r) => Math.max(...a.map((c, i) => Math.max(...c.map((x, j) => Math.abs(x - r[i][j])))));
+    const bad = sofaDirs(ang, 'cartesian'), cart = sofaDirs(ref.map((c) => c.map((x) => 2 * x)), 'cartesian');
+    return { bad: err(bad.dirs, ref), fixed: bad.fixed ? 1 : 0, cart: err(cart.dirs, ref), cartFixed: cart.fixed ? 1 : 0 }; });
+  console.log(JSON.stringify(o)); await b.close();
+})();"""
+    try:
+        o = json.loads(run(["node", "-e", js, ROOT], timeout=120).strip().splitlines()[-1])
+        out.update({"page_mislabelled_max_err": o["bad"], "page_mislabelled_flag": float(o["fixed"]),
+                    "page_cartesian_max_err": o["cart"], "page_cartesian_flag": float(o["cartFixed"])})
+    except RuntimeError as e:
+        if not ("Cannot find module 'playwright'" in str(e) or "Executable doesn't exist" in str(e)):
+            raise
+    return out
+
+
+CHECKS = {"page": c_page, "page_load": c_page_load, "page_refresh": c_page_refresh, "sofa_positions": c_sofa_positions, "specular": c_specular, "diffraction": c_diffraction,
           "diffraction_plate": c_diffraction_plate,
           "diffraction_order2": c_diffraction_order2, "diffraction_rs": c_diffraction_rs, "seatdip": c_seatdip,
           "rays_split": c_rays_split, "box_js": c_box_js, "mesh_leak": c_mesh_leak, "box_py": c_box_py, "rays_energy": c_rays_energy,

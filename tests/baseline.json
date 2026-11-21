@@ -180,5 +180,28 @@
   "max_rel_energy_diff": {
    "max": 1e-05
   }
+ },
+ "sofa_positions": {
+  "py_mislabelled_max_err": {
+   "max": 1e-09
+  },
+  "py_cartesian_max_err": {
+   "max": 1e-09
+  },
+  "py_ring_max_err": {
+   "max": 1e-09
+  },
+  "page_mislabelled_max_err": {
+   "max": 1e-09
+  },
+  "page_cartesian_max_err": {
+   "max": 1e-09
+  },
+  "page_mislabelled_flag": {
+   "min": 1
+  },
+  "page_cartesian_flag": {
+   "max": 0
+  }
  }
 }

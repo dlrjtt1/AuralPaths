@@ -4,6 +4,14 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- **SOFA directivity: positions declared cartesian but holding angles.** The Aalto loudspeaker files (Genelec 8331A,
+  https://zenodo.org/records/10255555) declare cartesian receiver positions but store azimuth / elevation / radius;
+  the page and `brir_proto.load_balloon` took them as cartesian and made the loudspeaker almost omnidirectional
+  (directivity index 3.3 dB instead of 9.0 dB at 2 kHz). Such positions are now recognised and read as angles, with
+  a note on the page and a Python warning (azimuth counter-clockwise, the SOFA convention; the record states clockwise,
+  so check left / right). `validation/opera_check.py` had its own reader and is unaffected. Regression check
+  `sofa_positions`. Checked at the same time: reducing measured directivity to octave bands on the 5 deg grid keeps
+  the directivity index within 0.03 dB (QSC K8, BRAS) and the levels within 0.2 dB rms (8331A, 1-4 kHz).
 - **RAVEN on the same input** (`docs/BENCHMARK_*` 4b): BRAS CR3, same geometry, initial materials, positions and analysis
   code; AuralPaths (the page's engine and settings, three seeds) decays 7–9 % faster in T30 (1.5–1.8 JND) and agrees
   within about 1 JND in EDT, C80 and Ts; the difference is not larger above 1 kHz.
