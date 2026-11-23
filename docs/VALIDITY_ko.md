@@ -71,7 +71,7 @@ CC BY-SA 4.0)와 Fratoni 데이터셋(Mendeley Data, [doi:10.17632/y7xnv6xg5s.1]
 | Arvedi의 긴 EDT의 원인 | 그 모델(공개 도면으로 작성)의 초기 반사 패턴. 원인이 아닌 것: 흡음 배치, 산란계수와 산란 방식, 엔진, 조준, 용적, 이미지 음원 차수 | `validation/arvedi_placement.md` |
 | 광선 잡음 | 수음점 하나의 EDT: 광선 20000개에서 시드 간 8 %, 80000개 3 %, 320000개 2 %; 홀 평균은 1 % 미만 | `validation/timing.md` |
 | 페이지의 BRIR로 자극 생성 | `make_stimuli.py`가 페이지가 내보낸 SOFA를 읽는다; BRIR이 페이지의 배열과 같다 | `CHANGELOG.md` |
-| 페이지의 레벨비 | dry 파일을 올리면 `make_stimuli.py`와 같은 정의(귀 신호의 에너지); PA 게인이 두 곳에서 같다(부채꼴 홀: −3.30 dB, 비확성 음원 포함 −0.59 dB) | `docs/MODEL_ko.md`, *조건* |
+| 페이지의 레벨비 | PA 대 확성 음원 자신의 직접음 경로이며 비확성 음원은 넣지 않는다; 그 dry 파일을 올리면 `make_stimuli.py`와 같은 정의(귀 신호의 에너지)이고 PA 게인이 두 곳에서 같다(부채꼴 홀: −3.30 dB) | `docs/MODEL_ko.md`, *조건* |
 
 사용에 대해 4절에 더하여:
 

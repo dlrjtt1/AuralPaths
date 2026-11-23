@@ -75,7 +75,7 @@ What changed and what was found since, with the numbers in [BENCHMARK_en.md](BEN
 | Cause of the long EDT in Arvedi | the early reflection pattern of that model (drawn from published plans); ruled out: absorption placement, scattering coefficient and model, engine, aim, volume, image-source order | `validation/arvedi_placement.md` |
 | Ray noise | EDT of one receiver: 8 % between seeds at 20000 rays, 3 % at 80000, 2 % at 320000; hall means below 1 % | `validation/timing.md` |
 | Stimuli from the page's BRIRs | `make_stimuli.py` reads the SOFA file the page exports; the BRIRs equal the page's arrays | `CHANGELOG.md` |
-| Level ratio in the page | with dry files loaded it is defined as in `make_stimuli.py` (energy of the ear signals); the PA gain is then the same in both (fan hall: -3.30 dB, -0.59 dB with an unamplified source) | `docs/MODEL_en.md`, *Conditions* |
+| Level ratio in the page | PA over the amplified source's own direct path, unamplified sources not included; with its dry file loaded it is defined as in `make_stimuli.py` (energy of the ear signals) and the PA gain is the same in both (fan hall: -3.30 dB) | `docs/MODEL_en.md`, *Conditions* |
 
 For use, in addition to section 4:
 

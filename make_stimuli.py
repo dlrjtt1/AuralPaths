@@ -20,7 +20,13 @@ Per seat and condition (ITDG x level ratio):
                  earlier of B_L and B_R. d >= 0 delays path B; d < 0 is not realisable in a hall and is
                  implemented by delaying path A (flagged). Delays are whole samples.
   level ratio    set at the reference seat: RMS over the whole stimulus of the ear signals, path B
-                 (B_L + B_R) over path A, energy averaged over both ears (proposal section 3.1).
+                 (B_L + B_R) over the direct path of the amplified source alone, i.e. (sum of path_B_inputs)
+                 * BRIR_A, energy averaged over both ears (proposal section 3.1). The other inputs of path A
+                 (unamplified sources) are not part of the reference, so the same nominal ratio means the same
+                 PA gain with and without an accompaniment (since 2026-11-23). "level_ratio_reference":
+                 "path_A" gives the definition before (PA over the whole of path A, accompaniment included).
+                 stimuli.csv has both measured ratios: level_ratio_eff_db (this reference) and
+                 level_ratio_stage_db (PA over the whole of path A).
                  The same delays and gain are used at every seat; the resulting effective ITDG
                  (via B_L and B_R) and level ratio are measured and written per stimulus.
   path A level   fixed for all conditions: one global scale factor for the whole set (headroom).
@@ -174,6 +180,18 @@ def main(cfg_path):
     SA = {s: conv(xA, H[(s, "A")]) + sum(conv(np.pad(dry[k], (0, n_dry - len(dry[k]))), H[(s, f"U:{k}")]) for k in own)
           for s in seats}
     SB = {s: conv(xB, H[(s, "B_L")] + H[(s, "B_R")]) for s in seats}
+    # reference of the level ratio: the amplified source's own direct path (default) or the whole of path A
+    lr_ref = cfg.get("level_ratio_reference", "amplified")
+    if lr_ref not in ("amplified", "path_A"):
+        sys.exit('level_ratio_reference must be "amplified" or "path_A".')
+    if lr_ref == "amplified":
+        bad = [k for k in cfg["path_B_inputs"] if k not in cfg["path_A_inputs"] or k in own]
+        if bad:
+            sys.exit(f"level_ratio_reference amplified: {', '.join(bad)} must also be an input of path A through "
+                     "BRIR_A (the amplified source's direct path).")
+        SR = {s: conv(xB, H[(s, "A")]) for s in seats}
+    else:
+        SR = SA
 
     hp = cfg.get("headphone_filter")
     hpcf = bp.load_hpcf(P(hp), fs) if hp else None
@@ -185,9 +203,10 @@ def main(cfg_path):
         for it in itdgs:
             nA, nB, ok = delays[it]
             a = shifted(SA[s], nA, length) * fade
+            r = shifted(SR[s], nA, length) * fade
             b0 = shifted(SB[s], nB, length) * fade
             for lr in lrs:
-                a_ref = shifted(SA[ref], nA, length) * fade
+                a_ref = shifted(SR[ref], nA, length) * fade
                 b_ref = shifted(SB[ref], nB, length) * fade
                 g = np.sqrt(10 ** (lr / 10) * energy(a_ref) / energy(b_ref))
                 b = g * b0
@@ -199,13 +218,15 @@ def main(cfg_path):
                               "gain_B_db": round(20 * np.log10(g), 3), "realizable_in_hall": ok,
                               "itdg_eff_BL_ms": round(bl, 3), "itdg_eff_BR_ms": round(br, 3),
                               "itdg_eff_ms": round(min(bl, br), 3), "pa_first": bool(min(bl, br) < 0),
-                              "level_ratio_eff_db": round(10 * np.log10(energy(b) / energy(a)), 3),
+                              "level_ratio_eff_db": round(10 * np.log10(energy(b) / energy(r)), 3),
+                              "level_ratio_stage_db": round(10 * np.log10(energy(b) / energy(a)), 3),
                               "_y": eq(mix).astype(np.float32)})
         if cfg.get("reference_stimulus", True):     # path A alone: timbre anchor, not a test condition
             a = SA[s] * fade
             items.append({"seat": s, "itdg_nominal_ms": "", "level_ratio_nominal_db": "", "delay_A_ms": 0.0,
                           "delay_B_ms": "", "gain_B_db": "", "realizable_in_hall": "", "itdg_eff_BL_ms": "",
                           "itdg_eff_BR_ms": "", "itdg_eff_ms": "", "pa_first": "", "level_ratio_eff_db": "",
+                          "level_ratio_stage_db": "",
                           "reference": True, "_y": eq(a).astype(np.float32)})
     peak = max(float(np.max(np.abs(i["_y"]))) for i in items)
     scale = 10 ** (cfg.get("headroom_dbfs", -1.0) / 20) / peak
@@ -249,7 +270,11 @@ def main(cfg_path):
         "global_scale_db": round(20 * np.log10(scale), 3),
         "definitions": {
             "itdg": "set at the reference seat from BRIR onsets (first sample within onset_threshold_db of the peak, earlier ear); whole-sample delays",
-            "level_ratio": "path B (B_L + B_R) over path A, RMS over the whole stimulus of the ear signals, energy averaged over both ears, set at the reference seat before headphone EQ",
+            "level_ratio": ("path B (B_L + B_R) over the direct path of the amplified source alone (path_B_inputs through BRIR_A; unamplified sources not included)"
+                            if lr_ref == "amplified" else "path B (B_L + B_R) over the whole of path A (unamplified sources included)")
+                           + ", RMS over the whole stimulus of the ear signals, energy averaged over both ears, set at the reference seat before headphone EQ",
+            "level_ratio_reference": lr_ref,
+            "level_ratio_stage_db": "measured per stimulus: path B over the whole of path A",
             "path_A_level": "fixed for every condition (one global scale factor)",
         },
     }

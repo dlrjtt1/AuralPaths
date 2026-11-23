@@ -85,13 +85,17 @@ The page rebuilds every BRIR itself, so these work without rerunning Python:
   or typed value; the A/B inputs take the same ranges. Python reference values exist for the grid in
   `config.json` (`conditions`: ITDG 0 / 20 / 40 / 60 ms × level ratio −9 / −6 / −3 / 0 / +3 / +6 dB). The trend
   plot draws ITDG 0 / 20 / 40 / 60 ms over the whole level range; the ring is the current condition.
-  **Level ratio**: energy of the PA ear signals over that of the direct ear signals at the reference seat, both
-  ears, as `make_stimuli.py` defines it. With dry files loaded in *Listen* it is taken over the signals those
-  files give (the amplified source through its direct path and the PA pair, every unamplified source with a file
-  through its own direct path), so the page's criteria and the stimuli of `make_stimuli.py` belong to the same PA
-  gain (fan hall, 20 ms / 0 dB: -3.30 dB with one file, -0.59 dB with an unamplified source added, in both).
-  Without a file for the amplified source it is the ratio of the BRIR energies (a white signal of the amplified
-  source alone). Loading a file therefore changes the PA gain of a nominal level ratio and with it C80, EDT etc.
+  **Level ratio**: energy of the PA ear signals over that of the amplified source's own direct path at the
+  reference seat, both ears, as `make_stimuli.py` defines it: "−6 dB" means that the amplified source through the
+  PA is 6 dB below the same source arriving from the stage. Unamplified sources (an accompaniment) are not part of
+  the reference, so a nominal level ratio means the same PA gain with and without them and in loud and soft passages
+  of the accompaniment (since 2026-11-23; from 2026-11-15 their dry files were included). With a dry file for the
+  amplified source loaded in *Listen* the ratio is taken over the signals that file gives (through its direct path
+  and through the PA pair), so the page's criteria and the stimuli of `make_stimuli.py` belong to the same PA gain
+  (fan hall, 20 ms / 0 dB: -3.30 dB in both). Without that file it is the ratio of the BRIR energies (a white
+  signal). Loading it therefore changes the PA gain of a nominal level ratio and with it C80, EDT etc.
+  `make_stimuli.py` also writes the ratio of the PA to the whole stage sound per stimulus (`level_ratio_stage_db`)
+  and keeps the definition before as `"level_ratio_reference": "path_A"`.
   The PA delay is set from the geometric arrival times; `make_stimuli.py` uses the BRIR onsets (0.4 ms apart in
   the fan hall).
 - **PA aiming**: coverage (Omni, 120°, 90°, 60°), azimuth (0° = straight down the hall, + towards +x) and

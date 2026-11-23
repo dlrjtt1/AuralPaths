@@ -4,6 +4,15 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- **Level ratio: the reference is the amplified source's own direct path.** "−6 dB" now means that the amplified
+  source through the PA is 6 dB below the same source arriving from the stage. Since 2026-11-15 the dry files of
+  unamplified sources were part of the reference, so with an accompaniment the same nominal ratio gave a louder PA
+  (by 5.9 dB in the regression example with a loud accompaniment) and depended on how loudly the accompaniment
+  played. Changed in both places: the page (`dryCorr`) and `make_stimuli.py`. **Results change** for configs with
+  dry files on unamplified sources: PA gain, and with it C80, EDT etc. and the stimuli; without such files nothing
+  changes. `make_stimuli.py`: new column `level_ratio_stage_db` (PA over the whole stage sound), the definition
+  before as `"level_ratio_reference": "path_A"`, both recorded in `manifest.json`. Regression check
+  `level_ratio_ref`.
 - **Up to 32 unamplified sources** (was 5), e.g. one per accompaniment part. A new source is placed at the first
   free position on a grid around the amplified source instead of on top of an earlier one. Regression check
   `page_sources`.

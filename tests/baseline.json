@@ -228,5 +228,28 @@
   "same_layout_after_reload": {
    "min": 1
   }
+ },
+ "level_ratio_ref": {
+  "py_gain_change_with_accompaniment_db": {
+   "max": 0.001
+  },
+  "py_eff_minus_nominal_db": {
+   "max": 0.002
+  },
+  "py_old_definition_gain_diff_db": {
+   "min": 1.0
+  },
+  "py_stage_ratio_below_nominal": {
+   "min": 1
+  },
+  "page_change_with_accompaniment_db": {
+   "max": 1e-09
+  },
+  "page_vs_direct_computation_db": {
+   "max": 0.01
+  },
+  "page_script_errors": {
+   "max": 0
+  }
  }
 }

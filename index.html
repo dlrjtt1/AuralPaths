@@ -2988,11 +2988,12 @@ function reaim(o) {
 const energy = (chs) => chs.reduce((t, a) => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i] * a[i]; return t + s; }, 0);
 function paSum(seatId) { const a = BR[seatId + "|B_L"], b = BR[seatId + "|B_R"]; return [0, 1].map((e) => { const o = new Float32Array(ENG.NL); for (let i = 0; i < ENG.NL; i++) o[i] = a[e][i] + b[e][i]; return o; }); }
 
-// ---- level ratio as make_stimuli.py (2026-11-15): energy of the PA ear signals over that of the direct ear signals at
-// a seat, both ears, over the whole signal, WITH THE LOADED DRY FILES: the amplified source through its direct path
-// and through the PA pair, every unamplified source that has a file through its own direct path. Without a file for
-// the amplified source: the energies of the BRIRs themselves (what a white signal of the amplified source alone
-// gives; the definition before). dirPaRatio(seat) = E_direct / E_PA at unit PA gain.
+// ---- level ratio as make_stimuli.py: energy of the PA ear signals over that of the AMPLIFIED SOURCE'S OWN direct
+// path at a seat, both ears, over the whole signal, with the dry file of the amplified source (through its direct
+// path and through the PA pair). Unamplified sources are not part of the reference (since 2026-11-23; from
+// 2026-11-15 their files were included, which made the same nominal ratio mean a louder PA the louder the
+// accompaniment played). Without a file for the amplified source: the energies of the BRIRs themselves (what a
+// white signal gives). dirPaRatio(seat) = E_direct / E_PA at unit PA gain.
 // The energy of a sum of convolutions needs only correlations: with c_op = IFFT(X_o conj X_p) of the dry files and
 // h_po = IFFT(H_p conj H_o) of the BRIRs, sum_n y[n]^2 = N sum_k c_op[k] h_po[k], and h_po is zero beyond the BRIR
 // length. c_op is computed once per file pair (dryCorr, lags below the BRIR length kept), h_po per seat.
@@ -3005,7 +3006,7 @@ function fftR2(re, im, inv) {   // in-place radix-2 FFT (length a power of two);
 }
 function dryCorr() {   // after a dry file was loaded or removed
   LRC.cx = {}; LRC.seat = {}; LRC.note = "";
-  const ids = [AMP(), ...UNAMPS()].filter((o) => DRY[o.id]).map((o) => o.id); LRC.ids = DRY[AMP().id] ? ids : [];
+  LRC.ids = DRY[AMP().id] ? [AMP().id] : [];   // the amplified source only: unamplified sources are not in the reference
   if (!LRC.ids.length) return;
   if (LRC.ids.some((id) => DRY[id].sampleRate !== D.fs)) { LRC.ids = []; LRC.note = "dry files not at the page's sample rate: BRIR energies used"; return; }
   const NL = ENG.NL, MAXN = 1 << 22, len = Math.min(MAXN - NL, Math.max(...LRC.ids.map((id) => DRY[id].length)));
@@ -4605,7 +4606,7 @@ function drawCondition() {
   const s = seatObj(S.seat), tA = tDir(AMP(), s) + C.dA, f1 = (v) => (v >= 0 ? "+" : "") + v.toFixed(1);
   $("kvLive").innerHTML = kv([
     ["Effective ITDG, PA L", f1((tDir(PAL(), s) + C.dB - tA) * 1000), "ms"], ["Effective ITDG, PA R", f1((tDir(PAR(), s) + C.dB - tA) * 1000), "ms"],
-    ["Effective level ratio" + (LRC.ids.length ? " (dry files)" : ""), f1(10 * Math.log10(C.gain ** 2 / dirPaRatio(S.seat))), "dB"], ["PA electrical delay", (C.dB * 1000).toFixed(1), "ms"]]);
+    ["Effective level ratio" + (LRC.ids.length ? " (dry file)" : ""), f1(10 * Math.log10(C.gain ** 2 / dirPaRatio(S.seat))), "dB"], ["PA electrical delay", (C.dB * 1000).toFixed(1), "ms"]]);
   const st = $("realize"); st.className = "status " + (C.realizable ? "good" : "warn");
   st.textContent = C.realizable ? "Delay realisable in the hall" : `Not realisable: stage sound delayed by ${(C.dA * 1000).toFixed(1)} ms`;
   CUR = metrics(S.seat, C, true); drawTrust();
@@ -4890,7 +4891,7 @@ async function loadFile(input) {
     const buf = await actx().decodeAudioData(await f.arrayBuffer()), mono = ctx.createBuffer(1, buf.length, buf.sampleRate), m = mono.getChannelData(0);
     for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < d.length; i++) m[i] += d[i] / buf.numberOfChannels; }
     DRY[id] = mono; dryCorr(); TREND.key = "";
-    $("lNote").textContent = `${labelOf(byId(id))}: ${f.name} (${buf.duration.toFixed(1)} s)` + (LRC.ids.length ? `. The level ratio is now set with the loaded dry files (as make_stimuli.py)${LRC.note ? "; " + LRC.note : ""}.` : LRC.note ? `. ${LRC.note}.` : "");
+    $("lNote").textContent = `${labelOf(byId(id))}: ${f.name} (${buf.duration.toFixed(1)} s)` + (LRC.ids.length ? `. The level ratio is set with the dry file of the amplified source: PA over its own direct path, without the unamplified sources (as make_stimuli.py)${LRC.note ? "; " + LRC.note : ""}.` : LRC.note ? `. ${LRC.note}.` : "");
   } catch (e) { $("lNote").textContent = `Could not open ${f.name}. Choose a WAV or MP3 file.`; }
   enablePlay(); if (C) refreshPlots();
 }

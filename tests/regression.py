@@ -282,6 +282,66 @@ const { chromium } = require('playwright');
             "same_layout_after_reload": float(o["same"]), "t30_finite": float(o["t30"] is not None and o["t30"] > 0)}
 
 
+def c_level_ratio_ref():
+    """The level ratio is PA over the amplified source's own direct path: an accompaniment (unamplified sources with
+    dry files) does not change the PA gain, in make_stimuli.py and on the page; the page's value equals a direct
+    computation; the definition before ("path_A") is still available in make_stimuli.py and differs."""
+    import csv
+    import numpy as np
+    import soundfile as sf
+    rng = np.random.default_rng(5); fs = 48000
+    d = tempfile.mkdtemp(); os.makedirs(os.path.join(d, "brir")); os.makedirs(os.path.join(d, "dry"))
+    env = np.exp(-np.arange(int(0.4 * fs)) / (0.08 * fs))
+    for name, t0, g in (("S_amp", 0.020, 1.0), ("S_unamp", 0.024, 0.9), ("B_L", 0.030, 0.7), ("B_R", 0.031, 0.6)):
+        h = rng.normal(size=(env.size, 2)) * env[:, None] * 0.05 * g; h[: int(t0 * fs)] = 0; h[int(t0 * fs)] = g
+        sf.write(os.path.join(d, "brir", f"C_{name}.wav"), h, fs, subtype="FLOAT")
+    sf.write(os.path.join(d, "dry", "vocal.wav"), rng.normal(size=fs) * 0.1, fs, subtype="FLOAT")
+    sf.write(os.path.join(d, "dry", "orch.wav"), rng.normal(size=fs) * 0.2, fs, subtype="FLOAT")
+    base = {"brir_dir": "brir", "reference_seat": "C", "seats": ["C"], "itdg_ms": [20], "level_ratio_db": [-6],
+            "path_B_inputs": ["vocal"], "reference_stimulus": False, "subtype": "FLOAT"}
+    def gain(tag, **kw):
+        c = dict(base, output_dir=tag, **kw); f = os.path.join(d, tag + ".json"); json.dump(c, open(f, "w"))
+        run([sys.executable, os.path.join(ROOT, "make_stimuli.py"), f], timeout=120)
+        r = list(csv.DictReader(open(os.path.join(d, tag, "stimuli.csv"))))[0]
+        return float(r["gain_B_db"]), float(r["level_ratio_eff_db"]), float(r["level_ratio_stage_db"])
+    both = {"dry": {"vocal": "dry/vocal.wav", "orch": "dry/orch.wav"}, "path_A_inputs": ["vocal", "orch"], "input_brirs": {"orch": "S_unamp"}}
+    g1, e1, _ = gain("solo", dry={"vocal": "dry/vocal.wav"}, path_A_inputs=["vocal"])
+    g2, e2, st2 = gain("orch", **both)
+    g3, e3, _ = gain("old", level_ratio_reference="path_A", **both)
+    out = {"py_gain_change_with_accompaniment_db": abs(g2 - g1), "py_eff_minus_nominal_db": abs(e2 + 6),
+           "py_old_definition_gain_diff_db": abs(g3 - g1), "py_stage_ratio_below_nominal": float(st2 < -6)}
+    js = r"""
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch(); const p = await b.newPage(); const errs = []; p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto('file://' + process.argv[1] + '/index.html');
+  for (let i = 0; i < 400; i++) { await p.waitForTimeout(150); if (await p.evaluate(() => document.getElementById('busy').hidden)) break; }
+  const o = await p.evaluate(() => {
+    let seed = 7; const rnd = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296 - 0.5; };
+    const mk = (g) => { const n = Math.round(0.5 * D.fs), buf = new AudioBuffer({ length: n, sampleRate: D.fs }), d = buf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = g * rnd() * (1 + Math.sin(i / 300)); return buf; };
+    const amp = AMP().id, un = UNAMPS()[0].id, seat = D.ref;
+    for (const k in DRY) delete DRY[k];
+    const r0 = dirPaRatio(seat);
+    DRY[amp] = mk(0.1); dryCorr(); const r1 = dirPaRatio(seat);
+    DRY[un] = mk(0.3); dryCorr(); const r2 = dirPaRatio(seat);
+    // direct computation: energy of x * h per ear by FFT
+    const x = DRY[amp].getChannelData(0), NL = ENG.NL; let N = 1; while (N < x.length + NL) N <<= 1;
+    const en = (h) => { const xr = new Float64Array(N), xi = new Float64Array(N), hr = new Float64Array(N), hi = new Float64Array(N); xr.set(x); hr.set(h); fftR2(xr, xi, false); fftR2(hr, hi, false);
+      let e = 0; for (let i = 0; i < N; i++) { const a = xr[i] * hr[i] - xi[i] * hi[i], c = xr[i] * hi[i] + xi[i] * hr[i]; e += a * a + c * c; } return e / N; };
+    const A = BR[seat + '|' + amp], P = paSum(seat), rd = (en(A[0]) + en(A[1])) / (en(P[0]) + en(P[1]));
+    for (const k in DRY) delete DRY[k]; dryCorr();
+    return { change: Math.abs(10 * Math.log10(r2 / r1)), direct: Math.abs(10 * Math.log10(r1 / rd)), white: Math.abs(10 * Math.log10(r1 / r0)) }; });
+  console.log(JSON.stringify(Object.assign(o, { errors: errs.length }))); await b.close();
+})();"""
+    try:
+        o = json.loads(run(["node", "-e", js, ROOT], timeout=180).strip().splitlines()[-1])
+        out.update({"page_change_with_accompaniment_db": o["change"], "page_vs_direct_computation_db": o["direct"], "page_script_errors": float(o["errors"])})
+    except RuntimeError as e:
+        if not ("Cannot find module 'playwright'" in str(e) or "Executable doesn't exist" in str(e)):
+            raise
+    return out
+
+
 def c_sofa_positions():
     """SOFA directivity positions declared cartesian but holding azimuth / elevation / radius (Zenodo 10255555 style)
     are read as angles (azimuth clockwise, as the Aalto record states), in Python and on the page; real cartesian positions are left alone."""
@@ -322,7 +382,7 @@ const { chromium } = require('playwright');
     return out
 
 
-CHECKS = {"page": c_page, "page_load": c_page_load, "page_refresh": c_page_refresh, "sofa_positions": c_sofa_positions, "page_sources": c_page_sources, "specular": c_specular, "diffraction": c_diffraction,
+CHECKS = {"page": c_page, "page_load": c_page_load, "page_refresh": c_page_refresh, "sofa_positions": c_sofa_positions, "page_sources": c_page_sources, "level_ratio_ref": c_level_ratio_ref, "specular": c_specular, "diffraction": c_diffraction,
           "diffraction_plate": c_diffraction_plate,
           "diffraction_order2": c_diffraction_order2, "diffraction_rs": c_diffraction_rs, "seatdip": c_seatdip,
           "rays_split": c_rays_split, "box_js": c_box_js, "mesh_leak": c_mesh_leak, "box_py": c_box_py, "rays_energy": c_rays_energy,
