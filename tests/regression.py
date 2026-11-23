@@ -247,6 +247,35 @@ def c_calibrate():
     return {"iterations": float(its[-1][0]), "max_abs_error_pct": max(errs)}
 
 
+def c_page_sources():
+    """The page takes 32 unamplified sources: all get a place of their own, BRIRs for every seat, and no script error."""
+    js = r"""
+const { chromium } = require('playwright');
+(async () => {
+  const b = await chromium.launch(); const p = await b.newPage({ viewport: { width: 1400, height: 1000 } }); const errs = [];
+  p.on('pageerror', (e) => errs.push(e.message));
+  await p.goto('file://' + process.argv[1] + '/index.html');
+  const idle = async () => { for (let i = 0; i < 400; i++) { await p.waitForTimeout(150); if (await p.evaluate(() => document.getElementById('busy').hidden)) return; } };
+  await p.waitForTimeout(1500); await idle();
+  for (let i = 0; i < 40 && !(await p.evaluate(() => document.getElementById('bAddUnamp').disabled)); i++) { await p.evaluate(() => document.getElementById('bAddUnamp').click()); await p.waitForTimeout(100); await idle(); }
+  const o = await p.evaluate(() => { const u = UNAMPS(), q = sourcesAll(); let dmin = 1e9;
+    for (let i = 0; i < q.length; i++) for (let j = 0; j < i; j++) dmin = Math.min(dmin, Math.hypot(q[i].pos[0] - q[j].pos[0], q[i].pos[1] - q[j].pos[1]));
+    return { n: u.length, missing: SEATS().reduce((a, s) => a + q.filter((x) => !BR[s.id + '|' + x.id]).length, 0), dmin, t30: metrics(S.seat, cond(S.itdg, S.lr), true).T30 }; });
+  console.log(JSON.stringify(Object.assign(o, { errors: errs.length, first: errs[0] || '' }))); await b.close();
+})();"""
+    try:
+        out = run(["node", "-e", js, ROOT], timeout=300)
+    except RuntimeError as e:
+        if "Cannot find module 'playwright'" in str(e) or "Executable doesn't exist" in str(e):
+            return None
+        raise
+    o = json.loads(out.strip().splitlines()[-1])
+    if o["errors"]:
+        print(f"    first script error: {o['first']}")
+    return {"sources": float(o["n"]), "missing_brirs": float(o["missing"]), "min_distance_m": float(o["dmin"]),
+            "script_errors": float(o["errors"]), "t30_finite": float(o["t30"] is not None and o["t30"] > 0)}
+
+
 def c_sofa_positions():
     """SOFA directivity positions declared cartesian but holding azimuth / elevation / radius (Zenodo 10255555 style)
     are read as angles (azimuth clockwise, as the Aalto record states), in Python and on the page; real cartesian positions are left alone."""
@@ -287,7 +316,7 @@ const { chromium } = require('playwright');
     return out
 
 
-CHECKS = {"page": c_page, "page_load": c_page_load, "page_refresh": c_page_refresh, "sofa_positions": c_sofa_positions, "specular": c_specular, "diffraction": c_diffraction,
+CHECKS = {"page": c_page, "page_load": c_page_load, "page_refresh": c_page_refresh, "sofa_positions": c_sofa_positions, "page_sources": c_page_sources, "specular": c_specular, "diffraction": c_diffraction,
           "diffraction_plate": c_diffraction_plate,
           "diffraction_order2": c_diffraction_order2, "diffraction_rs": c_diffraction_rs, "seatdip": c_seatdip,
           "rays_split": c_rays_split, "box_js": c_box_js, "mesh_leak": c_mesh_leak, "box_py": c_box_py, "rays_energy": c_rays_energy,

@@ -203,5 +203,23 @@
   "page_cartesian_flag": {
    "max": 0
   }
+ },
+ "page_sources": {
+  "sources": {
+   "value": 32,
+   "tol": 0
+  },
+  "missing_brirs": {
+   "max": 0
+  },
+  "min_distance_m": {
+   "min": 0.5
+  },
+  "script_errors": {
+   "max": 0
+  },
+  "t30_finite": {
+   "min": 1
+  }
  }
 }

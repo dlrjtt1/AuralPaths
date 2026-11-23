@@ -107,7 +107,7 @@ The page rebuilds every BRIR itself, so these work without rerunning Python:
   (1/r² and PA directivity, 500 / 1000 Hz) between the seat and the reference seat. It is not a room
   simulation per seat; at the L / R positions it differs from the BRIR energy ratio by up to about
   1.5 dB (see `run_log.txt`).
-- **Unamplified sources**: add up to 5, remove any.
+- **Unamplified sources**: add up to 32, remove any. A new one is placed at the first free position on a grid around the amplified source (1.5 m sideways, rows 0.8 m apart). Every source is one more ray computation, so the time for a change of the hall grows in proportion to the number of sources.
 - **Listen**: one dry file for the amplified source, one per unamplified source; Mix / Direct only /
   PA only; headphones. **Sennheiser HD600 compensation** (on by default when the config names a headphone filter) runs the
   output through the Sennheiser HD600 compensation filter, so the binaural signal is equalised for those

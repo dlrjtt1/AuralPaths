@@ -4,6 +4,9 @@ Dates are those of the commits on GitHub. The version is shown on the page and r
 files.
 
 ## Unreleased
+- **Up to 32 unamplified sources** (was 5), e.g. one per accompaniment part. A new source is placed at the first
+  free position on a grid around the amplified source instead of on top of an earlier one. Regression check
+  `page_sources`.
 - **SOFA directivity: positions declared cartesian but holding angles.** The Aalto loudspeaker files (Genelec 8331A,
   https://zenodo.org/records/10255555) declare cartesian receiver positions but store azimuth / elevation / radius;
   the page and `brir_proto.load_balloon` took them as cartesian and made the loudspeaker almost omnidirectional

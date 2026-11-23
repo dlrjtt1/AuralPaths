@@ -2575,7 +2575,7 @@ const ENG = (() => {
 const $ = (id) => document.getElementById(id);
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
 const COLV = { amp: "--amp", pa: "--pa", unamp: "--unamp", seat: "--text" };
-const MAX_UNAMP = 5;
+const MAX_UNAMP = 32;   // each source is one more ray run per change of the hall (see docs/MODEL: unamplified sources)
 $("ver").textContent = "v" + D.version; $("ver2").textContent = "v" + D.version;
 
 const deep = (o) => JSON.parse(JSON.stringify(o));
@@ -4287,8 +4287,12 @@ $("bAddUnamp").onclick = () => {
   if (UNAMPS().length >= MAX_UNAMP) return;
   let n = 2; while (byId("S_unamp" + n) || (n === 1 && byId("S_unamp"))) n++;
   const id = byId("S_unamp") ? "S_unamp" + n : "S_unamp";
-  const a = AMP().pos, k = UNAMPS().length + 1;
-  OBJ.splice(OBJ.findIndex((o) => o.kind === "seat"), 0, { id, kind: "unamp", pos: [Math.min(HALL.dims[0] - 1, Math.max(1, a[0] + (k % 2 ? -1 : 1) * 1.5 * Math.ceil(k / 2))), Math.min(HALL.dims[1] - 0.5, a[1] + 0.8), 0], h: 1.2, locked: false });
+  // first free place on a grid around the amplified source: 1.5 m apart sideways, rows 0.8 m apart, behind it first
+  const a = AMP().pos, W = HALL.dims[0], L = HALL.dims[1], taken = sourcesAll().map((o) => o.pos), free = (q) => taken.every((t) => Math.hypot(t[0] - q[0], t[1] - q[1]) > 0.5);
+  let pos = null;
+  for (const sgn of [1, -1]) for (let r = sgn > 0 ? 1 : 0; r < 40 && !pos; r++) { const y = a[1] + sgn * 0.8 * r; if (y > L - 0.5 || y < 0.5) break;
+    for (let j = 0; j < 40 && !pos; j++) for (const sx of j ? [-1, 1] : [1]) { const x = a[0] + sx * 1.5 * j; if (x >= 1 && x <= W - 1 && free([x, y])) { pos = [x, y, 0]; break; } } }
+  OBJ.splice(OBJ.findIndex((o) => o.kind === "seat"), 0, { id, kind: "unamp", pos: pos || [a[0], Math.min(L - 0.5, a[1] + 0.8), 0], h: 1.2, locked: false });
   clampAll();
   stop(); buildFiles(); work(() => rebuildPath(byId(id)));
 };
