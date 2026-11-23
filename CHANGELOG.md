@@ -7,6 +7,10 @@ files.
 - **Up to 32 unamplified sources** (was 5), e.g. one per accompaniment part. A new source is placed at the first
   free position on a grid around the amplified source instead of on top of an earlier one. Regression check
   `page_sources`.
+- **Load config read only the first 9 sources** (1 amplified + 2 PA + 6 unamplified), so a config with more
+  unamplified sources, also one saved by the page itself, lost the rest without a message (reported 2026-11-23).
+  The loader now takes every source, unamplified ones up to the same 32 as the button, and says so if a file holds
+  more. `page_sources` now saves a config with 32 sources and loads it again.
 - **SOFA directivity: positions declared cartesian but holding angles.** The Aalto loudspeaker files (Genelec 8331A,
   https://zenodo.org/records/10255555) declare cartesian receiver positions but store azimuth / elevation / radius;
   the page and `brir_proto.load_balloon` took them as cartesian and made the loudspeaker almost omnidirectional

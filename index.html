@@ -4341,7 +4341,10 @@ function applyConfig(c, name) {
   MESHC.defer = !!HALL.mesh; buildGeom();     // a model is built once the positions are in the page frame (below)
   const kindOf = (k) => (k === "S_amp" ? "amp" : k === "B_L" || k === "B_R" ? "pa" : "unamp");
   const dirOf = (k) => ({ cov: +src[k].coverage > 0 && +src[k].coverage < 360 ? +src[k].coverage : 0, az: +(src[k].aim?.az ?? 0) || 0, el: +(src[k].aim?.el ?? 0) || 0 });
-  OBJ = Object.keys(src).filter((k) => !k.startsWith("_") && sp(k)).slice(0, 9).map((k) => ({ id: k, kind: kindOf(k), pos: sp(k), locked: false, ...(kindOf(k) === "pa" ? { dir: dirOf(k) } : {}) }))
+  // every source of the config; unamplified ones up to MAX_UNAMP, as with the button (a fixed 9 until 2026-11-23)
+  const srcKeys = Object.keys(src).filter((k) => !k.startsWith("_") && sp(k)), unampKeys = srcKeys.filter((k) => kindOf(k) === "unamp"), keptUnamp = new Set(unampKeys.slice(0, MAX_UNAMP));
+  const droppedSrc = unampKeys.length - keptUnamp.size;
+  OBJ = srcKeys.filter((k) => kindOf(k) !== "unamp" || keptUnamp.has(k)).map((k) => ({ id: k, kind: kindOf(k), pos: sp(k), locked: false, ...(kindOf(k) === "pa" ? { dir: dirOf(k) } : {}) }))
     .concat(seats.map(([k, p]) => ({ id: k, kind: "seat", pos: p.map(Number), locked: false })));
   if (HALL.mesh) { for (const o of OBJ) o.pos = meshToPage(HALL.mesh, o.pos); if (HALL.seatMap) HALL.seatMap = HALL.seatMap.map((p) => meshToPage(HALL.mesh, p)); MESHC.defer = false; buildGeom(); }
   for (const o of OBJ) { const dv = src[o.id] && src[o.id].directivity;
@@ -4355,7 +4358,7 @@ function applyConfig(c, name) {
   const dirFiles = Object.keys(src).filter((k) => !k.startsWith("_") && src[k] && typeof src[k].directivity === "string");
   S.calibration = c._calibration && c._calibration.factors ? deep(c._calibration) : null; S.calPrev = null; if (typeof calReport === "function") calReport();
   S.loadedCfg = deep(c); S.loadedFile = name; S.loaded = name; S.loadedName = typeof c.name === "string" && c.name ? c.name : "";
-  $("posNote").textContent = `Loaded ${name}: ${isMesh() ? "3D model " + HALL.mesh.name : isDrawn() ? "drawn hall" : "shoebox"} ${HALL.dims.join(" × ")} m, ${OBJ.length - seats.length} sources, ${seats.length} listening positions${HALL.seatMap ? `, ${HALL.seatMap.length} traced seats` : ""}. Python reference values show only for the config this page was built from; run run.py with ${name} for its own.${dirFiles.length ? ` Directivity files (${dirFiles.join(", ")}) cannot be read here: those sources are omni / generic until you open the viewer export_viewer.py builds for this config.` : ""}`;
+  $("posNote").textContent = `Loaded ${name}: ${isMesh() ? "3D model " + HALL.mesh.name : isDrawn() ? "drawn hall" : "shoebox"} ${HALL.dims.join(" × ")} m, ${OBJ.length - seats.length} sources${droppedSrc ? ` (${droppedSrc} more unamplified sources in the file were left out: the page takes ${MAX_UNAMP})` : ""}, ${seats.length} listening positions${HALL.seatMap ? `, ${HALL.seatMap.length} traced seats` : ""}. Python reference values show only for the config this page was built from; run run.py with ${name} for its own.${dirFiles.length ? ` Directivity files (${dirFiles.join(", ")}) cannot be read here: those sources are omni / generic until you open the viewer export_viewer.py builds for this config.` : ""}`;
   shapeUI(); buildFiles(); work(rebuildAll);
 }
 function loadConfigFile(f) {

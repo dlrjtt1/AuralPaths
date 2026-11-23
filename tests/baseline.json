@@ -220,6 +220,13 @@
   },
   "t30_finite": {
    "min": 1
+  },
+  "reloaded_from_saved_config": {
+   "value": 32,
+   "tol": 0
+  },
+  "same_layout_after_reload": {
+   "min": 1
   }
  }
 }

@@ -248,7 +248,8 @@ def c_calibrate():
 
 
 def c_page_sources():
-    """The page takes 32 unamplified sources: all get a place of their own, BRIRs for every seat, and no script error."""
+    """The page takes 32 unamplified sources: all get a place of their own, BRIRs for every seat, no script error,
+    and the saved config loads again with all of them at the same positions."""
     js = r"""
 const { chromium } = require('playwright');
 (async () => {
@@ -261,6 +262,10 @@ const { chromium } = require('playwright');
   const o = await p.evaluate(() => { const u = UNAMPS(), q = sourcesAll(); let dmin = 1e9;
     for (let i = 0; i < q.length; i++) for (let j = 0; j < i; j++) dmin = Math.min(dmin, Math.hypot(q[i].pos[0] - q[j].pos[0], q[i].pos[1] - q[j].pos[1]));
     return { n: u.length, missing: SEATS().reduce((a, s) => a + q.filter((x) => !BR[s.id + '|' + x.id]).length, 0), dmin, t30: metrics(S.seat, cond(S.itdg, S.lr), true).T30 }; });
+  const before = await p.evaluate(() => { window.__cfg = currentConfig(); return sourcesAll().map((x) => x.id + ':' + x.pos.map((v) => v.toFixed(3)).join(',') + ':' + (+x.h).toFixed(3)).sort().join(' '); });
+  await p.evaluate(() => { const c = JSON.parse(JSON.stringify(window.__cfg)); OBJ = OBJ.filter((x) => x.kind !== 'unamp'); applyConfig(c, 'roundtrip.json'); }); await p.waitForTimeout(500); await idle();
+  const after = await p.evaluate(() => ({ ids: sourcesAll().map((x) => x.id + ':' + x.pos.map((v) => v.toFixed(3)).join(',') + ':' + (+x.h).toFixed(3)).sort().join(' '), n: UNAMPS().length, missing: SEATS().reduce((a, s) => a + sourcesAll().filter((x) => !BR[s.id + '|' + x.id]).length, 0) }));
+  o.reloaded = after.n; o.same = after.ids === before ? 1 : 0; o.missing += after.missing;
   console.log(JSON.stringify(Object.assign(o, { errors: errs.length, first: errs[0] || '' }))); await b.close();
 })();"""
     try:
@@ -273,7 +278,8 @@ const { chromium } = require('playwright');
     if o["errors"]:
         print(f"    first script error: {o['first']}")
     return {"sources": float(o["n"]), "missing_brirs": float(o["missing"]), "min_distance_m": float(o["dmin"]),
-            "script_errors": float(o["errors"]), "t30_finite": float(o["t30"] is not None and o["t30"] > 0)}
+            "script_errors": float(o["errors"]), "reloaded_from_saved_config": float(o["reloaded"]),
+            "same_layout_after_reload": float(o["same"]), "t30_finite": float(o["t30"] is not None and o["t30"] > 0)}
 
 
 def c_sofa_positions():
